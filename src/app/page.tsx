@@ -27,6 +27,7 @@ import {
   upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
   subscribeToTripRealtime, updateTripInSupabase, clearTripExpensesAndPayments,
   fetchLatestTripFromSupabase, deleteTripFromSupabase, wipeAllDatabaseAndStorage,
+  findTripByCodeOrId,
 } from '@/lib/tripService';
 
 const CATEGORY_ICONS: Record<Category, string> = {
@@ -87,7 +88,7 @@ export default function TripFinancePortal() {
     let reqId = targetTripId;
     if (!reqId && typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      reqId = params.get('trip') || undefined;
+      reqId = params.get('trip') || params.get('code') || undefined;
     }
     if (!reqId && typeof window !== 'undefined') {
       reqId = localStorage.getItem('active_trip_id') || undefined;
@@ -96,6 +97,9 @@ export default function TripFinancePortal() {
     if (hasSupabase) {
       setIsCloudSyncing(true);
       let cloudTrip = reqId ? await fetchTripFromSupabase(reqId) : null;
+      if (!cloudTrip && reqId) {
+        cloudTrip = await findTripByCodeOrId(reqId);
+      }
       if (!cloudTrip) {
         // Look for the latest trip in Supabase
         cloudTrip = await fetchLatestTripFromSupabase();

@@ -31,16 +31,18 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: LoginScreenProps) {
-  const [mode, setMode] = useState<'login' | 'create_trip' | 'find_trip'>(
-    trip.members && trip.members.length > 0 ? 'login' : 'create_trip'
-  );
-
-  // Keep mode in sync if trip loads with members
-  useEffect(() => {
-    if (trip.members && trip.members.length > 0) {
-      setMode('login');
+  // Check if URL has direct trip code/id parameter (e.g. invite links)
+  const [hasDirectTripLink] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return Boolean(params.get('trip') || params.get('code'));
     }
-  }, [trip.id, trip.members.length]);
+    return false;
+  });
+
+  const [mode, setMode] = useState<'enter_code' | 'login' | 'create_trip'>(
+    hasDirectTripLink && trip.members && trip.members.length > 0 ? 'login' : 'enter_code'
+  );
 
   // Login form state
   const [loginId, setLoginId] = useState('');
@@ -166,14 +168,27 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
   const handleFindTrip = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    const code = searchCode.trim();
+    const code = searchCode.trim().toUpperCase();
     if (!code) {
-      setErrorMsg('Please enter a Trip Code or ID');
+      setErrorMsg('Please enter a Trip Code');
       return;
     }
 
     setIsLoading(true);
     try {
+      // 1. Check if the currently loaded trip already matches this code or ID
+      const currentMatches =
+        (trip.inviteCode && trip.inviteCode.trim().toUpperCase() === code) ||
+        trip.id.trim().toUpperCase() === code;
+
+      if (currentMatches && trip.members && trip.members.length > 0) {
+        setMode('login');
+        setErrorMsg('');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Search database / Supabase
       const foundTrip = await findTripByCodeOrId(code);
       if (foundTrip) {
         if (onUpdateTrip) onUpdateTrip(foundTrip);
@@ -197,15 +212,14 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-5">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
-            {currencySymbol}
-          </div>
-          <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
-            Trip Expense & Split Portal
-          </div>
-          
           {mode === 'login' ? (
             <>
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
+                {currencySymbol}
+              </div>
+              <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
+                Trip Expense & Split Portal
+              </div>
               <h1 className="text-2xl font-black text-white tracking-tight">{trip.name}</h1>
               <p className="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1.5 flex-wrap">
                 <MapPin className="h-3 w-3 text-emerald-400" />
@@ -224,6 +238,12 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
             </>
           ) : mode === 'create_trip' ? (
             <>
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
+                <Sparkles className="h-7 w-7 text-white" />
+              </div>
+              <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
+                Trip Expense & Split Portal
+              </div>
               <h1 className="text-2xl font-black text-white tracking-tight">Create a New Trip</h1>
               <p className="text-xs text-slate-400 mt-1">
                 For friends, families, vacations, and remote team offsites worldwide.
@@ -231,9 +251,15 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-black text-white tracking-tight">Join with Existing Code</h1>
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
+                <Compass className="h-7 w-7 text-white" />
+              </div>
+              <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
+                Trip Expense & Split Portal
+              </div>
+              <h1 className="text-2xl font-black text-white tracking-tight">Enter Trip Code</h1>
               <p className="text-xs text-slate-400 mt-1">
-                Enter the Trip Code shared by your friend or organizer.
+                Enter your 6-character code (e.g. ODISHA71) to open your group trip.
               </p>
             </>
           )}
@@ -394,18 +420,16 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
               </button>
 
               <div className="flex items-center justify-between pt-1 text-xs text-slate-400">
-                {trip.members.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { setMode('login'); setErrorMsg(''); }}
-                    className="hover:text-white"
-                  >
-                    ← Back to Sign In
-                  </button>
-                )}
                 <button
                   type="button"
-                  onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
+                  onClick={() => { setMode('enter_code'); setErrorMsg(''); }}
+                  className="hover:text-white"
+                >
+                  ← Back to Trip Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('enter_code'); setErrorMsg(''); }}
                   className="hover:text-emerald-400 ml-auto"
                 >
                   Join existing trip with code →
@@ -415,37 +439,42 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
           </div>
         )}
 
-        {/* ── MODE 2: FIND TRIP BY CODE ── */}
-        {mode === 'find_trip' && (
+        {/* ── STEP 1: ENTER TRIP CODE ── */}
+        {mode === 'enter_code' && (
           <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-6 shadow-2xl space-y-4">
             <div className="border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Compass className="h-4 w-4 text-emerald-400" />
-                Find Trip Group
+                <KeyRound className="h-4 w-4 text-emerald-400" />
+                Trip Access Verification
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Enter your team's Trip Code or ID to load the portal.
+                Enter the Trip Code shared by your friend or organizer.
               </p>
             </div>
 
             <form onSubmit={handleFindTrip} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  Trip Code or ID *
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                  Trip Code *
                 </label>
                 <input
                   type="text"
                   required
+                  autoFocus
                   value={searchCode}
-                  onChange={(e) => setSearchCode(e.target.value)}
-                  placeholder="e.g. TOKYO26, SWISS84, or trip_..."
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm font-mono text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase"
+                  onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. ODISHA71"
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-mono font-bold tracking-widest text-emerald-400 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase text-center"
                 />
+                <p className="text-[11px] text-slate-500 mt-1.5 text-center">
+                  Case-insensitive (e.g. <span className="font-mono text-slate-400">ODISHA71</span>)
+                </p>
               </div>
 
               {errorMsg && (
-                <div className="rounded-xl bg-rose-950/60 border border-rose-800/80 p-2.5 text-xs text-rose-300">
-                  {errorMsg}
+                <div className="rounded-xl bg-rose-950/60 border border-rose-800/80 p-3 flex items-start gap-2.5 text-xs text-rose-300 animate-in fade-in">
+                  <AlertCircle className="h-4 w-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
                 </div>
               )}
 
@@ -455,29 +484,29 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98 disabled:opacity-50"
               >
                 {isLoading ? (
-                  <span>Searching...</span>
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Finding Trip...
+                  </span>
                 ) : (
                   <>
-                    <span>Load Trip Group</span>
+                    <span>Continue to Member Sign In</span>
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </button>
 
-              <div className="flex items-center justify-between pt-1 text-xs text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => { setMode('login'); setErrorMsg(''); }}
-                  className="hover:text-white"
-                >
-                  ← Back to Sign In
-                </button>
+              <div className="pt-2 border-t border-slate-800/80 text-center">
+                <p className="text-[11px] text-slate-400 mb-2">
+                  Starting a new trip or group?
+                </p>
                 <button
                   type="button"
                   onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
-                  className="hover:text-emerald-400"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 py-2.5 text-xs font-semibold text-slate-200 transition-colors"
                 >
-                  Create new trip +
+                  <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Create a New Trip</span>
                 </button>
               </div>
             </form>
@@ -602,24 +631,36 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
 
         {/* Clean, elegant footer links outside the card */}
         {mode === 'login' && (
-          <div className="mt-5 flex items-center justify-center gap-3 text-xs text-slate-400">
+          <div className="mt-5 space-y-3 text-center">
             <button
               type="button"
-              onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
-              className="hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1"
+              onClick={() => { setMode('enter_code'); setErrorMsg(''); }}
+              className="text-xs text-slate-400 hover:text-white transition-colors"
             >
-              <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Create a New Trip</span>
+              ← Enter a different Trip Code
             </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
-              className="hover:text-sky-400 font-semibold transition-colors flex items-center gap-1"
-            >
-              <Compass className="h-3.5 w-3.5 text-sky-400" />
-              <span>Join with Trip Code</span>
-            </button>
+
+            <div className="pt-2 border-t border-slate-800/50 flex flex-col items-center gap-2 text-xs text-slate-500">
+              <p>Starting a new trip or joining another group?</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
+                  className="hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1.5 text-slate-400 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 hover:bg-slate-800"
+                >
+                  <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Create a New Trip</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('enter_code'); setErrorMsg(''); }}
+                  className="hover:text-sky-400 font-semibold transition-colors flex items-center gap-1.5 text-slate-400 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 hover:bg-slate-800"
+                >
+                  <Compass className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Join with Code</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
