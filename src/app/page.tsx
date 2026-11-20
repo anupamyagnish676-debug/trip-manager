@@ -20,6 +20,7 @@ import {
   Database,
   Cloud,
   CloudOff,
+  Settings,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -29,6 +30,7 @@ import { PaymentCaptureModal } from '@/components/PaymentCaptureModal';
 import { SettleUpTab } from '@/components/SettleUpTab';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { WhatsAppExportModal } from '@/components/WhatsAppExportModal';
+import { TripSettingsModal } from '@/components/TripSettingsModal';
 import { calculatePotSummary, calculateMemberBalances } from '@/lib/calculations';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import {
@@ -39,6 +41,8 @@ import {
   insertPaymentToSupabase,
   saveSettlementToSupabase,
   subscribeToTripRealtime,
+  updateTripInSupabase,
+  clearTripExpensesAndPayments,
 } from '@/lib/tripService';
 
 const CATEGORY_ICONS: Record<Category, string> = {
@@ -59,6 +63,7 @@ export default function TripFinanceApp() {
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isLeadQrOpen, setIsLeadQrOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(4000);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [customQrModal, setCustomQrModal] = useState<{
@@ -178,6 +183,29 @@ export default function TripFinanceApp() {
       if (hasSupabase) {
         await seedTripToSupabase(INITIAL_TRIP);
       }
+    }
+  };
+
+  const handleSaveTripSettings = async (updatedTrip: Trip) => {
+    saveTripState(updatedTrip);
+    if (hasSupabase) {
+      await updateTripInSupabase(updatedTrip);
+    }
+  };
+
+  const handleClearAllData = async () => {
+    if (confirm('Are you sure you want to clear all demo expenses and payments? Your trip will start fresh at ₹0!')) {
+      const freshTrip: Trip = {
+        ...trip,
+        expenses: [],
+        payments: [],
+        settlements: [],
+      };
+      saveTripState(freshTrip);
+      if (hasSupabase) {
+        await clearTripExpensesAndPayments(trip.id);
+      }
+      setIsSettingsOpen(false);
     }
   };
 
@@ -303,14 +331,25 @@ export default function TripFinanceApp() {
             </button>
           </nav>
 
-          <button
-            onClick={handleResetData}
-            title="Reset to Demo Data"
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-xs flex items-center gap-1"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Reset Demo</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              title="Edit Trip & Friends"
+              className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-xs flex items-center gap-1 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            >
+              <Settings className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="hidden md:inline">Trip Settings</span>
+            </button>
+
+            <button
+              onClick={handleResetData}
+              title="Reset to Demo Data"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-xs flex items-center gap-1"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Reset Demo</span>
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: EXPENSES LIST */}
@@ -648,6 +687,14 @@ export default function TripFinanceApp() {
         amount={depositAmount}
         note="TripPotDeposit"
         title="Central Trip Pot Deposit QR"
+      />
+
+      <TripSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        trip={trip}
+        onSaveTrip={handleSaveTripSettings}
+        onClearAllData={handleClearAllData}
       />
 
       {customQrModal && (

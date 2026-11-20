@@ -178,9 +178,50 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
   }
 }
 
-/**
- * Creates an expense directly in Supabase
- */
+export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+
+  try {
+    await supabase.from('trips').upsert({
+      id: trip.id,
+      name: trip.name,
+      destination: trip.destination,
+      start_date: trip.startDate,
+      end_date: trip.endDate,
+      finance_lead_id: trip.financeLeadId,
+    });
+
+    const membersPayload = trip.members.map((m) => ({
+      id: m.id,
+      trip_id: trip.id,
+      name: m.name,
+      upi_id: m.upiId,
+      phone: m.phone,
+      avatar_color: m.avatarColor,
+      is_finance_lead: m.isFinanceLead || false,
+    }));
+    await supabase.from('members').upsert(membersPayload);
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
+export async function clearTripExpensesAndPayments(tripId: string): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+
+  try {
+    await supabase.from('expenses').delete().eq('trip_id', tripId);
+    await supabase.from('payments').delete().eq('trip_id', tripId);
+    await supabase.from('settlements').delete().eq('trip_id', tripId);
+    return true;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
 export async function insertExpenseToSupabase(expense: Expense): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
 
@@ -197,25 +238,15 @@ export async function insertExpenseToSupabase(expense: Expense): Promise<boolean
     notes: expense.notes,
   });
 
-  if (error) {
-    console.error('Error inserting expense:', error);
-    return false;
-  }
-  return true;
+  return !error;
 }
 
-/**
- * Deletes an expense from Supabase
- */
 export async function deleteExpenseFromSupabase(id: string): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
   const { error } = await supabase.from('expenses').delete().eq('id', id);
   return !error;
 }
 
-/**
- * Inserts a captured payment into Supabase
- */
 export async function insertPaymentToSupabase(payment: PaymentCapture): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
 
@@ -235,9 +266,6 @@ export async function insertPaymentToSupabase(payment: PaymentCapture): Promise<
   return !error;
 }
 
-/**
- * Saves settled transfers to Supabase
- */
 export async function saveSettlementToSupabase(
   tripId: string,
   settlement: SettlementTransfer
@@ -258,9 +286,6 @@ export async function saveSettlementToSupabase(
   return !error;
 }
 
-/**
- * Subscribes to real-time changes across expenses, payments, and settlements
- */
 export function subscribeToTripRealtime(tripId: string, onUpdate: () => void) {
   if (!supabase || !isSupabaseConfigured()) {
     return () => {};
