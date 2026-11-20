@@ -10,6 +10,7 @@ interface AddExpenseModalProps {
   members: Member[];
   onAddExpense: (expense: Expense) => void;
   potBalance: number;
+  tripId?: string;
 }
 
 const CATEGORIES: { label: string; value: Category; icon: string }[] = [
@@ -29,6 +30,7 @@ export function AddExpenseModal({
   members,
   onAddExpense,
   potBalance,
+  tripId,
 }: AddExpenseModalProps) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -87,7 +89,7 @@ export function AddExpenseModal({
 
     const newExpense: Expense = {
       id: `exp-${Date.now()}`,
-      tripId: 'manali-winter-2026',
+      tripId: tripId || 'trip_default',
       title: title.trim(),
       amount: totalAmount,
       category,

@@ -11,6 +11,7 @@ interface PaymentCaptureModalProps {
   members: Member[];
   onPaymentCaptured: (payment: PaymentCapture) => void;
   financeLeadUpi: string;
+  tripId?: string;
 }
 
 const SAMPLE_SMS = [
@@ -38,8 +39,9 @@ export function PaymentCaptureModal({
   members,
   onPaymentCaptured,
   financeLeadUpi,
+  tripId,
 }: PaymentCaptureModalProps) {
-  const [smsText, setSmsText] = useState(SAMPLE_SMS[0].text);
+  const [smsText, setSmsText] = useState('');
   const [activeTab, setActiveTab] = useState<'simulator' | 'phone_setup'>('simulator');
   const [selectedMemberId, setSelectedMemberId] = useState<string>('');
 
@@ -55,7 +57,7 @@ export function PaymentCaptureModal({
 
     const newPayment: PaymentCapture = {
       id: `pay-${Date.now()}`,
-      tripId: 'manali-winter-2026',
+      tripId: tripId || 'trip_default',
       senderName: parsed.senderName || 'Friend via UPI',
       amount: parsed.amount,
       utr: parsed.utr || `${Math.floor(100000000000 + Math.random() * 900000000000)}`,

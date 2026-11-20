@@ -85,6 +85,9 @@ export default function TripFinancePortal() {
 
   // ── Load trip data ──
   const loadTripData = useCallback(async () => {
+    // Clear out any old mock data from previous sessions
+    try { localStorage.removeItem('trip_split_data_v2'); } catch {}
+
     if (hasSupabase) {
       setIsCloudSyncing(true);
       const cloudTrip = await fetchTripFromSupabase(INITIAL_TRIP.id);
@@ -97,7 +100,7 @@ export default function TripFinancePortal() {
       setIsCloudSyncing(false);
     } else {
       try {
-        const saved = localStorage.getItem('trip_split_data_v2');
+        const saved = localStorage.getItem('trip_portal_clean_v1');
         if (saved) setTrip(JSON.parse(saved));
       } catch (e) { console.error(e); }
     }
@@ -114,10 +117,10 @@ export default function TripFinancePortal() {
   // ── Save trip ──
   const saveTripState = (updated: Trip) => {
     setTrip(updated);
-    try { localStorage.setItem('trip_split_data_v2', JSON.stringify(updated)); } catch (e) { console.error(e); }
+    try { localStorage.setItem('trip_portal_clean_v1', JSON.stringify(updated)); } catch (e) { console.error(e); }
   };
 
-  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0];
+  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0] || { id: 'm_lead', name: 'Finance Lead', upiId: '' };
   const potSummary = calculatePotSummary(trip);
   const totalTripSpend = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
 
@@ -152,10 +155,13 @@ export default function TripFinancePortal() {
 
   const handleResetData = async () => {
     if (!canManageFinance) return;
-    if (confirm('Reset trip back to original demo data?')) {
-      localStorage.removeItem('trip_split_data_v2');
+    if (confirm('Clear all trip expenses, payments, and collection rounds to start fresh at ₹0?')) {
+      localStorage.removeItem('trip_portal_clean_v1');
       setTrip(INITIAL_TRIP);
-      if (hasSupabase) await seedTripToSupabase(INITIAL_TRIP);
+      if (hasSupabase) {
+        await clearTripExpensesAndPayments(trip.id);
+        await seedTripToSupabase(INITIAL_TRIP);
+      }
     }
   };
 
@@ -166,8 +172,8 @@ export default function TripFinancePortal() {
 
   const handleClearAllData = async () => {
     if (!canManageFinance) return;
-    if (confirm('Clear all expenses and payments? Trip will start fresh at ₹0!')) {
-      const freshTrip: Trip = { ...trip, expenses: [], payments: [], settlements: [] };
+    if (confirm('Clear all expenses, payments, and collection rounds? Trip will start fresh at ₹0!')) {
+      const freshTrip: Trip = { ...trip, expenses: [], payments: [], settlements: [], collectionRounds: [] };
       saveTripState(freshTrip);
       if (hasSupabase) await clearTripExpensesAndPayments(trip.id);
       setIsSettingsOpen(false);
@@ -240,7 +246,7 @@ export default function TripFinancePortal() {
   if (!sessionChecked) return null;
 
   if (!session) {
-    return <LoginScreen trip={trip} onLoggedIn={handleLoggedIn} />;
+    return <LoginScreen trip={trip} onLoggedIn={handleLoggedIn} onUpdateTrip={saveTripState} />;
   }
 
   return (
@@ -662,6 +668,7 @@ export default function TripFinancePortal() {
         members={trip.members}
         onAddExpense={handleAddExpense}
         potBalance={potSummary.balance}
+        tripId={trip.id}
       />
 
       <PaymentCaptureModal
@@ -670,6 +677,7 @@ export default function TripFinancePortal() {
         members={trip.members}
         onPaymentCaptured={handlePaymentCaptured}
         financeLeadUpi={financeLead.upiId || 'anupam@okaxis'}
+        tripId={trip.id}
       />
 
       <WhatsAppExportModal

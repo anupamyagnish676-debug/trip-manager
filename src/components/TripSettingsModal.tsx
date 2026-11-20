@@ -285,14 +285,14 @@ export function TripSettingsModal({
           </div>
         </div>
 
-        {/* 4. Clear Data / Wipe Demo Section */}
+        {/* 4. Clear Data / Reset Section */}
         <div className="mt-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 flex items-center justify-between">
           <div>
             <h4 className="text-xs font-bold text-rose-800 dark:text-rose-300">
-              Clear Demo Expenses & Payments
+              Clear All Expenses & Collection Rounds
             </h4>
             <p className="text-[11px] text-slate-500">
-              Wipe out the sample bills so your trip starts fresh from ₹0
+              Reset all bills and collection rounds so your trip starts completely fresh from ₹0
             </p>
           </div>
           <button
@@ -300,7 +300,7 @@ export function TripSettingsModal({
             onClick={onClearAllData}
             className="rounded-xl border border-rose-300 bg-white dark:bg-slate-900 hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 px-3 py-1.5 text-xs font-bold transition-all shadow-sm"
           >
-            Start Fresh (₹0)
+            Reset to ₹0
           </button>
         </div>
 

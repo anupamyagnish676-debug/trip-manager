@@ -19,7 +19,7 @@ export function PotCard({
   onOpenAddExpense,
 }: PotCardProps) {
   const pot = calculatePotSummary(trip);
-  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0];
+  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0] || { name: 'Finance Lead', upiId: '' };
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 p-6 text-white shadow-2xl">
@@ -38,7 +38,7 @@ export function PotCard({
               ₹{pot.balance.toLocaleString('en-IN')}
             </h2>
             <p className="mt-1 text-xs text-emerald-200">
-              Finance Lead: <strong className="text-white">{financeLead.name}</strong> ({financeLead.upiId})
+              Finance Lead: <strong className="text-white">{financeLead.name}</strong> {financeLead.upiId ? `(${financeLead.upiId})` : ''}
             </p>
           </div>
 

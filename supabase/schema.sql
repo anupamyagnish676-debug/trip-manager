@@ -145,3 +145,8 @@ begin
     alter publication supabase_realtime add table public.collection_rounds;
   end if;
 end $$;
+
+-- 6. Permissions Grant for anon and authenticated API roles
+grant usage on schema public to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant all on all sequences in schema public to anon, authenticated;
