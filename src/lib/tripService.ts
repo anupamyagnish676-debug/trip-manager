@@ -81,10 +81,12 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       id: tripData.id,
       name: tripData.name,
       destination: tripData.destination,
+      currency: tripData.currency || 'INR',
       startDate: tripData.start_date,
       endDate: tripData.end_date,
       financeLeadId: tripData.finance_lead_id,
       financeLeadCustomQrImage: tripData.finance_lead_custom_qr_image,
+      paymentMethods: tripData.payment_methods || (tripData.finance_lead_custom_qr_image ? { customQrImage: tripData.finance_lead_custom_qr_image } : undefined),
       inviteCode: tripData.invite_code,
       members,
       expenses,
@@ -98,6 +100,27 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
   }
 }
 
+export async function findTripByCodeOrId(identifier: string): Promise<Trip | null> {
+  if (!supabase || !isSupabaseConfigured()) return null;
+  try {
+    const trimmed = identifier.trim();
+    // 1. Try by exact ID
+    const { data: byId } = await supabase.from('trips').select('id').eq('id', trimmed).single();
+    if (byId?.id) {
+      return await fetchTripFromSupabase(byId.id);
+    }
+    // 2. Try by invite code (case-insensitive)
+    const { data: byCode } = await supabase.from('trips').select('id').ilike('invite_code', trimmed).single();
+    if (byCode?.id) {
+      return await fetchTripFromSupabase(byCode.id);
+    }
+    return null;
+  } catch (err) {
+    console.error('findTripByCodeOrId error:', err);
+    return null;
+  }
+}
+
 export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
 
@@ -106,10 +129,12 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
       id: trip.id,
       name: trip.name,
       destination: trip.destination,
+      currency: trip.currency || 'INR',
       start_date: trip.startDate,
       end_date: trip.endDate,
       finance_lead_id: trip.financeLeadId,
       finance_lead_custom_qr_image: trip.financeLeadCustomQrImage || null,
+      payment_methods: trip.paymentMethods || null,
       invite_code: trip.inviteCode || null,
     });
 
@@ -164,10 +189,15 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
 
   try {
     await supabase.from('trips').upsert({
-      id: trip.id, name: trip.name, destination: trip.destination,
-      start_date: trip.startDate, end_date: trip.endDate,
+      id: trip.id,
+      name: trip.name,
+      destination: trip.destination,
+      currency: trip.currency || 'INR',
+      start_date: trip.startDate,
+      end_date: trip.endDate,
       finance_lead_id: trip.financeLeadId,
       finance_lead_custom_qr_image: trip.financeLeadCustomQrImage || null,
+      payment_methods: trip.paymentMethods || null,
       invite_code: trip.inviteCode || null,
     });
 

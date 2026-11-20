@@ -117,8 +117,8 @@ export function TripGroupMembersModal({
   };
 
   const handleDeleteMember = (id: string) => {
-    if (members.length <= 2) {
-      alert('A trip group requires at least 2 members!');
+    if (members.length <= 1) {
+      alert('A trip group requires at least 1 member!');
       return;
     }
     if (confirm('Remove this member from the trip group?')) {
@@ -129,8 +129,8 @@ export function TripGroupMembersModal({
   };
 
   const copyCredentials = (member: Member) => {
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://trip-manager.vercel.app';
-    const text = `🏔️ *${trip.name} Group Portal Invite*\nHey ${member.name}, you have been added to our trip group!\n\n🌐 Portal: ${appUrl}\n👤 Login ID: *${member.loginId}*\n🔑 Password: *${member.password}*\n🎯 Role: ${member.role === 'finance_manager' ? 'Treasurer' : member.role === 'trip_manager' ? 'Trip Lead' : member.specialty !== 'none' ? member.specialty : 'Member'}\n\nPlease sign in to check pending collection dues to Finance and split trip bills!`;
+    const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?trip=${trip.id}` : 'https://trip-manager.vercel.app';
+    const text = `✈️ *${trip.name} Portal Invite*\nHey ${member.name}, you have been added to our trip group!\n\n🌐 Portal Link: ${appUrl}\n🔑 Trip Code: *${trip.inviteCode || trip.id}*\n👤 Your Login ID: *${member.loginId}*\n🔑 Your Password: *${member.password}*\n🎯 Role: ${member.role === 'finance_manager' ? 'Treasurer' : member.role === 'trip_manager' ? 'Trip Lead' : member.specialty !== 'none' ? member.specialty : 'Member'}\n\nTap the link to sign in, check pending dues, and split bills!`;
 
     navigator.clipboard.writeText(text);
     setCopiedId(member.id);

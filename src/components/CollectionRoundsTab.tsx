@@ -15,6 +15,7 @@ import {
 import confetti from 'canvas-confetti';
 import { CollectionRound, Member, Trip, PaymentCapture } from '@/types';
 import { generateUpiUrl } from '@/lib/calculations';
+import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 
 interface CollectionRoundsTabProps {
   trip: Trip;
@@ -109,7 +110,7 @@ export function CollectionRoundsTab({
     const pending = trip.members.filter((m) => round.memberStatus[m.id] !== 'paid');
     const lines = [
       `💰 *Collection Round: ${round.title}*`,
-      `💵 Target per person: ₹${round.targetPerPerson.toLocaleString('en-IN')}`,
+      `💵 Target per person: ${formatMoney(round.targetPerPerson, trip.currency)}`,
       round.dueDate ? `📅 Due by: ${round.dueDate}` : '',
       ``,
       `🔴 *Still Pending (${pending.length}):*`,
@@ -179,14 +180,14 @@ export function CollectionRoundsTab({
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Amount per Member (₹)
+                  Amount per Member ({getCurrencySymbol(trip.currency)})
                 </label>
                 <input
                   value={newTarget}
                   onChange={(e) => setNewTarget(e.target.value)}
                   type="number"
                   min="0"
-                  placeholder="e.g. 3000"
+                  placeholder="e.g. 50"
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -268,11 +269,11 @@ export function CollectionRoundsTab({
                       {round.title}
                     </h4>
                     <div className="flex flex-wrap items-center gap-2.5 mt-1 text-xs text-slate-500">
-                      <span>Target: <strong>₹{round.targetPerPerson.toLocaleString('en-IN')}</strong> / person</span>
+                      <span>Target: <strong>{formatMoney(round.targetPerPerson, trip.currency)}</strong> / person</span>
                       {round.dueDate && <span>• Due: <strong>{round.dueDate}</strong></span>}
                       <span>•</span>
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        Total Pot Inflow: ₹{totalCollected.toLocaleString('en-IN')}
+                        Total Pot Inflow: {formatMoney(totalCollected, trip.currency)}
                       </span>
                     </div>
                   </div>
@@ -283,7 +284,7 @@ export function CollectionRoundsTab({
                         type="button"
                         onClick={() =>
                           onOpenQR(
-                            financeLead.upiId || 'anupam@okaxis',
+                            financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi',
                             financeLead.name,
                             round.targetPerPerson,
                             noteText
@@ -314,7 +315,7 @@ export function CollectionRoundsTab({
                     <div>
                       <p className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
                         <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-                        Your payment for this round is due (₹{round.targetPerPerson.toLocaleString('en-IN')})
+                        Your payment for this round is due ({formatMoney(round.targetPerPerson, trip.currency)})
                       </p>
                       <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
                         Recipient: {financeLead.name} ({financeLead.upiId || 'Treasurer'})
@@ -337,7 +338,7 @@ export function CollectionRoundsTab({
                           type="button"
                           onClick={() =>
                             onOpenQR(
-                              financeLead.upiId || 'anupam@okaxis',
+                              financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi',
                               financeLead.name,
                               round.targetPerPerson,
                               noteText
@@ -410,7 +411,7 @@ export function CollectionRoundsTab({
                         <div className="mt-1">
                           {status === 'paid' ? (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="h-3 w-3" /> Paid ₹{round.targetPerPerson}
+                              <CheckCircle2 className="h-3 w-3" /> Paid {formatMoney(round.targetPerPerson, trip.currency)}
                             </span>
                           ) : status === 'partial' ? (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400">
@@ -418,7 +419,7 @@ export function CollectionRoundsTab({
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-rose-500">
-                              <AlertCircle className="h-3 w-3" /> Due ₹{round.targetPerPerson}
+                              <AlertCircle className="h-3 w-3" /> Due {formatMoney(round.targetPerPerson, trip.currency)}
                             </span>
                           )}
                         </div>
@@ -470,7 +471,7 @@ export function CollectionRoundsTab({
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Confirm your deposit of <strong>₹{confirmRound.targetPerPerson}</strong> for{' '}
+              Confirm your deposit of <strong>{formatMoney(confirmRound.targetPerPerson, trip.currency)}</strong> for{' '}
               <em>{confirmRound.title}</em> to {financeLead.name}.
             </p>
 

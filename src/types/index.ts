@@ -100,20 +100,31 @@ export interface CollectionRound {
   memberStatus: Record<string, 'paid' | 'pending' | 'partial'>;
 }
 
+export interface TripPaymentMethods {
+  upiId?: string; // India UPI
+  paypalUrl?: string; // PayPal.me link
+  venmoHandle?: string; // US Venmo
+  bankDetails?: string; // IBAN, Swift, Account number & IFSC / Routing
+  note?: string; // Payment instructions
+  customQrImage?: string; // Uploaded QR image
+}
+
 export interface Trip {
   id: string;
   name: string;
   destination: string;
+  currency?: string; // 'INR', 'USD', 'EUR', 'GBP', etc.
   startDate: string;
   endDate: string;
   financeLeadId: string;
   financeLeadCustomQrImage?: string;
+  paymentMethods?: TripPaymentMethods;
   members: Member[];
   expenses: Expense[];
   payments: PaymentCapture[];
   settlements: SettlementTransfer[];
   collectionRounds?: CollectionRound[];
-  inviteCode?: string; // e.g. MANALI26
+  inviteCode?: string; // e.g. TOKYO26
   createdAt?: string;
 }
 

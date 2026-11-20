@@ -25,6 +25,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Member, Trip, CollectionRound, PaymentCapture, SettlementTransfer, MemberRole } from '@/types';
 import { calculateMemberBalances, simplifyDebts, generateUpiUrl } from '@/lib/calculations';
+import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 
 interface MemberViewProps {
   trip: Trip;
@@ -226,7 +227,7 @@ export function MemberView({
               {net > 0 ? '🎉 You are owed' : net < 0 ? '💸 You owe the group' : '✅ You are fully settled'}
             </p>
             <p className="text-5xl font-black text-white mt-1.5 leading-none">
-              ₹{Math.abs(net).toLocaleString('en-IN')}
+              {formatMoney(Math.abs(net), trip.currency)}
             </p>
             <p className="text-xs text-white/70 mt-2">
               {net > 0
@@ -246,19 +247,19 @@ export function MemberView({
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           <div className="rounded-2xl bg-white/15 p-3 text-center backdrop-blur-sm">
             <p className="text-base font-black text-white leading-tight">
-              ₹{totalIPaid.toLocaleString('en-IN')}
+              {formatMoney(totalIPaid, trip.currency)}
             </p>
             <p className="text-[10px] text-white/80 mt-0.5">I Paid Out-of-Pocket</p>
           </div>
           <div className="rounded-2xl bg-white/15 p-3 text-center backdrop-blur-sm">
             <p className="text-base font-black text-white leading-tight">
-              ₹{totalIContributed.toLocaleString('en-IN')}
+              {formatMoney(totalIContributed, trip.currency)}
             </p>
             <p className="text-[10px] text-white/80 mt-0.5">Pot Deposits</p>
           </div>
           <div className="rounded-2xl bg-white/15 p-3 text-center backdrop-blur-sm">
             <p className="text-base font-black text-white leading-tight">
-              ₹{totalIConsumed.toLocaleString('en-IN')}
+              {formatMoney(totalIConsumed, trip.currency)}
             </p>
             <p className="text-[10px] text-white/80 mt-0.5">My Consumption</p>
           </div>
@@ -275,7 +276,7 @@ export function MemberView({
                 ⚡ Action Required • Pay to Finance Manager
               </span>
               <p className="text-3xl font-black mt-1">
-                ₹{activeRounds.reduce((sum, r) => sum + r.targetPerPerson, 0).toLocaleString('en-IN')}
+                {formatMoney(activeRounds.reduce((sum, r) => sum + r.targetPerPerson, 0), trip.currency)}
               </p>
               <p className="text-xs text-amber-100 mt-0.5">
                 Total pending collection dues requested by Finance Manager {financeLead.name}
@@ -355,7 +356,7 @@ export function MemberView({
 
                   <div className="text-right flex-shrink-0">
                     <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                      ₹{round.targetPerPerson.toLocaleString('en-IN')}
+                      {formatMoney(round.targetPerPerson, trip.currency)}
                     </p>
                     <p className="text-[10px] text-slate-400">your share</p>
                   </div>
@@ -365,10 +366,10 @@ export function MemberView({
                 <div className="rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 p-3 mb-3.5 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                      Pay to UPI VPA
+                      Pay to Receiving Account
                     </span>
                     <p className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 select-all">
-                      {financeLead.upiId || 'anupam@okaxis'}
+                      {financeLead.upiId || trip.paymentMethods?.upiId || trip.paymentMethods?.paypalUrl || trip.paymentMethods?.venmoHandle || 'Payment details configured in QR'}
                     </p>
                   </div>
                   <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
@@ -395,7 +396,7 @@ export function MemberView({
                     onClick={() => {
                       if (onOpenQR) {
                         onOpenQR(
-                          financeLead.upiId || 'anupam@okaxis',
+                          financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi',
                           financeLead.name,
                           round.targetPerPerson,
                           noteText
@@ -432,7 +433,7 @@ export function MemberView({
             <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
               {paidRounds.length} collection round{paidRounds.length > 1 ? 's' : ''} completed:{' '}
               <span className="font-normal text-emerald-700 dark:text-emerald-400">
-                {paidRounds.map((r) => `${r.title} (₹${r.targetPerPerson.toLocaleString('en-IN')})`).join(', ')}
+                {paidRounds.map((r) => `${r.title} (${formatMoney(r.targetPerPerson, trip.currency)})`).join(', ')}
               </span>
             </p>
           </div>
@@ -487,7 +488,7 @@ export function MemberView({
 
                   <div className="flex items-center gap-2 justify-end">
                     <span className="text-base font-black text-rose-600 dark:text-rose-400 mr-2">
-                      ₹{s.amount.toLocaleString('en-IN')}
+                      {formatMoney(s.amount, trip.currency)}
                     </span>
 
                     {upiUrl && (
@@ -555,7 +556,7 @@ export function MemberView({
                   </div>
 
                   <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                    +₹{s.amount.toLocaleString('en-IN')}
+                    +{formatMoney(s.amount, trip.currency)}
                   </span>
                 </div>
               );
@@ -635,13 +636,13 @@ export function MemberView({
                         }`}
                       >
                         {isPayer
-                          ? `Total: ₹${exp.amount.toLocaleString('en-IN')}`
-                          : `My share: ₹${mySplit?.amount.toLocaleString('en-IN') || 0}`}
+                          ? `Total: ${formatMoney(exp.amount, trip.currency)}`
+                          : `My share: ${formatMoney(mySplit?.amount || 0, trip.currency)}`}
                       </p>
                       <p className="text-[10px] text-slate-400">
                         {isPayer
-                          ? `Your share: ₹${mySplit?.amount || 0}`
-                          : `Bill total: ₹${exp.amount}`}
+                          ? `Your share: ${formatMoney(mySplit?.amount || 0, trip.currency)}`
+                          : `Bill total: ${formatMoney(exp.amount, trip.currency)}`}
                       </p>
                     </div>
                   </div>
@@ -688,7 +689,7 @@ export function MemberView({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Amount Paid (₹)
+                  Amount Paid ({getCurrencySymbol(trip.currency)})
                 </label>
                 <input
                   type="number"

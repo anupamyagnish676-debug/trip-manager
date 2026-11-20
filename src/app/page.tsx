@@ -5,10 +5,11 @@ import {
   Wallet, Receipt, Scale, QrCode, Users, Plus, Sparkles, Share2,
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
-  Briefcase, Bell, ChevronDown, Menu, X,
+  Briefcase, Bell, ChevronDown, Menu, X, Compass,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, MemberRole, CollectionRound, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
+import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { PotCard } from '@/components/PotCard';
 import { AddExpenseModal } from '@/components/AddExpenseModal';
 import { PaymentCaptureModal } from '@/components/PaymentCaptureModal';
@@ -84,23 +85,45 @@ export default function TripFinancePortal() {
   };
 
   // ── Load trip data ──
-  const loadTripData = useCallback(async () => {
+  const loadTripData = useCallback(async (targetTripId?: string) => {
     // Clear out any old mock data from previous sessions
     try { localStorage.removeItem('trip_split_data_v2'); } catch {}
 
+    let reqId = targetTripId;
+    if (!reqId && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      reqId = params.get('trip') || undefined;
+    }
+    if (!reqId && typeof window !== 'undefined') {
+      reqId = localStorage.getItem('active_trip_id') || undefined;
+    }
+
+    const tripId = reqId || INITIAL_TRIP.id;
+
     if (hasSupabase) {
       setIsCloudSyncing(true);
-      const cloudTrip = await fetchTripFromSupabase(INITIAL_TRIP.id);
+      const cloudTrip = await fetchTripFromSupabase(tripId);
       if (cloudTrip) {
         setTrip(cloudTrip);
       } else {
-        await seedTripToSupabase(INITIAL_TRIP);
-        setTrip(INITIAL_TRIP);
+        try {
+          const saved = localStorage.getItem(`trip_portal_${tripId}`);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            setTrip(parsed);
+            await seedTripToSupabase(parsed);
+          } else if (tripId === INITIAL_TRIP.id) {
+            await seedTripToSupabase(INITIAL_TRIP);
+            setTrip(INITIAL_TRIP);
+          }
+        } catch {}
       }
       setIsCloudSyncing(false);
     } else {
       try {
-        const saved = localStorage.getItem('trip_portal_clean_v1');
+        const saved =
+          localStorage.getItem(`trip_portal_${tripId}`) ||
+          localStorage.getItem('trip_portal_clean_v1');
         if (saved) setTrip(JSON.parse(saved));
       } catch (e) { console.error(e); }
     }
@@ -108,16 +131,20 @@ export default function TripFinancePortal() {
 
   useEffect(() => {
     loadTripData();
-    if (hasSupabase) {
-      const unsubscribe = subscribeToTripRealtime(INITIAL_TRIP.id, loadTripData);
+    if (hasSupabase && trip.id) {
+      const unsubscribe = subscribeToTripRealtime(trip.id, () => loadTripData(trip.id));
       return () => unsubscribe();
     }
-  }, [loadTripData, hasSupabase]);
+  }, [loadTripData, hasSupabase, trip.id]);
 
   // ── Save trip ──
   const saveTripState = (updated: Trip) => {
     setTrip(updated);
-    try { localStorage.setItem('trip_portal_clean_v1', JSON.stringify(updated)); } catch (e) { console.error(e); }
+    try {
+      localStorage.setItem(`trip_portal_${updated.id}`, JSON.stringify(updated));
+      localStorage.setItem('trip_portal_clean_v1', JSON.stringify(updated));
+      localStorage.setItem('active_trip_id', updated.id);
+    } catch (e) { console.error(e); }
   };
 
   const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0] || { id: 'm_lead', name: 'Finance Lead', upiId: '' };
@@ -155,8 +182,8 @@ export default function TripFinancePortal() {
 
   const handleResetData = async () => {
     if (!canManageFinance) return;
-    if (confirm('Clear all trip expenses, payments, and collection rounds to start fresh at ₹0?')) {
-      localStorage.removeItem('trip_portal_clean_v1');
+    if (confirm('Clear all trip expenses, payments, and collection rounds to start fresh at 0?')) {
+      localStorage.removeItem(`trip_portal_${trip.id}`);
       setTrip(INITIAL_TRIP);
       if (hasSupabase) {
         await clearTripExpensesAndPayments(trip.id);
@@ -172,7 +199,7 @@ export default function TripFinancePortal() {
 
   const handleClearAllData = async () => {
     if (!canManageFinance) return;
-    if (confirm('Clear all expenses, payments, and collection rounds? Trip will start fresh at ₹0!')) {
+    if (confirm('Clear all expenses, payments, and collection rounds? Trip will start fresh at 0!')) {
       const freshTrip: Trip = { ...trip, expenses: [], payments: [], settlements: [], collectionRounds: [] };
       saveTripState(freshTrip);
       if (hasSupabase) await clearTripExpensesAndPayments(trip.id);
@@ -246,8 +273,10 @@ export default function TripFinancePortal() {
   if (!sessionChecked) return null;
 
   if (!session) {
-    return <LoginScreen trip={trip} onLoggedIn={handleLoggedIn} onUpdateTrip={saveTripState} />;
+    return <LoginScreen trip={trip} onLoggedIn={handleLoggedIn} onUpdateTrip={saveTripState} onSelectTrip={(id) => loadTripData(id)} />;
   }
+
+  const currencySymbol = getCurrencySymbol(trip.currency);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
@@ -256,10 +285,27 @@ export default function TripFinancePortal() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md font-black text-lg">₹</div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md font-black text-lg">
+              {currencySymbol}
+            </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-sm font-extrabold text-slate-900 dark:text-white sm:text-base">{trip.name}</h1>
+                {trip.inviteCode && (
+                  <button
+                    onClick={() => {
+                      const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?trip=${trip.id}` : '';
+                      navigator.clipboard.writeText(appUrl);
+                      alert(`Trip invite link copied:\n${appUrl}`);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-0.5 text-[9px] font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors"
+                    title="Click to copy trip invite link"
+                  >
+                    <span>Code:</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400">{trip.inviteCode}</strong>
+                    <Share2 className="h-2.5 w-2.5" />
+                  </button>
+                )}
                 {hasSupabase ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                     <Cloud className="h-2 w-2" /> Live
@@ -271,7 +317,7 @@ export default function TripFinancePortal() {
                 )}
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                <MapPin className="h-2.5 w-2.5 text-emerald-500" /> {trip.destination} • {trip.members.length} friends
+                <MapPin className="h-2.5 w-2.5 text-emerald-500" /> {trip.destination} • {trip.members.length} member{trip.members.length === 1 ? '' : 's'} • {trip.currency || 'INR'} ({currencySymbol})
               </p>
             </div>
           </div>
@@ -344,16 +390,21 @@ export default function TripFinancePortal() {
               {ROLE_BADGE[myRole].label}
             </span>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  clearSession();
+                  setSession(null);
+                }}
+                className="text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs flex items-center gap-1 transition-colors"
+                title="Switch to another trip group or create a new trip"
+              >
+                <Compass className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="hidden sm:inline">Switch Trip</span>
+              </button>
               {canManageFinance && (
                 <button onClick={() => setIsSettingsOpen(true)}
                   className="text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs flex items-center gap-1 transition-colors">
                   <Settings className="h-3.5 w-3.5" /> Settings
-                </button>
-              )}
-              {canManageFinance && (
-                <button onClick={handleResetData}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs flex items-center gap-1 transition-colors">
-                  <RotateCcw className="h-3 w-3" /> Reset Demo
                 </button>
               )}
             </div>
@@ -426,7 +477,7 @@ export default function TripFinancePortal() {
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Trip Expense Feed</h3>
                 <p className="text-xs text-slate-500">
-                  Total: <strong>₹{totalTripSpend.toLocaleString('en-IN')}</strong> across {trip.expenses.length} bills
+                  Total: <strong>{formatMoney(totalTripSpend, trip.currency)}</strong> across {trip.expenses.length} bills
                 </p>
               </div>
               <button onClick={() => setIsAddExpenseOpen(true)}
@@ -456,7 +507,7 @@ export default function TripFinancePortal() {
                           <span>{exp.splits.length} people</span>
                           {myShare && (
                             <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 text-[10px] font-bold">
-                              My share: ₹{myShare.amount.toLocaleString('en-IN')}
+                              My share: {formatMoney(myShare.amount, trip.currency)}
                             </span>
                           )}
                           {exp.notes && <span className="italic text-slate-400">{exp.notes}</span>}
@@ -465,7 +516,7 @@ export default function TripFinancePortal() {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-base font-black text-slate-900 dark:text-white">₹{exp.amount.toLocaleString('en-IN')}</span>
+                        <span className="text-base font-black text-slate-900 dark:text-white">{formatMoney(exp.amount, trip.currency)}</span>
                         <p className="text-[10px] text-slate-400">{exp.paidAt}</p>
                       </div>
                       {canManageTrip && (
@@ -526,14 +577,14 @@ export default function TripFinancePortal() {
                           ? 'bg-emerald-600 text-white'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}>
-                      ₹{amt / 1000}k
+                      {currencySymbol}{amt / 1000}k
                     </button>
                   ))}
                 </div>
               </div>
-              <button onClick={() => setCustomQrModal({ payeeUpi: financeLead.upiId || 'anupam@okaxis', payeeName: financeLead.name, amount: depositAmount, note: `TripPotDeposit` })}
+              <button onClick={() => setCustomQrModal({ payeeUpi: financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi', payeeName: financeLead.name, amount: depositAmount, note: `TripPotDeposit` })}
                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-95">
-                <QrCode className="h-4 w-4" /> Open QR for ₹{depositAmount.toLocaleString('en-IN')}
+                <QrCode className="h-4 w-4" /> Open QR for {formatMoney(depositAmount, trip.currency)}
               </button>
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-left text-xs space-y-1">
                 <p className="text-slate-400">Treasurer VPA:</p>
@@ -573,7 +624,7 @@ export default function TripFinancePortal() {
                             <p className="text-[11px] text-slate-400 font-mono">UTR: {p.utr} • {new Date(p.timestamp).toLocaleDateString()}</p>
                           </div>
                         </div>
-                        <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">+₹{p.amount.toLocaleString('en-IN')}</span>
+                        <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">+{formatMoney(p.amount, trip.currency)}</span>
                       </div>
                       {p.rawText && (
                         <div className="mt-2.5 rounded-xl bg-white dark:bg-slate-900 p-2.5 border border-slate-200/80 dark:border-slate-700/60">
@@ -619,7 +670,7 @@ export default function TripFinancePortal() {
                         <p className="text-[11px] text-slate-400 font-mono truncate">{member.upiId}</p>
                         {myBal && (
                           <p className={`text-[11px] font-bold mt-0.5 ${myBal.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                            {myBal.netBalance >= 0 ? '↑' : '↓'} ₹{Math.abs(myBal.netBalance).toLocaleString('en-IN')}
+                            {myBal.netBalance >= 0 ? '↑' : '↓'} {formatMoney(Math.abs(myBal.netBalance), trip.currency)}
                           </p>
                         )}
                       </div>
@@ -647,7 +698,7 @@ export default function TripFinancePortal() {
                           <span>{CATEGORY_ICONS[cat as Category] || '💸'}</span>
                           <span>{cat}</span>
                         </span>
-                        <span className="text-slate-900 dark:text-white">₹{amount.toLocaleString('en-IN')} ({pct.toFixed(0)}%)</span>
+                        <span className="text-slate-900 dark:text-white">{formatMoney(amount, trip.currency)} ({pct.toFixed(0)}%)</span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
@@ -669,6 +720,7 @@ export default function TripFinancePortal() {
         onAddExpense={handleAddExpense}
         potBalance={potSummary.balance}
         tripId={trip.id}
+        currency={trip.currency}
       />
 
       <PaymentCaptureModal
@@ -676,7 +728,7 @@ export default function TripFinancePortal() {
         onClose={() => setIsCaptureOpen(false)}
         members={trip.members}
         onPaymentCaptured={handlePaymentCaptured}
-        financeLeadUpi={financeLead.upiId || 'anupam@okaxis'}
+        financeLeadUpi={financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi'}
         tripId={trip.id}
       />
 
@@ -689,7 +741,7 @@ export default function TripFinancePortal() {
       <QRCodeModal
         isOpen={isLeadQrOpen}
         onClose={() => setIsLeadQrOpen(false)}
-        payeeUpi={financeLead.upiId || 'anupam@okaxis'}
+        payeeUpi={financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi'}
         payeeName={financeLead.name}
         amount={depositAmount}
         note="TripPotDeposit"

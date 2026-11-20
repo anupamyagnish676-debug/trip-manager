@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { ArrowRight, CheckCircle2, QrCode, Smartphone, Sparkles, Check } from 'lucide-react';
 import { Trip, SettlementTransfer } from '@/types';
 import { calculateMemberBalances, simplifyDebts } from '@/lib/calculations';
+import { formatMoney } from '@/lib/currency';
 import { QRCodeModal } from '@/components/QRCodeModal';
 
 interface SettleUpTabProps {
@@ -131,7 +132,7 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
                     {/* Transfer Amount Center Arrow */}
                     <div className="flex flex-col items-center px-2">
                       <span className="text-base font-black text-slate-900 dark:text-white">
-                        ₹{transfer.amount.toLocaleString('en-IN')}
+                        {formatMoney(transfer.amount, trip.currency)}
                       </span>
                       <div className="flex items-center gap-1 text-slate-400">
                         <span className="h-0.5 w-6 bg-slate-300 dark:bg-slate-700"></span>
@@ -244,7 +245,7 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
                           : 'text-slate-400'
                       }`}
                     >
-                      {isOwed ? `+₹${b.netBalance.toLocaleString('en-IN')}` : isDebt ? `-₹${Math.abs(b.netBalance).toLocaleString('en-IN')}` : '₹0 (Settled)'}
+                      {isOwed ? `+${formatMoney(b.netBalance, trip.currency)}` : isDebt ? `-${formatMoney(Math.abs(b.netBalance), trip.currency)}` : `${formatMoney(0, trip.currency)} (Settled)`}
                     </span>
                     <p className="text-[10px] text-slate-400">
                       {isOwed ? 'Gets back' : isDebt ? 'Owes to group' : 'Even'}
@@ -256,19 +257,19 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
                   <div className="flex justify-between">
                     <span>Direct Spend:</span>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      ₹{b.totalDirectPaid.toLocaleString('en-IN')}
+                      {formatMoney(b.totalDirectPaid, trip.currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Pot Deposit (QR):</span>
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      ₹{b.totalDepositedToPot.toLocaleString('en-IN')}
+                      {formatMoney(b.totalDepositedToPot, trip.currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Share Consumed:</span>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      ₹{(b.totalDirectConsumption + b.totalPotConsumption).toLocaleString('en-IN')}
+                      {formatMoney(b.totalDirectConsumption + b.totalPotConsumption, trip.currency)}
                     </span>
                   </div>
                 </div>

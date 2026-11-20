@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Users, Wallet, Tag } from 'lucide-react';
 import { Member, Category, Expense, SplitType } from '@/types';
+import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface AddExpenseModalProps {
   onAddExpense: (expense: Expense) => void;
   potBalance: number;
   tripId?: string;
+  currency?: string;
 }
 
 const CATEGORIES: { label: string; value: Category; icon: string }[] = [
@@ -31,6 +33,7 @@ export function AddExpenseModal({
   onAddExpense,
   potBalance,
   tripId,
+  currency,
 }: AddExpenseModalProps) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -42,6 +45,8 @@ export function AddExpenseModal({
   );
   const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
+
+  const currSym = getCurrencySymbol(currency);
 
   if (!isOpen) return null;
 
@@ -139,7 +144,7 @@ export function AddExpenseModal({
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                Amount (₹) *
+                Amount ({currSym}) *
               </label>
               <input
                 type="number"
@@ -148,7 +153,7 @@ export function AddExpenseModal({
                 step="any"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="₹ 0"
+                placeholder={`${currSym} 0`}
                 className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -189,7 +194,7 @@ export function AddExpenseModal({
               className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="POT">
-                🏦 Central Trip Pot (Available: ₹{potBalance.toLocaleString('en-IN')})
+                🏦 Central Trip Treasury (Available: {formatMoney(potBalance, currency)})
               </option>
               <optgroup label="Or Paid by an Individual Friend:">
                 {members.map((m) => (
@@ -248,7 +253,7 @@ export function AddExpenseModal({
             <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-600 dark:text-slate-300 flex justify-between items-center">
               <span>Split across all {members.length} members:</span>
               <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                ₹{(totalAmount / members.length).toFixed(2)} / person
+                {formatMoney(totalAmount / members.length, currency)} / person
               </span>
             </div>
           )}
@@ -281,7 +286,7 @@ export function AddExpenseModal({
               </div>
               {selectedMemberIds.length > 0 && totalAmount > 0 && (
                 <div className="mt-2 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  ₹{(totalAmount / selectedMemberIds.length).toFixed(2)} per participant
+                  {formatMoney(totalAmount / selectedMemberIds.length, currency)} per participant
                 </div>
               )}
             </div>
@@ -293,7 +298,7 @@ export function AddExpenseModal({
                 <div key={m.id} className="flex items-center justify-between text-xs gap-2">
                   <span className="text-slate-700 dark:text-slate-300 truncate w-36">{m.name}</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-slate-400">₹</span>
+                    <span className="text-slate-400">{currSym}</span>
                     <input
                       type="number"
                       placeholder="0"
