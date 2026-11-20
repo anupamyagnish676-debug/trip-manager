@@ -12,7 +12,7 @@ interface AddExpenseModalProps {
   onAddExpense: (expense: Expense) => void;
   onUpdateExpense?: (expense: Expense) => void;
   expenseToEdit?: Expense | null;
-  potBalance: number;
+  potBalance?: number;
   tripId?: string;
   currency?: string;
 }
@@ -42,7 +42,7 @@ export function AddExpenseModal({
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category>('food');
-  const [paidBy, setPaidBy] = useState<string>('POT'); // 'POT' or memberId
+  const [paidBy, setPaidBy] = useState<string>(members[0]?.id || '');
   const [splitMode, setSplitMode] = useState<'all' | 'subset' | 'custom'>('all');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
     members.map((m) => m.id)
@@ -57,7 +57,7 @@ export function AddExpenseModal({
       setTitle(expenseToEdit.title);
       setAmount(expenseToEdit.amount.toString());
       setCategory(expenseToEdit.category);
-      setPaidBy(expenseToEdit.paidBy);
+      setPaidBy(expenseToEdit.paidBy || members[0]?.id || '');
       setNotes(expenseToEdit.notes || '');
       if (expenseToEdit.splitType === 'exact') {
         setSplitMode('custom');
@@ -77,7 +77,7 @@ export function AddExpenseModal({
       setTitle('');
       setAmount('');
       setCategory('food');
-      setPaidBy('POT');
+      setPaidBy(members[0]?.id || '');
       setSplitMode('all');
       setSelectedMemberIds(members.map((m) => m.id));
       setCustomAmounts({});
@@ -165,8 +165,8 @@ export function AddExpenseModal({
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           {expenseToEdit
-            ? 'Adjust who paid (Kitty or individual friend), amount, or split breakdown'
-            : 'Record any expense paid by the pot or any friend'}
+            ? 'Adjust who paid, bill amount, or split breakdown'
+            : 'Record any bill paid by any friend and split it automatically'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -234,18 +234,13 @@ export function AddExpenseModal({
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="POT">
-                🏦 Central Trip Treasury (Available: {formatMoney(potBalance, currency)})
-              </option>
-              <optgroup label="Or Paid by an Individual Friend:">
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    👤 {m.name} {m.isFinanceLead ? '(Finance Lead)' : ''}
-                  </option>
-                ))}
-              </optgroup>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  👤 {m.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -264,7 +259,7 @@ export function AddExpenseModal({
                     : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                 }`}
               >
-                All 10 Members Equal
+                All {members.length} Friends Equal
               </button>
               <button
                 type="button"
