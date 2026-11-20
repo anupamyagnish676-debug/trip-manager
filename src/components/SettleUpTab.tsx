@@ -201,10 +201,10 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
         )}
       </div>
 
-      {/* Complete Individual Net Balances (All 10 members) */}
+      {/* Complete Individual Net Balances (Actual Count of Friends) */}
       <div>
         <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-          <span>👥</span> Individual Member Financial Ledger (All 10 Friends)
+          <span>👥</span> Individual Member Financial Ledger ({balances.length} Friends)
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -226,15 +226,12 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
                       {b.member.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
                         {b.member.name}
-                        {b.member.isFinanceLead && (
-                          <span className="rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.2 text-[9px] font-bold">
-                            Finance Lead
-                          </span>
-                        )}
                       </h4>
-                      <p className="text-[10px] text-slate-400 font-mono">{b.member.upiId}</p>
+                      <p className={`text-[10px] font-mono ${b.member.upiId ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
+                        {b.member.upiId ? `UPI: ${b.member.upiId}` : 'No UPI set'}
+                      </p>
                     </div>
                   </div>
 
@@ -258,21 +255,15 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
 
                 <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 space-y-1">
                   <div className="flex justify-between">
-                    <span>Direct Spend:</span>
+                    <span>Total Paid for Bills:</span>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
                       {formatMoney(b.totalDirectPaid, trip.currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Pot Deposit (QR):</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                      {formatMoney(b.totalDepositedToPot, trip.currency)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
                     <span>Share Consumed:</span>
                     <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {formatMoney(b.totalDirectConsumption + b.totalPotConsumption, trip.currency)}
+                      {formatMoney(b.totalDirectConsumption, trip.currency)}
                     </span>
                   </div>
                 </div>
