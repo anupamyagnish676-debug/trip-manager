@@ -67,9 +67,13 @@ export function TripSettingsModal({
       'bg-cyan-600',
       'bg-orange-600',
     ];
+    const slug = newMemberName.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const newMember: Member = {
       id: `m-${Date.now()}`,
       name: newMemberName.trim(),
+      loginId: slug,
+      password: `${slug}123`,
+      role: 'member',
       upiId: newMemberUpi.trim() || undefined,
       avatarColor: colors[members.length % colors.length],
     };

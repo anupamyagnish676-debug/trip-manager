@@ -268,15 +268,35 @@ export function MemberView({
       {/* ── ACTIVE COLLECTION ROUNDS (Raised by Finance Manager) ── */}
       {activeRounds.length > 0 && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          {/* Prominent Pending Amount Alert Card */}
+          <div className="rounded-3xl bg-gradient-to-r from-amber-500 to-orange-500 p-5 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-100 bg-white/20 px-2 py-0.5 rounded-full">
+                ⚡ Action Required • Pay to Finance Manager
+              </span>
+              <p className="text-3xl font-black mt-1">
+                ₹{activeRounds.reduce((sum, r) => sum + r.targetPerPerson, 0).toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs text-amber-100 mt-0.5">
+                Total pending collection dues requested by Finance Manager {financeLead.name}
+              </p>
+            </div>
+            <div className="text-right sm:text-right">
+              <span className="text-xs font-bold bg-white text-slate-900 px-3 py-1.5 rounded-xl shadow-sm inline-block">
+                {activeRounds.length} Pending Round{activeRounds.length > 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-amber-500" />
               <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                Trip Collection Requests ({activeRounds.length} Pending)
+                Collection Breakdown ({activeRounds.length} Request{activeRounds.length > 1 ? 's' : ''})
               </h4>
             </div>
             <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-[10px] font-bold">
-              Action Required
+              Pay via UPI / QR
             </span>
           </div>
 

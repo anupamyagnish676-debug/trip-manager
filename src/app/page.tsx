@@ -16,6 +16,7 @@ import { SettleUpTab } from '@/components/SettleUpTab';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { WhatsAppExportModal } from '@/components/WhatsAppExportModal';
 import { TripSettingsModal } from '@/components/TripSettingsModal';
+import { TripGroupMembersModal } from '@/components/TripGroupMembersModal';
 import { CollectionRoundsTab } from '@/components/CollectionRoundsTab';
 import { LoginScreen } from '@/components/LoginScreen';
 import { MemberView } from '@/components/MemberView';
@@ -52,6 +53,7 @@ export default function TripFinancePortal() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isLeadQrOpen, setIsLeadQrOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(4000);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -213,25 +215,27 @@ export default function TripFinancePortal() {
   };
 
   // ── Tab definitions ──
-  // Strict Member Isolation: General members ONLY see their personal portal & group bills.
-  // Group-wide debt matrix, collection roster, bank SMS feeds & member balances are restricted to Managers.
-  const allTabs: { key: TabKey; label: string; icon: React.ReactNode; count?: number; managerOnly?: boolean }[] = [
+  // User Rule: "NOT ALL MEMBERS CAN SEE OTHERS DETAILS ONLY FINANCE CAN SEE OTHERS DETAILS."
+  // - Finance Manager: sees full finances (Collection Manager, Settle Matrix, Inbound Bank Feed, Net Balances) + My Portal
+  // - Trip Manager: manages the Trip Group (adding members, assigning Login IDs & Passwords) + My Portal + Trip Bills
+  // - General Members: ONLY see My Portal (their own pending dues to Finance & splits) + Trip Bills (split bills for group)
+  const allTabs: { key: TabKey; label: string; icon: React.ReactNode; count?: number; financeOnly?: boolean }[] = [
     { key: 'my_view', label: 'My Portal', icon: <Users className="h-4 w-4" /> }, // ALL roles (strictly isolated to personal details)
-    { key: 'expenses', label: 'Trip Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length }, // ALL roles (view & add expenses)
-    { key: 'settle', label: 'Settle Up Matrix', icon: <Scale className="h-4 w-4 text-emerald-500" />, managerOnly: true }, // MANAGER ONLY
-    { key: 'collections', label: 'Collection Manager', icon: <Bell className="h-4 w-4 text-amber-500" />, count: (trip.collectionRounds || []).length, managerOnly: true }, // MANAGER ONLY
-    { key: 'qr_capture', label: 'QR & Inbound Bank Feed', icon: <QrCode className="h-4 w-4 text-teal-500" />, count: trip.payments.length, managerOnly: true }, // MANAGER ONLY
-    { key: 'members', label: 'All Friends & Net Balances', icon: <Users className="h-4 w-4" />, count: trip.members.length, managerOnly: true }, // MANAGER ONLY
+    { key: 'expenses', label: 'Trip Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length }, // ALL roles (view & split bills for all)
+    { key: 'collections', label: 'Collection Rounds', icon: <Bell className="h-4 w-4 text-amber-500" />, count: (trip.collectionRounds || []).length, financeOnly: true }, // FINANCE MANAGER ONLY
+    { key: 'settle', label: 'Group Settlement Matrix', icon: <Scale className="h-4 w-4 text-emerald-500" />, financeOnly: true }, // FINANCE MANAGER ONLY
+    { key: 'qr_capture', label: 'QR & Inbound Bank Feed', icon: <QrCode className="h-4 w-4 text-teal-500" />, count: trip.payments.length, financeOnly: true }, // FINANCE MANAGER ONLY
+    { key: 'members', label: 'All Friends & Net Balances', icon: <Users className="h-4 w-4" />, count: trip.members.length, financeOnly: true }, // FINANCE MANAGER ONLY
   ];
 
-  const visibleTabs = allTabs.filter((t) => !t.managerOnly || canManageTrip);
+  const visibleTabs = allTabs.filter((t) => !t.financeOnly || canManageFinance);
 
-  // Security guard: ensure general member is locked to personal tabs only
+  // Security guard: ensure non-finance members are strictly locked to personal tabs
   useEffect(() => {
-    if (sessionChecked && !canManageTrip && activeTab !== 'my_view' && activeTab !== 'expenses') {
+    if (sessionChecked && !canManageFinance && activeTab !== 'my_view' && activeTab !== 'expenses') {
       setActiveTab('my_view');
     }
-  }, [sessionChecked, canManageTrip, activeTab]);
+  }, [sessionChecked, canManageFinance, activeTab]);
 
   if (!sessionChecked) return null;
 
@@ -289,13 +293,26 @@ export default function TripFinancePortal() {
               </button>
             )}
 
-            {/* Add expense (available to all members) */}
+            {/* Trip Group & Credentials (Trip Manager & Finance Manager) */}
+            {canManageTrip && (
+              <button
+                type="button"
+                onClick={() => setIsGroupMembersOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900 px-2.5 py-1.5 text-xs font-bold text-sky-700 dark:text-sky-300 transition-all"
+                title="Manage Trip Group Members, Roles & Login Credentials"
+              >
+                <Users className="h-3.5 w-3.5 text-sky-500" />
+                <span className="hidden sm:inline">Trip Group</span> ({trip.members.length})
+              </button>
+            )}
+
+            {/* Add expense (available to all members - all can split bills for the group) */}
             <button
               onClick={() => setIsAddExpenseOpen(true)}
               className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-md transition-all active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Expense</span>
+              <span className="hidden sm:inline">Split Bill</span>
             </button>
 
             {/* Identity chip */}
@@ -679,6 +696,21 @@ export default function TripFinancePortal() {
           trip={trip}
           onSaveTrip={handleSaveTripSettings}
           onClearAllData={handleClearAllData}
+        />
+      )}
+
+      {canManageTrip && (
+        <TripGroupMembersModal
+          isOpen={isGroupMembersOpen}
+          onClose={() => setIsGroupMembersOpen(false)}
+          trip={trip}
+          onSaveMembers={(updatedMembers) => {
+            const updated = { ...trip, members: updatedMembers };
+            saveTripState(updated);
+            if (hasSupabase) {
+              updateTripInSupabase(updated);
+            }
+          }}
         />
       )}
 

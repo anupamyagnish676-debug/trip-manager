@@ -19,11 +19,15 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
     const members: Member[] = (membersData || []).map((m: any) => ({
       id: m.id,
       name: m.name,
+      loginId: m.login_id || m.loginId || m.name.toLowerCase().replace(/\s+/g, ''),
+      password: m.password || `${m.name.toLowerCase()}123`,
+      role: m.role || 'member',
+      specialty: m.specialty || 'none',
       upiId: m.upi_id,
       phone: m.phone,
       avatarColor: m.avatar_color,
       isFinanceLead: m.is_finance_lead,
-      role: m.role || 'member',
+      pin: m.pin,
     }));
 
     const expenses: Expense[] = (expensesData || []).map((e: any) => ({
@@ -113,6 +117,9 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
       id: m.id,
       trip_id: trip.id,
       name: m.name,
+      login_id: m.loginId,
+      password: m.password,
+      specialty: m.specialty || 'none',
       upi_id: m.upiId,
       phone: m.phone,
       avatar_color: m.avatarColor,
@@ -166,6 +173,7 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
 
     await supabase.from('members').upsert(trip.members.map((m) => ({
       id: m.id, trip_id: trip.id, name: m.name, upi_id: m.upiId,
+      login_id: m.loginId, password: m.password, specialty: m.specialty || 'none',
       phone: m.phone, avatar_color: m.avatarColor,
       is_finance_lead: m.isFinanceLead || false, role: m.role || 'member',
     })));

@@ -278,6 +278,25 @@ export function CollectionRoundsTab({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {onOpenQR && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenQR(
+                            financeLead.upiId || 'anupam@okaxis',
+                            financeLead.name,
+                            round.targetPerPerson,
+                            noteText
+                          )
+                        }
+                        className="flex items-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 px-2.5 py-1.5 text-xs font-bold transition-all"
+                        title="Display Receiving QR for this collection"
+                      >
+                        <QrCode className="h-3.5 w-3.5 text-teal-500" />
+                        Show QR
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={() => generateWhatsApp(round)}

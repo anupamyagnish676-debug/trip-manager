@@ -10,16 +10,27 @@ export type Category =
 
 export type MemberRole = 'finance_manager' | 'trip_manager' | 'member';
 
+export type TripSpecialty =
+  | 'transport'
+  | 'stay'
+  | 'food'
+  | 'activities'
+  | 'photos'
+  | 'none';
+
 export interface Member {
   id: string;
   name: string;
+  loginId: string; // Manually assigned by Trip Manager
+  password: string; // Manually assigned by Trip Manager
+  role: MemberRole; // finance_manager | trip_manager | member
+  specialty?: TripSpecialty; // Member duty: transport, stay, food, activities, photos
   upiId?: string;
   phone?: string;
   avatarColor: string;
   isFinanceLead?: boolean;
-  role?: MemberRole; // finance_manager | trip_manager | member
-  joinCode?: string; // unique code for self-onboarding
-  pin?: string; // 4-digit security PIN for role-based access
+  joinCode?: string;
+  pin?: string;
 }
 
 export type SplitType = 'equal' | 'exact' | 'shares';
@@ -84,6 +95,8 @@ export interface CollectionRound {
   targetPerPerson: number;
   dueDate?: string;
   createdAt: string;
+  qrNote?: string;
+  customQrAmount?: number;
   memberStatus: Record<string, 'paid' | 'pending' | 'partial'>;
 }
 
@@ -100,7 +113,7 @@ export interface Trip {
   payments: PaymentCapture[];
   settlements: SettlementTransfer[];
   collectionRounds?: CollectionRound[];
-  inviteCode?: string; // e.g. MANALI26 — friends use this to join
+  inviteCode?: string; // e.g. MANALI26
   createdAt?: string;
 }
 
