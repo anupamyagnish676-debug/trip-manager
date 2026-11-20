@@ -140,6 +140,24 @@ export function TripGroupMembersModal({
     setTimeout(() => setCopiedId(null), 2500);
   };
 
+  const copyAllGroupCredentials = () => {
+    const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?trip=${trip.id}` : 'https://trip-manager.vercel.app';
+    const lines = [
+      `✈️ *${trip.name} Portal - Team Invites*`,
+      `Destination: ${trip.destination}`,
+      `🌐 Portal Link: ${appUrl}`,
+      `🔑 Trip Code: *${trip.inviteCode || trip.id}*`,
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `👤 Member Logins:`,
+      ...members.map((m) => `• *${m.name}*: ID: \`${m.loginId}\` | Password: \`${m.password}\``),
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+      `Tap the link above, pick your profile, and enter your password to sign in!`,
+    ];
+    navigator.clipboard.writeText(lines.join('\n'));
+    setCopiedId('all');
+    setTimeout(() => setCopiedId(null), 2500);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-2xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl my-8">
@@ -167,18 +185,33 @@ export function TripGroupMembersModal({
         </div>
 
         {/* Actions bar */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
           <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
             {members.length} Members in &quot;{trip.name}&quot;
           </span>
-          <button
-            type="button"
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all"
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            {showAddForm ? 'Close Form' : '+ Add New Member'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={copyAllGroupCredentials}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold border transition-all ${
+                copiedId === 'all'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+              }`}
+              title="Copy WhatsApp invite message for the entire group"
+            >
+              {copiedId === 'all' ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5 text-emerald-500" />}
+              <span>{copiedId === 'all' ? 'All Invites Copied!' : 'Copy Group Invites'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              {showAddForm ? 'Close Form' : '+ Add New Member'}
+            </button>
+          </div>
         </div>
 
         {/* Add Member Form */}

@@ -490,6 +490,42 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
               </p>
             </div>
 
+            {/* Quick Profile Selection */}
+            {trip.members && trip.members.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-400 block">
+                  Select your profile:
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                  {trip.members.map((m) => {
+                    const isSelected = loginId.toLowerCase() === (m.loginId || '').toLowerCase();
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setLoginId(m.loginId || m.name.toLowerCase().replace(/\s+/g, ''));
+                          setErrorMsg('');
+                        }}
+                        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold border transition-all ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                            : 'bg-slate-800/80 hover:bg-slate-750 text-slate-300 border-slate-700/60'
+                        }`}
+                      >
+                        <span className={`h-5 w-5 rounded-lg flex items-center justify-center text-[10px] font-bold text-white ${m.avatarColor}`}>
+                          {m.name.slice(0, 2).toUpperCase()}
+                        </span>
+                        <span>{m.name}</span>
+                        {m.role === 'finance_manager' && <span className="text-[9px] opacity-75">(FM)</span>}
+                        {m.role === 'trip_manager' && <span className="text-[9px] opacity-75">(TM)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="space-y-4">
               {/* Login ID Input */}
               <div>
