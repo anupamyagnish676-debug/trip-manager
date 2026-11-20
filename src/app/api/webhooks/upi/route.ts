@@ -5,6 +5,21 @@ import { insertPaymentToSupabase } from '@/lib/tripService';
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Security Check: Validate Secret Token if configured
+    const configuredSecret = process.env.WEBHOOK_SECRET;
+    if (configuredSecret) {
+      const incomingSecret =
+        req.headers.get('x-webhook-secret') ||
+        req.nextUrl.searchParams.get('token');
+
+      if (incomingSecret !== configuredSecret) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: Invalid webhook secret' },
+          { status: 401 }
+        );
+      }
+    }
+
     const body = await req.json();
     const { rawMessage, amount, sender, utr, members, tripId } = body;
 
