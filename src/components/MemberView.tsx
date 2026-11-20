@@ -93,28 +93,28 @@ export function MemberView({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* ── TOP MEMBER GREETING ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm">
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-12 w-12 items-center justify-center rounded-2xl text-white font-black text-lg flex-shrink-0 shadow-md ${
+            className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl text-white font-black text-base sm:text-lg flex-shrink-0 shadow-md ${
               currentMember.avatarColor || 'bg-emerald-600'
             }`}
           >
             {currentMember.name.slice(0, 2).toUpperCase()}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
                 {currentMember.name}
               </h3>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-bold">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-bold flex-shrink-0">
                 Active Member
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Personal expense ledger, pending dues, and real-time settlement transfers
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+              Personal expense ledger, pending dues & settlement transfers
             </p>
           </div>
         </div>
@@ -122,7 +122,7 @@ export function MemberView({
         {onOpenAddExpense && (
           <button
             onClick={onOpenAddExpense}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-md transition-all active:scale-95 flex-shrink-0"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-md transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
           >
             <Plus className="h-4 w-4" />
             <span>Add Bill / Expense</span>
@@ -132,7 +132,7 @@ export function MemberView({
 
       {/* ── PERSONAL BALANCE HERO CARD ── */}
       <div
-        className={`rounded-3xl p-6 shadow-xl transition-all ${
+        className={`rounded-3xl p-5 sm:p-6 shadow-xl transition-all ${
           net > 0
             ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white'
             : net < 0
@@ -140,12 +140,12 @@ export function MemberView({
             : 'bg-gradient-to-br from-slate-800 to-slate-900 text-white'
         }`}
       >
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-xs font-bold text-white/80 uppercase tracking-wider">
               {net > 0 ? '🎉 You are owed by the group' : net < 0 ? '💸 You owe the group' : '✅ You are fully settled'}
             </p>
-            <p className="text-5xl font-black text-white mt-1.5 leading-none">
+            <p className="text-3xl sm:text-5xl font-black text-white mt-1.5 leading-none break-all">
               {formatMoney(Math.abs(net), trip.currency)}
             </p>
             <p className="text-xs text-white/75 mt-2 max-w-md">
@@ -157,33 +157,33 @@ export function MemberView({
             </p>
           </div>
 
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-white text-xl font-black border border-white/30 shadow-inner">
+          <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-white/20 text-white text-lg sm:text-xl font-black border border-white/30 shadow-inner flex-shrink-0">
             {currentMember.name.slice(0, 2).toUpperCase()}
           </div>
         </div>
 
         {/* 2-Column Breakdown Row */}
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-white/15 p-3.5 text-center backdrop-blur-sm border border-white/10">
-            <p className="text-lg font-black text-white leading-tight">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="rounded-2xl bg-white/15 p-3 sm:p-3.5 text-center backdrop-blur-sm border border-white/10">
+            <p className="text-base sm:text-lg font-black text-white leading-tight">
               {formatMoney(totalIPaid, trip.currency)}
             </p>
-            <p className="text-[11px] text-white/80 mt-1">Total I Paid (Out of Pocket)</p>
+            <p className="text-[10px] sm:text-[11px] text-white/80 mt-1">Total I Paid (Out of Pocket)</p>
           </div>
-          <div className="rounded-2xl bg-white/15 p-3.5 text-center backdrop-blur-sm border border-white/10">
-            <p className="text-lg font-black text-white leading-tight">
+          <div className="rounded-2xl bg-white/15 p-3 sm:p-3.5 text-center backdrop-blur-sm border border-white/10">
+            <p className="text-base sm:text-lg font-black text-white leading-tight">
               {formatMoney(totalIConsumed, trip.currency)}
             </p>
-            <p className="text-[11px] text-white/80 mt-1">My Total Share of Bills</p>
+            <p className="text-[10px] sm:text-[11px] text-white/80 mt-1">My Total Share of Bills</p>
           </div>
         </div>
       </div>
 
       {/* ── SETTLEMENT DUES: WHO I NEED TO PAY ── */}
       {iOweTo.length > 0 && (
-        <div className="rounded-3xl border border-rose-200 dark:border-rose-900 bg-rose-50/70 dark:bg-rose-950/30 p-5 shadow-sm space-y-3">
+        <div className="rounded-3xl border border-rose-200 dark:border-rose-900 bg-rose-50/70 dark:bg-rose-950/30 p-4 sm:p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-rose-800 dark:text-rose-300 flex items-center gap-2">
+            <h4 className="text-xs sm:text-sm font-bold text-rose-800 dark:text-rose-300 flex items-center gap-2">
               <TrendingDown className="h-4 w-4" /> Settle Up: Transfers You Need to Make
             </h4>
             <span className="text-[10px] font-bold text-rose-700 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-full">
@@ -207,9 +207,9 @@ export function MemberView({
               return (
                 <div
                   key={idx}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-900/50 p-4 shadow-sm"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-900/50 p-3.5 sm:p-4 shadow-sm"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-xl text-white text-xs font-extrabold flex-shrink-0 ${
                         to?.avatarColor || 'bg-slate-500'
@@ -217,47 +217,49 @@ export function MemberView({
                     >
                       {to?.name.slice(0, 2).toUpperCase() || '??'}
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                         Pay to {to?.name}
                       </p>
-                      <p className="text-[11px] text-slate-400 font-mono">{to?.upiId || 'No UPI ID'}</p>
+                      <p className="text-[11px] text-slate-400 font-mono truncate max-w-[170px] sm:max-w-none">{to?.upiId || 'No UPI ID'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 justify-end">
-                    <span className="text-base font-black text-rose-600 dark:text-rose-400 mr-2">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-rose-100/70 dark:border-rose-900/40">
+                    <span className="text-base font-black text-rose-600 dark:text-rose-400 mr-1">
                       {formatMoney(s.amount, trip.currency)}
                     </span>
 
-                    {upiUrl && (
-                      <a
-                        href={upiUrl}
-                        className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition-all active:scale-95 shadow-sm"
-                      >
-                        <Smartphone className="h-3.5 w-3.5" />
-                        Pay via App
-                      </a>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {upiUrl && (
+                        <a
+                          href={upiUrl}
+                          className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition-all active:scale-95 shadow-sm min-h-[36px] touch-manipulation"
+                        >
+                          <Smartphone className="h-3.5 w-3.5" />
+                          <span>Pay App</span>
+                        </a>
+                      )}
 
-                    {onOpenQR && (
+                      {onOpenQR && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenQR(to?.upiId || 'friend@upi', to?.name || 'Friend', s.amount, noteText)}
+                          className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
+                          title="Show UPI QR Code"
+                        >
+                          <QrCode className="h-4 w-4 text-teal-500" />
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={() => onOpenQR(to?.upiId || 'friend@upi', to?.name || 'Friend', s.amount, noteText)}
-                        className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all"
-                        title="Show UPI QR Code"
+                        onClick={() => handleMarkSettlementPaid(s)}
+                        className="rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950 px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-all min-h-[36px] touch-manipulation"
                       >
-                        <QrCode className="h-4 w-4 text-teal-500" />
+                        Settled
                       </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => handleMarkSettlementPaid(s)}
-                      className="rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950 px-3 py-1.5 text-xs font-semibold transition-all"
-                    >
-                      Mark Settled
-                    </button>
+                    </div>
                   </div>
                 </div>
               );

@@ -244,11 +244,11 @@ export default function TripFinancePortal() {
   };
 
   // ── Universal Tabs (Identical for ALL members) ──
-  const allTabs: { key: TabKey; label: string; icon: React.ReactNode; count?: number }[] = [
-    { key: 'my_view', label: 'My Overview & Dues', icon: <User className="h-4 w-4" /> },
-    { key: 'expenses', label: 'Trip Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },
-    { key: 'settle', label: 'Group Settlement Matrix', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
-    { key: 'members', label: 'Friends & Balances', icon: <Users className="h-4 w-4" />, count: trip.members.length },
+  const allTabs: { key: TabKey; label: string; mobileLabel: string; icon: React.ReactNode; count?: number }[] = [
+    { key: 'my_view', label: 'My Overview & Dues', mobileLabel: 'Overview', icon: <User className="h-4 w-4" /> },
+    { key: 'expenses', label: 'Trip Bills', mobileLabel: 'Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },
+    { key: 'settle', label: 'Group Settlement Matrix', mobileLabel: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
+    { key: 'members', label: 'Friends & Balances', mobileLabel: 'Friends', icon: <Users className="h-4 w-4" />, count: trip.members.length },
   ];
 
   if (!sessionChecked || isInitialLoading) {
@@ -278,15 +278,15 @@ export default function TripFinancePortal() {
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
       {/* ── TOP NAVBAR ── */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
           {/* Brand & Trip Info */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md font-black text-lg">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md font-black text-base sm:text-lg flex-shrink-0">
               {currencySymbol}
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-sm font-black text-slate-900 dark:text-white sm:text-base tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h1 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[130px] sm:max-w-none">
                   {trip.name}
                 </h1>
                 {trip.inviteCode && (
@@ -296,7 +296,7 @@ export default function TripFinancePortal() {
                       navigator.clipboard.writeText(appUrl || trip.inviteCode!);
                       alert(`Trip invite link copied:\n${appUrl || trip.inviteCode}`);
                     }}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors"
+                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors flex-shrink-0"
                     title="Click to copy trip invite link"
                   >
                     <span>Code:</span>
@@ -305,31 +305,32 @@ export default function TripFinancePortal() {
                   </button>
                 )}
                 {hasSupabase ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                    <Cloud className="h-2 w-2" /> Live Cloud
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    <Cloud className="h-2 w-2" /> Live
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
                     <CloudOff className="h-2 w-2" /> Offline
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                <MapPin className="h-3 w-3 text-emerald-500" /> {trip.destination} • {trip.members.length} friends • Currency: {trip.currency || 'INR'} ({currencySymbol})
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-500 flex-shrink-0" />
+                <span className="truncate">{trip.destination} • {trip.members.length} friends • Currency: {trip.currency || 'INR'} ({currencySymbol})</span>
               </p>
             </div>
           </div>
 
           {/* Right Action Bar: Ultra-clean & Professional */}
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-2 relative flex-shrink-0">
             {/* User Identity & Menu Dropdown */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-1.5 pr-2.5 shadow-sm transition-all"
+                className="flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-1 sm:p-1.5 sm:pr-2.5 shadow-sm transition-all touch-manipulation"
               >
-                <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white text-xs font-black shadow-sm ${currentMember?.avatarColor || 'bg-slate-500'}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white text-xs font-black shadow-sm flex-shrink-0 ${currentMember?.avatarColor || 'bg-slate-500'}`}>
                   {currentMember?.name.slice(0, 2).toUpperCase() || '??'}
                 </div>
                 <div className="text-left hidden sm:block">
@@ -350,12 +351,12 @@ export default function TripFinancePortal() {
                     className="fixed inset-0 z-40"
                     onClick={() => setIsUserMenuOpen(false)}
                   />
-                  <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-1.5rem)] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                       <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                         {currentMember?.name}
                       </p>
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono truncate">
                         {currentMember?.upiId ? `UPI: ${currentMember.upiId}` : 'No UPI ID set'}
                       </p>
                     </div>
@@ -420,9 +421,9 @@ export default function TripFinancePortal() {
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 space-y-6">
-        {/* Navigation Tabs (Universal for everyone) */}
-        <div className="flex items-center border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+      <main className="mx-auto max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 pb-28 sm:pb-8">
+        {/* Navigation Tabs (Desktop only: hidden on mobile, replaced by bottom bar) */}
+        <div className="hidden sm:flex items-center border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
           <nav className="flex space-x-1.5 py-1 flex-1 min-w-0">
             {allTabs.map((tab) => (
               <button
@@ -469,7 +470,7 @@ export default function TripFinancePortal() {
         {/* ── TAB 2: TRIP BILLS & EXPENSE FEED ── */}
         {activeTab === 'expenses' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Trip Expense Feed</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -481,7 +482,7 @@ export default function TripFinancePortal() {
                   setEditingExpense(null);
                   setIsAddExpenseOpen(true);
                 }}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all active:scale-95"
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 touch-manipulation min-h-[36px]"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Bill
               </button>
@@ -596,7 +597,7 @@ export default function TripFinancePortal() {
         {/* ── TAB 4: GROUP FRIENDS & BALANCES ── */}
         {activeTab === 'members' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Trip Friends ({trip.members.length} Members)</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -608,7 +609,7 @@ export default function TripFinancePortal() {
               {isOrganizer && (
                 <button
                   onClick={() => setIsGroupMembersOpen(true)}
-                  className="flex items-center gap-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3.5 py-1.5 text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+                  className="flex items-center gap-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3.5 py-2 text-xs font-bold shadow-sm hover:opacity-90 transition-all touch-manipulation min-h-[36px]"
                 >
                   <Users className="h-3.5 w-3.5" /> + Manage Friends & UPI
                 </button>
@@ -778,6 +779,37 @@ export default function TripFinancePortal() {
         }}
       />
 
+      {/* ── MOBILE BOTTOM NAVIGATION BAR ── */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 backdrop-blur-xl px-2 py-1.5 flex justify-around items-center shadow-2xl pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+        {allTabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative touch-manipulation ${
+                isActive
+                  ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-500/10 dark:bg-emerald-400/10' : ''}`}>
+                {tab.icon}
+              </div>
+              <span className="text-[10px] font-semibold mt-0.5 tracking-tight truncate max-w-[68px]">
+                {tab.mobileLabel}
+              </span>
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="absolute top-1 right-2.5 h-4 min-w-[16px] px-1 rounded-full bg-emerald-600 text-[9px] font-black text-white flex items-center justify-center shadow-sm">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
       {/* ── FLOATING ACTION BUTTON FOR ADD BILL ── */}
       <button
         type="button"
@@ -785,10 +817,10 @@ export default function TripFinancePortal() {
           setEditingExpense(null);
           setIsAddExpenseOpen(true);
         }}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 text-sm font-extrabold shadow-2xl hover:shadow-emerald-600/40 transition-all hover:scale-105 active:scale-95 border border-emerald-400/40"
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-extrabold shadow-2xl hover:shadow-emerald-600/40 transition-all hover:scale-105 active:scale-95 border border-emerald-400/40 touch-manipulation"
         title="Add a new trip bill"
       >
-        <Plus className="h-5 w-5" />
+        <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
         <span>Add Bill</span>
       </button>
     </div>

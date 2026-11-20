@@ -208,21 +208,21 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
   const currencySymbol = getCurrencySymbol(trip.currency);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 flex items-center justify-center p-3 sm:p-4 py-6 sm:py-10">
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-5">
           {mode === 'login' ? (
             <>
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
+              <div className="inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-xl sm:text-2xl font-black mb-2.5">
                 {currencySymbol}
               </div>
               <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
                 Trip Expense & Split Portal
               </div>
-              <h1 className="text-2xl font-black text-white tracking-tight">{trip.name}</h1>
-              <p className="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1.5 flex-wrap">
-                <MapPin className="h-3 w-3 text-emerald-400" />
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">{trip.name}</h1>
+              <p className="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1.5 flex-wrap px-2">
+                <MapPin className="h-3 w-3 text-emerald-400 flex-shrink-0" />
                 <span>{trip.destination}</span>
                 <span>•</span>
                 <span>Currency: {trip.currency || 'INR'} ({currencySymbol})</span>
@@ -238,27 +238,27 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
             </>
           ) : mode === 'create_trip' ? (
             <>
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
-                <Sparkles className="h-7 w-7 text-white" />
+              <div className="inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-xl sm:text-2xl font-black mb-2.5">
+                <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
               <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
                 Trip Expense & Split Portal
               </div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Create a New Trip</h1>
-              <p className="text-xs text-slate-400 mt-1">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Create a New Trip</h1>
+              <p className="text-xs text-slate-400 mt-1 px-3">
                 For friends, families, vacations, and remote team offsites worldwide.
               </p>
             </>
           ) : (
             <>
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-2xl font-black mb-3">
-                <Compass className="h-7 w-7 text-white" />
+              <div className="inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-2xl text-xl sm:text-2xl font-black mb-2.5">
+                <Compass className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
               <div className="inline-block rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-0.5 text-[11px] font-bold text-emerald-300 mb-2">
                 Trip Expense & Split Portal
               </div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Enter Trip Code</h1>
-              <p className="text-xs text-slate-400 mt-1">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">Enter Trip Code</h1>
+              <p className="text-xs text-slate-400 mt-1 px-3">
                 Enter your 6-character code (e.g. ODISHA71) to open your group trip.
               </p>
             </>
@@ -267,7 +267,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
 
         {/* ── MODE 1: CREATE TRIP ── */}
         {mode === 'create_trip' && (
-          <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-6 shadow-2xl space-y-4">
+          <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-emerald-400" />
@@ -289,11 +289,11 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                   value={tripName}
                   onChange={(e) => setTripName(e.target.value)}
                   placeholder="e.g. Swiss Alps Retreat, Tokyo Tour, Goa 2026"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-base sm:text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1">
                     Destination
@@ -303,7 +303,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     placeholder="e.g. Zermatt, Tokyo, Goa"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-base sm:text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
@@ -313,7 +313,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-base sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     {SUPPORTED_CURRENCIES.map((c) => (
                       <option key={c.code} value={c.code}>
@@ -336,10 +336,10 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                     value={organizerName}
                     onChange={(e) => handleNameChange(e.target.value)}
                     placeholder="e.g. Alex Johnson, Priya, David"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-base sm:text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label className="text-xs text-slate-300 block mb-0.5">Your Login ID *</label>
                     <input
@@ -348,7 +348,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                       value={organizerLoginId}
                       onChange={(e) => setOrganizerLoginId(e.target.value)}
                       placeholder="e.g. alex"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-base sm:text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                   <div>
@@ -359,7 +359,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                       value={organizerPassword}
                       onChange={(e) => setOrganizerPassword(e.target.value)}
                       placeholder="e.g. alex123"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-base sm:text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 </div>
@@ -376,7 +376,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                       key={type}
                       type="button"
                       onClick={() => setPaymentType(type)}
-                      className={`py-1.5 rounded-lg border font-bold uppercase transition-all ${
+                      className={`py-2 rounded-xl border font-bold uppercase transition-all touch-manipulation ${
                         paymentType === type
                           ? 'bg-emerald-600 text-white border-emerald-500'
                           : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
@@ -400,7 +400,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                         ? 'e.g. @yourname'
                         : 'e.g. IBAN / Swift / Account details'
                     }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-base sm:text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 )}
               </div>
@@ -413,7 +413,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
 
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98 mt-2"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98 mt-2 min-h-[44px] touch-manipulation"
               >
                 <Sparkles className="h-4 w-4" />
                 Launch Trip Portal
@@ -441,7 +441,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
 
         {/* ── STEP 1: ENTER TRIP CODE ── */}
         {mode === 'enter_code' && (
-          <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-6 shadow-2xl space-y-4">
+          <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-4 sm:p-6 shadow-2xl space-y-4">
             <div className="border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-emerald-400" />
@@ -464,7 +464,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                   value={searchCode}
                   onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
                   placeholder="e.g. ODISHA71"
-                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-lg font-mono font-bold tracking-widest text-emerald-400 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase text-center"
+                  className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-base sm:text-lg font-mono font-bold tracking-widest text-emerald-400 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase text-center"
                 />
                 <p className="text-[11px] text-slate-500 mt-1.5 text-center">
                   Case-insensitive (e.g. <span className="font-mono text-slate-400">ODISHA71</span>)
@@ -481,7 +481,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98 disabled:opacity-50 min-h-[44px] touch-manipulation"
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
@@ -503,7 +503,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                 <button
                   type="button"
                   onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 py-2.5 text-xs font-semibold text-slate-200 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 py-2.5 text-xs font-semibold text-slate-200 transition-colors min-h-[40px] touch-manipulation"
                 >
                   <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
                   <span>Create a New Trip</span>
@@ -513,9 +513,9 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
           </div>
         )}
 
-        {/* ── MODE 3: MEMBER SIGN IN ── */}
+        {/* ── STEP 2: MEMBER SIGN IN ── */}
         {mode === 'login' && (
-          <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-6 shadow-2xl space-y-5">
+          <div className="rounded-3xl bg-slate-900/90 backdrop-blur-xl border border-slate-800 p-4 sm:p-6 shadow-2xl space-y-5">
             <div className="border-b border-slate-800 pb-3">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Lock className="h-4 w-4 text-emerald-400" />
@@ -543,7 +543,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                           setLoginId(m.loginId || m.name.toLowerCase().replace(/\s+/g, ''));
                           setErrorMsg('');
                         }}
-                        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold border transition-all ${
+                        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold border transition-all touch-manipulation min-h-[34px] ${
                           isSelected
                             ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
                             : 'bg-slate-800/80 hover:bg-slate-750 text-slate-300 border-slate-700/60'
@@ -572,7 +572,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
                   placeholder="e.g. your login ID"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm font-medium text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-base sm:text-sm font-medium text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -590,12 +590,12 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm font-medium text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-base sm:text-sm font-medium text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 p-1"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -613,7 +613,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg transition-all active:scale-98 min-h-[44px] touch-manipulation"
               >
                 <LogIn className="h-4 w-4" />
                 Sign In to Portal

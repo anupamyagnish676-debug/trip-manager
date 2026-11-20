@@ -118,16 +118,16 @@ export function TripSettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-auto max-h-[92vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 touch-manipulation"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 pr-8">
           <span>⚙️</span> Trip & Payment Settings
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -144,7 +144,7 @@ export function TripSettingsModal({
               type="text"
               value={tripName}
               onChange={(e) => setTripName(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-medium text-slate-900 dark:text-white"
               placeholder="e.g. Tokyo Offsite"
             />
           </div>
@@ -156,7 +156,7 @@ export function TripSettingsModal({
               type="text"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-medium text-slate-900 dark:text-white"
               placeholder="e.g. Tokyo, Japan"
             />
           </div>
@@ -167,7 +167,7 @@ export function TripSettingsModal({
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-2 text-xs font-medium text-slate-900 dark:text-white"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-2 text-base sm:text-xs font-medium text-slate-900 dark:text-white"
             >
               {SUPPORTED_CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -179,7 +179,7 @@ export function TripSettingsModal({
         </div>
 
         {/* 2. Global Payment Receiving Section */}
-        <div className="mt-4 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 space-y-3">
+        <div className="mt-4 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 p-3.5 sm:p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wide">
               <CreditCard className="h-4 w-4" /> Receiving Payment Methods (Finance Lead)
@@ -199,7 +199,7 @@ export function TripSettingsModal({
                 value={upiId}
                 onChange={(e) => setUpiId(e.target.value)}
                 placeholder="e.g. yourname@okaxis"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono font-medium text-slate-800 dark:text-slate-200"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-mono font-medium text-slate-800 dark:text-slate-200"
               />
             </div>
 
@@ -212,7 +212,7 @@ export function TripSettingsModal({
                 value={paypalUrl}
                 onChange={(e) => setPaypalUrl(e.target.value)}
                 placeholder="e.g. paypal.me/yourusername"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-200"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-medium text-slate-800 dark:text-slate-200"
               />
             </div>
 
@@ -225,7 +225,7 @@ export function TripSettingsModal({
                 value={venmoHandle}
                 onChange={(e) => setVenmoHandle(e.target.value)}
                 placeholder="e.g. @yourusername"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-200"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-medium text-slate-800 dark:text-slate-200"
               />
             </div>
 
@@ -238,7 +238,7 @@ export function TripSettingsModal({
                 value={bankDetails}
                 onChange={(e) => setBankDetails(e.target.value)}
                 placeholder="e.g. IBAN / Swift / Routing #"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-200"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-medium text-slate-800 dark:text-slate-200"
               />
             </div>
           </div>
@@ -339,12 +339,12 @@ export function TripSettingsModal({
               value={newMemberName}
               onChange={(e) => setNewMemberName(e.target.value)}
               placeholder="Friend / Teammate name"
-              className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-xs bg-white dark:bg-slate-800"
+              className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-base sm:text-xs bg-white dark:bg-slate-800"
             />
             <button
               type="button"
               onClick={handleAddMember}
-              className="flex items-center gap-1 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-1.5 text-xs font-bold"
+              className="flex items-center gap-1 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-2 text-xs font-bold touch-manipulation min-h-[38px]"
             >
               <Plus className="h-3.5 w-3.5" /> Add
             </button>
@@ -365,7 +365,7 @@ export function TripSettingsModal({
             <button
               type="button"
               onClick={onClearAllData}
-              className="rounded-xl border border-rose-300 bg-white dark:bg-slate-900 hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 px-3 py-1.5 text-xs font-bold transition-all shadow-sm"
+              className="rounded-xl border border-rose-300 bg-white dark:bg-slate-900 hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 px-3 py-2 text-xs font-bold transition-all shadow-sm touch-manipulation min-h-[36px]"
             >
               Reset to 0
             </button>
@@ -384,7 +384,7 @@ export function TripSettingsModal({
               <button
                 type="button"
                 onClick={onDeleteTrip}
-                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-3 py-2 text-xs font-bold transition-all shadow-sm flex items-center gap-1 touch-manipulation min-h-[36px]"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete Trip
               </button>
@@ -397,7 +397,7 @@ export function TripSettingsModal({
           <button
             type="button"
             onClick={handleSave}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 text-xs font-bold shadow-md transition-all active:scale-95"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-xs sm:text-sm font-bold shadow-md transition-all active:scale-95 touch-manipulation min-h-[44px]"
           >
             <Check className="h-4 w-4" /> Save Settings
           </button>

@@ -157,16 +157,16 @@ export function AddExpenseModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-2xl dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-auto max-h-[92vh] overflow-y-auto">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 touch-manipulation"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 pr-8">
           <span>{expenseToEdit ? '✏️' : '➕'}</span> {expenseToEdit ? 'Edit Trip Expense' : 'Log New Trip Expense'}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -175,7 +175,7 @@ export function AddExpenseModal({
             : 'Record any bill paid by any friend and split it automatically'}
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 sm:mt-5 space-y-4">
           {/* Title & Amount */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
@@ -188,7 +188,7 @@ export function AddExpenseModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Riverside Cafe Lunch"
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 sm:py-2 text-base sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div>
@@ -203,7 +203,7 @@ export function AddExpenseModal({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder={`${currSym} 0`}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 sm:py-2 text-base sm:text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -213,20 +213,20 @@ export function AddExpenseModal({
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               Category
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
               {CATEGORIES.map((cat) => (
                 <button
                   type="button"
                   key={cat.value}
                   onClick={() => setCategory(cat.value)}
-                  className={`flex flex-col items-center justify-center rounded-xl p-2 text-xs border transition-all ${
+                  className={`flex flex-col items-center justify-center rounded-xl p-1.5 sm:p-2 text-xs border transition-all touch-manipulation ${
                     category === cat.value
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
                       : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <span className="text-lg">{cat.icon}</span>
-                  <span className="truncate w-full text-center mt-1 text-[11px]">{cat.label}</span>
+                  <span className="text-base sm:text-lg">{cat.icon}</span>
+                  <span className="truncate w-full text-center mt-1 text-[10px] sm:text-[11px]">{cat.label}</span>
                 </button>
               ))}
             </div>
@@ -240,7 +240,7 @@ export function AddExpenseModal({
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 sm:py-2 text-base sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -255,33 +255,33 @@ export function AddExpenseModal({
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
               How to Split?
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setSplitMode('all')}
-                className={`flex-1 rounded-xl py-2 px-3 text-xs font-semibold border transition-all ${
+                className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
                   splitMode === 'all'
                     ? 'border-emerald-500 bg-emerald-500 text-white'
                     : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                 }`}
               >
-                All {members.length} Friends Equal
+                All Friends
               </button>
               <button
                 type="button"
                 onClick={() => setSplitMode('subset')}
-                className={`flex-1 rounded-xl py-2 px-3 text-xs font-semibold border transition-all ${
+                className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
                   splitMode === 'subset'
                     ? 'border-emerald-500 bg-emerald-500 text-white'
                     : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                 }`}
               >
-                Selected Friends Only
+                Selected Only
               </button>
               <button
                 type="button"
                 onClick={() => setSplitMode('custom')}
-                className={`flex-1 rounded-xl py-2 px-3 text-xs font-semibold border transition-all ${
+                className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
                   splitMode === 'custom'
                     ? 'border-emerald-500 bg-emerald-500 text-white'
                     : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
@@ -389,7 +389,7 @@ export function AddExpenseModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Bill paid via Rohan GPay, receipt attached"
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -398,7 +398,7 @@ export function AddExpenseModal({
             <button
               type="submit"
               disabled={totalAmount <= 0 || !title.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-98"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-98 min-h-[44px] touch-manipulation"
             >
               {expenseToEdit ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {expenseToEdit ? 'Save Changes & Recalculate' : 'Save Expense & Update Balances'}

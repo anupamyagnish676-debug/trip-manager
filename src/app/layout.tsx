@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,20 @@ export const metadata: Metadata = {
   title: "TripSplit UPI • Vacation Finance & Auto QR Payment Tracker",
   description:
     "Automatic UPI payment capture, central kitty management, group expense splitting, and minimum-cash-flow debt simplification for vacation trips.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "TripSplit UPI",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#020617",
 };
 
 export default function RootLayout({
@@ -28,7 +42,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden selection:bg-emerald-500 selection:text-white">
+        {children}
+      </body>
     </html>
   );
 }
