@@ -11,6 +11,7 @@ interface TripSettingsModalProps {
   trip: Trip;
   onSaveTrip: (updatedTrip: Trip) => void;
   onClearAllData: () => void;
+  onDeleteTrip?: () => void;
 }
 
 export function TripSettingsModal({
@@ -19,6 +20,7 @@ export function TripSettingsModal({
   trip,
   onSaveTrip,
   onClearAllData,
+  onDeleteTrip,
 }: TripSettingsModalProps) {
   const [tripName, setTripName] = useState(trip.name);
   const [destination, setDestination] = useState(trip.destination);
@@ -350,22 +352,44 @@ export function TripSettingsModal({
         </div>
 
         {/* 4. Reset Data Section */}
-        <div className="mt-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 flex items-center justify-between">
-          <div>
-            <h4 className="text-xs font-bold text-rose-800 dark:text-rose-300">
-              Clear All Expenses & Collection Rounds
-            </h4>
-            <p className="text-[11px] text-slate-500">
-              Reset all bills and collection rounds so your trip starts completely fresh from 0
-            </p>
+        <div className="mt-5 space-y-2.5">
+          <div className="rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-bold text-rose-800 dark:text-rose-300">
+                Clear Expenses & Rounds
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                Reset bills & rounds to 0 while keeping members
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClearAllData}
+              className="rounded-xl border border-rose-300 bg-white dark:bg-slate-900 hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 px-3 py-1.5 text-xs font-bold transition-all shadow-sm"
+            >
+              Reset to 0
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClearAllData}
-            className="rounded-xl border border-rose-300 bg-white dark:bg-slate-900 hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 px-3 py-1.5 text-xs font-bold transition-all shadow-sm"
-          >
-            Reset to 0
-          </button>
+
+          {onDeleteTrip && (
+            <div className="rounded-2xl border border-rose-300 dark:border-rose-800 bg-rose-100/50 dark:bg-rose-950/40 p-3.5 flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                  Delete Entire Trip Group
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Permanently wipe this trip from cloud and start completely fresh
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onDeleteTrip}
+                className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete Trip
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 5. Save button */}

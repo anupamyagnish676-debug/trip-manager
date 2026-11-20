@@ -289,6 +289,57 @@ export async function upsertCollectionRoundToSupabase(round: CollectionRound): P
   return !error;
 }
 
+export async function fetchLatestTripFromSupabase(): Promise<Trip | null> {
+  if (!supabase || !isSupabaseConfigured()) return null;
+  try {
+    const { data: latest } = await supabase
+      .from('trips')
+      .select('id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latest?.id) {
+      return await fetchTripFromSupabase(latest.id);
+    }
+    return null;
+  } catch (err) {
+    console.error('fetchLatestTripFromSupabase error:', err);
+    return null;
+  }
+}
+
+export async function deleteTripFromSupabase(tripId: string): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+  try {
+    await supabase.from('settlements').delete().eq('trip_id', tripId);
+    await supabase.from('payments').delete().eq('trip_id', tripId);
+    await supabase.from('expenses').delete().eq('trip_id', tripId);
+    await supabase.from('collection_rounds').delete().eq('trip_id', tripId);
+    await supabase.from('members').delete().eq('trip_id', tripId);
+    await supabase.from('trips').delete().eq('id', tripId);
+    return true;
+  } catch (e) {
+    console.error('deleteTripFromSupabase error:', e);
+    return false;
+  }
+}
+
+export async function wipeAllDatabaseAndStorage(): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+  try {
+    await supabase.from('settlements').delete().neq('id', '___none___');
+    await supabase.from('payments').delete().neq('id', '___none___');
+    await supabase.from('expenses').delete().neq('id', '___none___');
+    await supabase.from('collection_rounds').delete().neq('id', '___none___');
+    await supabase.from('members').delete().neq('id', '___none___');
+    await supabase.from('trips').delete().neq('id', '___none___');
+    return true;
+  } catch (e) {
+    console.error('wipeAllDatabaseAndStorage error:', e);
+    return false;
+  }
+}
+
 export function subscribeToTripRealtime(tripId: string, onUpdate: () => void) {
   if (!supabase || !isSupabaseConfigured()) return () => {};
 

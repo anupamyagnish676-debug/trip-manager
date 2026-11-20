@@ -28,7 +28,8 @@ import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
   upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
   subscribeToTripRealtime, updateTripInSupabase, clearTripExpensesAndPayments,
-  upsertCollectionRoundToSupabase,
+  upsertCollectionRoundToSupabase, fetchLatestTripFromSupabase, deleteTripFromSupabase,
+  wipeAllDatabaseAndStorage,
 } from '@/lib/tripService';
 
 const CATEGORY_ICONS: Record<Category, string> = {
@@ -99,33 +100,41 @@ export default function TripFinancePortal() {
       reqId = localStorage.getItem('active_trip_id') || undefined;
     }
 
-    const tripId = reqId || INITIAL_TRIP.id;
-
     if (hasSupabase) {
       setIsCloudSyncing(true);
-      const cloudTrip = await fetchTripFromSupabase(tripId);
+      let cloudTrip = reqId ? await fetchTripFromSupabase(reqId) : null;
+      if (!cloudTrip) {
+        // Look for the latest trip in Supabase
+        cloudTrip = await fetchLatestTripFromSupabase();
+      }
+
       if (cloudTrip) {
         setTrip(cloudTrip);
-      } else {
         try {
-          const saved = localStorage.getItem(`trip_portal_${tripId}`);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            setTrip(parsed);
-            await seedTripToSupabase(parsed);
-          } else if (tripId === INITIAL_TRIP.id) {
-            await seedTripToSupabase(INITIAL_TRIP);
-            setTrip(INITIAL_TRIP);
-          }
+          localStorage.setItem('active_trip_id', cloudTrip.id);
+          localStorage.setItem(`trip_portal_${cloudTrip.id}`, JSON.stringify(cloudTrip));
         } catch {}
+      } else {
+        // Cloud has NO trips at all (or requested trip was deleted)!
+        // Do NOT re-upload stale deleted trips from localStorage!
+        try {
+          if (reqId) localStorage.removeItem(`trip_portal_${reqId}`);
+          localStorage.removeItem('active_trip_id');
+          localStorage.removeItem('trip_portal_clean_v1');
+          clearSession();
+        } catch {}
+        setSession(null);
+        setTrip(INITIAL_TRIP);
       }
       setIsCloudSyncing(false);
     } else {
       try {
+        const tripId = reqId || INITIAL_TRIP.id;
         const saved =
           localStorage.getItem(`trip_portal_${tripId}`) ||
           localStorage.getItem('trip_portal_clean_v1');
         if (saved) setTrip(JSON.parse(saved));
+        else setTrip(INITIAL_TRIP);
       } catch (e) { console.error(e); }
     }
   }, [hasSupabase]);
@@ -235,6 +244,24 @@ export default function TripFinancePortal() {
       const freshTrip: Trip = { ...trip, expenses: [], payments: [], settlements: [], collectionRounds: [] };
       saveTripState(freshTrip);
       if (hasSupabase) await clearTripExpensesAndPayments(trip.id);
+      setIsSettingsOpen(false);
+    }
+  };
+
+  const handleDeleteTrip = async () => {
+    if (!canManageFinance && !canManageTrip) return;
+    if (confirm(`Permanently delete "${trip.name}" and all data to start completely fresh?`)) {
+      if (hasSupabase) {
+        await deleteTripFromSupabase(trip.id);
+      }
+      try {
+        localStorage.removeItem(`trip_portal_${trip.id}`);
+        localStorage.removeItem('active_trip_id');
+        localStorage.removeItem('trip_portal_clean_v1');
+        clearSession();
+      } catch {}
+      setSession(null);
+      setTrip(INITIAL_TRIP);
       setIsSettingsOpen(false);
     }
   };
@@ -858,6 +885,7 @@ export default function TripFinancePortal() {
           trip={trip}
           onSaveTrip={handleSaveTripSettings}
           onClearAllData={handleClearAllData}
+          onDeleteTrip={handleDeleteTrip}
         />
       )}
 
