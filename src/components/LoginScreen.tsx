@@ -32,8 +32,15 @@ interface LoginScreenProps {
 
 export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: LoginScreenProps) {
   const [mode, setMode] = useState<'login' | 'create_trip' | 'find_trip'>(
-    trip.members.length === 0 ? 'create_trip' : 'login'
+    trip.members && trip.members.length > 0 ? 'login' : 'create_trip'
   );
+
+  // Keep mode in sync if trip loads with members
+  useEffect(() => {
+    if (trip.members && trip.members.length > 0) {
+      setMode('login');
+    }
+  }, [trip.id, trip.members.length]);
 
   // Login form state
   const [loginId, setLoginId] = useState('');
@@ -231,49 +238,6 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
             </>
           )}
         </div>
-
-        {/* Top 2 Primary Action Buttons: Create New Trip vs Join with Code */}
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
-          <button
-            type="button"
-            onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
-            className={`flex items-center justify-center gap-2 py-3 px-3 rounded-2xl text-xs font-bold border transition-all shadow-md ${
-              mode === 'create_trip'
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/60 ring-2 ring-emerald-400/30'
-                : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <PlusCircle className="h-4 w-4 text-emerald-400" />
-            <span>Create a New Trip</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
-            className={`flex items-center justify-center gap-2 py-3 px-3 rounded-2xl text-xs font-bold border transition-all shadow-md ${
-              mode === 'find_trip'
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-950/60 ring-2 ring-emerald-400/30'
-                : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Compass className="h-4 w-4 text-sky-400" />
-            <span>Join with Code</span>
-          </button>
-        </div>
-
-        {/* Option to return to Member Sign In if an active trip has members */}
-        {trip.members.length > 0 && mode !== 'login' && (
-          <div className="text-center mb-4">
-            <button
-              type="button"
-              onClick={() => { setMode('login'); setErrorMsg(''); }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 px-3.5 py-1 text-xs text-slate-300 hover:text-white hover:border-slate-600 transition-all"
-            >
-              <Users className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Already in <strong>{trip.name}</strong>? Member Sign In</span>
-              <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
-        )}
 
         {/* ── MODE 1: CREATE TRIP ── */}
         {mode === 'create_trip' && (
@@ -627,24 +591,27 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
               </button>
             </form>
 
-            {/* Bottom Actions */}
-            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
-              <button
-                type="button"
-                onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
-                className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition-colors"
-              >
-                <PlusCircle className="h-3.5 w-3.5" />
-                Create New Trip
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
-                className="text-slate-400 hover:text-white flex items-center gap-1 transition-colors"
-              >
-                <Compass className="h-3.5 w-3.5" />
-                Enter Trip Code
-              </button>
+            {/* Bottom Actions: Create New Trip & Join with Code */}
+            <div className="pt-3 border-t border-slate-800/80 space-y-2">
+              <p className="text-[11px] text-center text-slate-400">Starting a new trip or joining another group?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm active:scale-98"
+                >
+                  <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Create a New Trip</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm active:scale-98"
+                >
+                  <Compass className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Join with Code</span>
+                </button>
+              </div>
             </div>
 
             {/* Privacy Footnote */}

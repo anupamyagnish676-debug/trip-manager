@@ -40,6 +40,7 @@ export default function TripFinancePortal() {
   const [trip, setTrip] = useState<Trip>(INITIAL_TRIP);
   const [session, setSession] = useState<AppSession | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>('my_view');
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -118,6 +119,7 @@ export default function TripFinancePortal() {
         else setTrip(INITIAL_TRIP);
       } catch (e) { console.error(e); }
     }
+    setIsInitialLoading(false);
   }, [hasSupabase]);
 
   useEffect(() => {
@@ -220,7 +222,14 @@ export default function TripFinancePortal() {
     { key: 'members', label: 'Friends & Balances', icon: <Users className="h-4 w-4" />, count: trip.members.length },
   ];
 
-  if (!sessionChecked) return null;
+  if (!sessionChecked || isInitialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 flex flex-col items-center justify-center p-4">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent mb-3 shadow-lg" />
+        <p className="text-xs text-slate-400 font-medium tracking-wide">Loading trip portal...</p>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
