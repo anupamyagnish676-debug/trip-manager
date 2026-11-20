@@ -58,6 +58,15 @@ export default function TripFinancePortal() {
   // Active member (every member is equal)
   const currentMember = session ? trip.members.find((m) => m.id === session.memberId) : null;
 
+  // Check if current user is the trip creator / organizer
+  const isOrganizer = Boolean(
+    currentMember &&
+    (currentMember.id === trip.financeLeadId ||
+     currentMember.isFinanceLead ||
+     currentMember.role === 'finance_manager' ||
+     trip.members[0]?.id === currentMember.id)
+  );
+
   // ── Load session on mount ──
   useEffect(() => {
     const s = getSession();
@@ -563,6 +572,7 @@ export default function TripFinancePortal() {
         {activeTab === 'settle' && (
           <SettleUpTab
             trip={trip}
+            currentMember={currentMember}
             onUpdateSettlement={handleUpdateSettlement}
             onUpdateMemberUpi={handleUpdateMemberUpi}
           />
@@ -573,17 +583,21 @@ export default function TripFinancePortal() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">Trip Roster ({trip.members.length} Friends)</h3>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Trip Friends ({trip.members.length} Members)</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Live net balance status for each member
+                  {isOrganizer
+                    ? 'Full group roster & net balances (Organizer Access)'
+                    : 'Trip friend list & receiving payment methods'}
                 </p>
               </div>
-              <button
-                onClick={() => setIsGroupMembersOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3.5 py-1.5 text-xs font-bold shadow-sm hover:opacity-90 transition-all"
-              >
-                <Users className="h-3.5 w-3.5" /> + Manage Friends & UPI
-              </button>
+              {isOrganizer && (
+                <button
+                  onClick={() => setIsGroupMembersOpen(true)}
+                  className="flex items-center gap-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3.5 py-1.5 text-xs font-bold shadow-sm hover:opacity-90 transition-all"
+                >
+                  <Users className="h-3.5 w-3.5" /> + Manage Friends & UPI
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -591,11 +605,16 @@ export default function TripFinancePortal() {
                 const bal = balances.find((b) => b.member.id === member.id);
                 const net = bal?.netBalance || 0;
                 const isMe = member.id === currentMember?.id;
+                const canSeeFinancials = isOrganizer || isMe;
 
                 return (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                    className={`flex items-center justify-between gap-3 rounded-2xl border p-4 shadow-sm bg-white dark:bg-slate-900 ${
+                      isMe
+                        ? 'border-emerald-500/50 dark:border-emerald-500/40 ring-1 ring-emerald-500/20'
+                        : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`flex h-11 w-11 items-center justify-center rounded-2xl text-white font-black text-sm flex-shrink-0 shadow-sm ${member.avatarColor}`}>
@@ -616,29 +635,41 @@ export default function TripFinancePortal() {
                           <p className={`text-[11px] font-mono truncate ${member.upiId ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
                             {member.upiId || 'No UPI ID'}
                           </p>
-                          <button
-                            type="button"
-                            onClick={() => setIsGroupMembersOpen(true)}
-                            className="text-[10px] text-sky-500 hover:text-sky-400 font-semibold underline"
-                          >
-                            {member.upiId ? 'Edit' : 'Set UPI'}
-                          </button>
+                          {isOrganizer && (
+                            <button
+                              type="button"
+                              onClick={() => setIsGroupMembersOpen(true)}
+                              className="text-[10px] text-sky-500 hover:text-sky-400 font-semibold underline"
+                            >
+                              {member.upiId ? 'Edit' : 'Set UPI'}
+                            </button>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Paid: {formatMoney(bal?.totalDirectPaid || 0, trip.currency)}
-                        </p>
+                        {canSeeFinancials && (
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            Paid: {formatMoney(bal?.totalDirectPaid || 0, trip.currency)}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-xs font-black ${
-                        net > 0 ? 'text-emerald-600 dark:text-emerald-400' : net < 0 ? 'text-rose-500' : 'text-slate-400'
-                      }`}>
-                        {net > 0 ? `+${formatMoney(net, trip.currency)}` : net < 0 ? `-${formatMoney(Math.abs(net), trip.currency)}` : 'Settled'}
-                      </p>
-                      <p className="text-[10px] text-slate-400">
-                        {net > 0 ? 'is owed' : net < 0 ? 'owes' : 'balanced'}
-                      </p>
+                      {canSeeFinancials ? (
+                        <>
+                          <p className={`text-xs font-black ${
+                            net > 0 ? 'text-emerald-600 dark:text-emerald-400' : net < 0 ? 'text-rose-500' : 'text-slate-400'
+                          }`}>
+                            {net > 0 ? `+${formatMoney(net, trip.currency)}` : net < 0 ? `-${formatMoney(Math.abs(net), trip.currency)}` : 'Settled'}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {net > 0 ? 'is owed' : net < 0 ? 'owes' : 'balanced'}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
+                          Friend
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

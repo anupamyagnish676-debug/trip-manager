@@ -3,18 +3,19 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
 import { ArrowRight, CheckCircle2, QrCode, Smartphone, Sparkles, Check } from 'lucide-react';
-import { Trip, SettlementTransfer } from '@/types';
+import { Trip, SettlementTransfer, Member } from '@/types';
 import { calculateMemberBalances, simplifyDebts } from '@/lib/calculations';
 import { formatMoney } from '@/lib/currency';
 import { QRCodeModal } from '@/components/QRCodeModal';
 
 interface SettleUpTabProps {
   trip: Trip;
+  currentMember?: Member | null;
   onUpdateSettlement: (updatedSettlements: SettlementTransfer[]) => void;
   onUpdateMemberUpi?: (memberName: string, newUpi: string) => void;
 }
 
-export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: SettleUpTabProps) {
+export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateMemberUpi }: SettleUpTabProps) {
   const [selectedPayment, setSelectedPayment] = useState<{
     payeeUpi: string;
     payeeName: string;
@@ -22,9 +23,21 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
     note: string;
   } | null>(null);
 
+  const isOrganizer = Boolean(
+    !currentMember ||
+    currentMember.id === trip.financeLeadId ||
+    currentMember.isFinanceLead ||
+    currentMember.role === 'finance_manager' ||
+    trip.members[0]?.id === currentMember.id
+  );
+
   const balances = calculateMemberBalances(trip);
   // Compute optimized transfers
   const transfers = simplifyDebts(balances);
+
+  const visibleBalances = isOrganizer
+    ? balances
+    : balances.filter((b) => b.member.id === currentMember?.id);
 
   const handleMarkSettled = (transfer: SettlementTransfer) => {
     // Fire celebratory confetti!
@@ -201,22 +214,38 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
         )}
       </div>
 
-      {/* Complete Individual Net Balances (Actual Count of Friends) */}
+      {/* Individual Net Balances: Full Ledger for Organizer, Personal Summary for Members */}
       <div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
-          <span>👥</span> Individual Member Financial Ledger ({balances.length} Friends)
-        </h3>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>👥</span> {isOrganizer ? `Individual Member Financial Ledger (${balances.length} Friends)` : 'My Financial Summary'}
+          </h3>
+          {isOrganizer ? (
+            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <span>🛡️</span> Organizer View • Full Group Ledger
+            </span>
+          ) : (
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              Your personal spending & consumption in {trip.name}
+            </span>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {balances.map((b) => {
+          {visibleBalances.map((b) => {
             const isOwed = b.netBalance > 0;
             const isDebt = b.netBalance < 0;
             const isZero = Math.abs(b.netBalance) <= 0.99;
+            const isMe = b.member.id === currentMember?.id;
 
             return (
               <div
                 key={b.member.id}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                className={`rounded-2xl border bg-white p-4 shadow-sm dark:bg-slate-900 ${
+                  isMe
+                    ? 'border-emerald-500/50 dark:border-emerald-500/40 ring-1 ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -226,8 +255,13 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
                       {b.member.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                        {b.member.name}
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>{b.member.name}</span>
+                        {isMe && (
+                          <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[9px] font-bold px-1.5 py-0.2">
+                            You
+                          </span>
+                        )}
                       </h4>
                       <p className={`text-[10px] font-mono ${b.member.upiId ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
                         {b.member.upiId ? `UPI: ${b.member.upiId}` : 'No UPI set'}
@@ -271,6 +305,15 @@ export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: Set
             );
           })}
         </div>
+
+        {!isOrganizer && (
+          <div className="mt-3 rounded-xl bg-slate-100 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-3 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span className="text-base">🔒</span>
+            <span>
+              The full group financial ledger for all {balances.length} friends is only visible to the trip organizer.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Dynamic Payment QR Modal */}
