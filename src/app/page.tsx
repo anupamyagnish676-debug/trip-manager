@@ -26,6 +26,7 @@ import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
   deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
   subscribeToTripRealtime, updateTripInSupabase, clearTripExpensesAndPayments,
+  upsertCollectionRoundToSupabase,
 } from '@/lib/tripService';
 
 const CATEGORY_ICONS: Record<Category, string> = {
@@ -73,15 +74,11 @@ export default function TripFinancePortal() {
     setSessionChecked(true);
   }, []);
 
-  // After login, default to my_view for members, expenses for managers
+  // After login, everyone starts on My View (roles are additive, not exclusive)
   const handleLoggedIn = () => {
     const s = getSession();
     setSession(s);
-    if (s) {
-      const m = INITIAL_TRIP.members.find((m) => m.id === s.memberId);
-      const role = m?.role || 'member';
-      setActiveTab(isTripManager(role) ? 'expenses' : 'my_view');
-    }
+    setActiveTab('my_view');
   };
 
   // ── Load trip data ──
@@ -175,24 +172,38 @@ export default function TripFinancePortal() {
     }
   };
 
-  const handleAddRound = (round: CollectionRound) => {
+  const handleAddRound = async (round: CollectionRound) => {
     const updated: Trip = {
       ...trip,
       collectionRounds: [...(trip.collectionRounds || []), round],
     };
     saveTripState(updated);
+    if (hasSupabase) {
+      await upsertCollectionRoundToSupabase(round);
+    }
   };
 
-  const handleUpdateRoundStatus = (roundId: string, memberId: string, status: 'paid' | 'pending' | 'partial') => {
+  const handleUpdateRoundStatus = async (
+    roundId: string,
+    memberId: string,
+    status: 'paid' | 'pending' | 'partial'
+  ) => {
+    const updatedRounds = (trip.collectionRounds || []).map((r) =>
+      r.id === roundId
+        ? { ...r, memberStatus: { ...r.memberStatus, [memberId]: status } }
+        : r
+    );
     const updated: Trip = {
       ...trip,
-      collectionRounds: (trip.collectionRounds || []).map((r) =>
-        r.id === roundId
-          ? { ...r, memberStatus: { ...r.memberStatus, [memberId]: status } }
-          : r
-      ),
+      collectionRounds: updatedRounds,
     };
     saveTripState(updated);
+    if (hasSupabase) {
+      const targetRound = updatedRounds.find((r) => r.id === roundId);
+      if (targetRound) {
+        await upsertCollectionRoundToSupabase(targetRound);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -201,14 +212,16 @@ export default function TripFinancePortal() {
     setActiveTab('my_view');
   };
 
-  // ── Tab definitions (filtered by role) ──
+  // ── Tab definitions ──
+  // My View is always visible — Finance Manager and Trip Manager are ALSO people/members
+  // Additional tabs unlock for Trip Managers and above
   const allTabs: { key: TabKey; label: string; icon: React.ReactNode; count?: number; managerOnly?: boolean }[] = [
-    { key: 'my_view', label: 'My View', icon: <Users className="h-4 w-4" /> },
-    { key: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },
-    { key: 'settle', label: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
-    { key: 'collections', label: 'Collections', icon: <Bell className="h-4 w-4 text-amber-500" />, count: (trip.collectionRounds || []).length },
-    { key: 'qr_capture', label: 'QR & Payments', icon: <QrCode className="h-4 w-4 text-teal-500" />, count: trip.payments.length, managerOnly: true },
-    { key: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, count: trip.members.length, managerOnly: true },
+    { key: 'my_view', label: 'My View', icon: <Users className="h-4 w-4" /> },             // ALL roles
+    { key: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },  // ALL roles
+    { key: 'settle', label: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },                // ALL roles
+    { key: 'collections', label: 'Collections', icon: <Bell className="h-4 w-4 text-amber-500" />, count: (trip.collectionRounds || []).length }, // ALL roles
+    { key: 'qr_capture', label: 'QR & Payments', icon: <QrCode className="h-4 w-4 text-teal-500" />, count: trip.payments.length, managerOnly: true }, // managers
+    { key: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, count: trip.members.length, managerOnly: true }, // managers
   ];
 
   const visibleTabs = allTabs.filter((t) => !t.managerOnly || canManageTrip);
@@ -310,8 +323,8 @@ export default function TripFinancePortal() {
 
       {/* ── MAIN ── */}
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 space-y-5">
-        {/* Pot Card — only for managers */}
-        {canManageTrip && (
+        {/* Pot Card — for trip managers and finance managers as the group overview */}
+        {canManageTrip && activeTab !== 'my_view' && (
           <PotCard
             trip={trip}
             onOpenQR={() => setIsLeadQrOpen(true)}
@@ -353,7 +366,17 @@ export default function TripFinancePortal() {
 
         {/* MY VIEW */}
         {activeTab === 'my_view' && currentMember && (
-          <MemberView trip={trip} currentMember={currentMember} />
+          <MemberView
+            trip={trip}
+            currentMember={currentMember}
+            onOpenQR={(payeeUpi, payeeName, amount, note) =>
+              setCustomQrModal({ payeeUpi, payeeName, amount, note })
+            }
+            onPaymentCaptured={handlePaymentCaptured}
+            onUpdateRoundStatus={handleUpdateRoundStatus}
+            onUpdateSettlement={handleUpdateSettlement}
+            onOpenAddExpense={() => setIsAddExpenseOpen(true)}
+          />
         )}
 
         {/* EXPENSES */}
@@ -434,8 +457,13 @@ export default function TripFinancePortal() {
           <CollectionRoundsTab
             trip={trip}
             canManage={canManageTrip}
+            currentMember={currentMember || undefined}
             onAddRound={handleAddRound}
             onUpdateRoundStatus={handleUpdateRoundStatus}
+            onOpenQR={(payeeUpi, payeeName, amount, note) =>
+              setCustomQrModal({ payeeUpi, payeeName, amount, note })
+            }
+            onPaymentCaptured={handlePaymentCaptured}
           />
         )}
 
