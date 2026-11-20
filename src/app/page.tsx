@@ -245,10 +245,10 @@ export default function TripFinancePortal() {
 
   // ── Universal Tabs (Identical for ALL members) ──
   const allTabs: { key: TabKey; label: string; mobileLabel: string; icon: React.ReactNode; count?: number }[] = [
-    { key: 'my_view', label: 'My Overview & Dues', mobileLabel: 'Overview', icon: <User className="h-4 w-4" /> },
+    { key: 'my_view', label: 'Overview', mobileLabel: 'Overview', icon: <User className="h-4 w-4" /> },
     { key: 'expenses', label: 'Trip Bills', mobileLabel: 'Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },
-    { key: 'settle', label: 'Group Settlement Matrix', mobileLabel: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
-    { key: 'members', label: 'Friends & Balances', mobileLabel: 'Friends', icon: <Users className="h-4 w-4" />, count: trip.members.length },
+    { key: 'settle', label: 'Settle Up', mobileLabel: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
+    { key: 'members', label: 'Friends', mobileLabel: 'Friends', icon: <Users className="h-4 w-4" />, count: trip.members.length },
   ];
 
   if (!sessionChecked || isInitialLoading) {
@@ -418,39 +418,50 @@ export default function TripFinancePortal() {
             </div>
           </div>
         </div>
+
+        {/* Integrated Desktop & Tablet Navigation Bar */}
+        <div className="hidden sm:block border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 backdrop-blur-md">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
+            <nav className="flex space-x-1 py-1.5 overflow-x-auto">
+              {allTabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <span className={isActive ? 'text-emerald-400 dark:text-emerald-600' : 'text-slate-400'}>
+                      {tab.icon}
+                    </span>
+                    <span>{tab.label}</span>
+                    {tab.count !== undefined && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        isActive
+                          ? 'bg-white/20 text-white dark:bg-black/20 dark:text-slate-900'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="hidden md:flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <span>Total Spend: <strong className="text-slate-900 dark:text-white font-bold">{formatMoney(totalTripSpend, trip.currency)}</strong></span>
+            </div>
+          </div>
+        </div>
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
       <main className="mx-auto max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 pb-28 sm:pb-8">
-        {/* Navigation Tabs (Desktop only: hidden on mobile, replaced by bottom bar) */}
-        <div className="hidden sm:flex items-center border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
-          <nav className="flex space-x-1.5 py-1 flex-1 min-w-0">
-            {allTabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition-all whitespace-nowrap flex-shrink-0 ${
-                  activeTab === tab.key
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-md scale-[1.01]'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-                {tab.count !== undefined && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                    activeTab === tab.key
-                      ? 'bg-white/20 text-white dark:bg-black/20 dark:text-slate-900'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-
         {/* ── TAB 1: MY OVERVIEW & DUES ── */}
         {activeTab === 'my_view' && currentMember && (
           <MemberView
