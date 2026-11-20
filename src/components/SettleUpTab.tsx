@@ -60,12 +60,12 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
                 ✨ Min-Cash-Flow Algorithm
               </span>
               <span className="text-xs text-slate-300">
-                10-Member Automatic Debt Simplifier
+                {trip.members.length}-Member Automatic Debt Simplifier
               </span>
             </div>
             <h2 className="mt-2 text-2xl font-black">Trip Settlement Dashboard</h2>
             <p className="text-xs text-slate-300 mt-1 max-w-xl">
-              All 10 members spent money across different meals, hotels, fuel, and activities. The algorithm eliminated all intermediate cross-debts down to the minimum direct payments below:
+              All {trip.members.length} members spent money across different meals, hotels, fuel, and activities. The algorithm eliminated all intermediate cross-debts down to the minimum direct payments below:
             </p>
           </div>
 
@@ -74,7 +74,9 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
             <p className="text-3xl font-black text-emerald-400">
               {transfers.length} <span className="text-sm font-normal text-slate-300">transfers total</span>
             </p>
-            <span className="text-[11px] text-slate-400">Reduced from 45 possible cross-debts</span>
+            <span className="text-[11px] text-slate-400">
+              Reduced from {Math.round((trip.members.length * (trip.members.length - 1)) / 2)} possible cross-debts
+            </span>
           </div>
         </div>
       </div>
@@ -89,7 +91,7 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
           <div className="rounded-2xl border border-dashed border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-8 text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500 mb-2" />
             <h4 className="text-base font-bold text-slate-900 dark:text-white">
-              All 10 Friends Are 100% Settled!
+              All {trip.members.length} Members Are 100% Settled!
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Nobody owes anyone anything. The trip finances are completely squared away.

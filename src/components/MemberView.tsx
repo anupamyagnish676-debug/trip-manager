@@ -21,11 +21,17 @@ import {
   Sparkles,
   Receipt,
   ArrowRight,
+  Download,
+  FileText,
+  Mail,
+  Share2,
+  Wallet,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Member, Trip, CollectionRound, PaymentCapture, SettlementTransfer, MemberRole } from '@/types';
-import { calculateMemberBalances, simplifyDebts, generateUpiUrl } from '@/lib/calculations';
+import { calculateMemberBalances, simplifyDebts, generateUpiUrl, calculatePotSummary } from '@/lib/calculations';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
+import { downloadPaymentReceipt, getReceiptNotificationPayload, ReceiptData } from '@/lib/pdfReceipt';
 
 interface MemberViewProps {
   trip: Trip;
@@ -52,6 +58,7 @@ export function MemberView({
   const [utrNumber, setUtrNumber] = useState<string>('');
 
   const balances = calculateMemberBalances(trip);
+  const potSummary = calculatePotSummary(trip);
   const myBalance = balances.find((b) => b.member.id === currentMember.id);
   const settlements = simplifyDebts(balances);
 
@@ -209,6 +216,53 @@ export function MemberView({
             Add Bill
           </button>
         )}
+      </div>
+
+      {/* ── CENTRAL GROUP TREASURY (KITTY) TRANSPARENT BAR ── */}
+      <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 p-5 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2.5 py-0.5 text-[10px] font-bold text-emerald-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Central Group Treasury (Kitty) • Live Status
+            </div>
+            <p className="text-[11px] text-slate-300 font-medium mt-2">Available Treasury Funds</p>
+            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white mt-0.5">
+              {formatMoney(potSummary.balance, trip.currency)}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-400 mt-1">
+              <span>Total Collected: <strong className="text-emerald-400">{formatMoney(potSummary.totalDeposited, trip.currency)}</strong></span>
+              <span>•</span>
+              <span>Spent from Pot: <strong className="text-rose-400">{formatMoney(potSummary.totalSpent, trip.currency)}</strong></span>
+              <span>•</span>
+              <span>Treasurer: <strong className="text-slate-200">{financeLead.name}</strong></span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap sm:flex-col gap-2">
+            {onOpenAddExpense && (
+              <button
+                type="button"
+                onClick={onOpenAddExpense}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md active:scale-95 transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add / Split Bill</span>
+              </button>
+            )}
+
+            {financeLead.upiId && onOpenQR && (
+              <button
+                type="button"
+                onClick={() => onOpenQR(financeLead.upiId!, financeLead.name, 0, `Kitty deposit by ${currentMember.name}`)}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 text-xs font-bold text-white shadow-sm active:scale-95 transition-all backdrop-blur-sm"
+              >
+                <QrCode className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Pay to Treasury</span>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── PERSONAL BALANCE HERO CARD ── */}
@@ -577,6 +631,109 @@ export function MemberView({
           </p>
         </div>
       )}
+
+      {/* ── MY CONTRIBUTIONS & OFFICIAL PDF RECEIPTS ── */}
+      <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-emerald-600" />
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+              My Treasury Deposits & Official Receipts ({myPaymentHistory.length})
+            </h4>
+          </div>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            Total Credited: {formatMoney(totalIContributed, trip.currency)}
+          </span>
+        </div>
+
+        {myPaymentHistory.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-6 text-center text-xs text-slate-400">
+            No deposits recorded yet. When you transfer funds to the Finance Manager, your official verified PDF receipts will appear here.
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {myPaymentHistory.map((p) => {
+              const recNum = p.receiptNumber || `REC-${p.id.slice(-6).toUpperCase()}`;
+              const targetRound = trip.collectionRounds?.find((r) => r.id === p.collectionRoundId);
+
+              const receiptData: ReceiptData = {
+                receiptNumber: recNum,
+                tripName: trip.name,
+                destination: trip.destination,
+                currency: trip.currency || 'INR',
+                memberName: currentMember.name,
+                memberEmail: p.memberEmail || currentMember.email,
+                memberPhone: currentMember.phone,
+                amount: p.amount,
+                paymentMode: p.paymentMode || 'upi',
+                referenceOrUtr: p.utr || 'Verified',
+                date: new Date(p.timestamp).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+                financeLeadName: p.verifiedBy || financeLead.name,
+                collectionRoundTitle: targetRound?.title || 'Group Treasury Deposit',
+                potBalanceAfter: potSummary.balance,
+                notes: p.notes,
+              };
+
+              const notif = getReceiptNotificationPayload(receiptData);
+
+              return (
+                <div
+                  key={p.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold text-xs">
+                      {p.paymentMode === 'cash' ? '💵' : p.paymentMode === 'bank_transfer' ? '🏦' : '⚡'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                          {recNum}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.2 text-[9px] font-bold">
+                          <CheckCircle2 className="h-2.5 w-2.5" /> VERIFIED & CREDITED
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {new Date(p.timestamp).toLocaleDateString()} • {p.paymentMode?.toUpperCase() || 'UPI'} • Ref: {p.utr || 'Direct'}
+                        {targetRound ? ` • ${targetRound.title}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-700">
+                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                      +{formatMoney(p.amount, trip.currency)}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => downloadPaymentReceipt(receiptData)}
+                        className="flex items-center gap-1 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 px-2.5 py-1.5 text-[11px] font-bold shadow-sm transition-all active:scale-95"
+                        title="Download official signed PDF payment slip"
+                      >
+                        <Download className="h-3 w-3" />
+                        <span>PDF Slip</span>
+                      </button>
+
+                      <a
+                        href={notif.mailtoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        title="Email receipt slip"
+                      >
+                        <Mail className="h-3.5 w-3.5 text-sky-500" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── MY EXPENSE FEED (Collapsible) ── */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">

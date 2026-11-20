@@ -166,9 +166,27 @@ export default function TripFinancePortal() {
   };
 
   const handlePaymentCaptured = async (newPay: PaymentCapture) => {
-    const updated = { ...trip, payments: [newPay, ...trip.payments] };
+    let updatedRounds = trip.collectionRounds;
+    if (newPay.collectionRoundId && newPay.matchedMemberId && trip.collectionRounds) {
+      updatedRounds = trip.collectionRounds.map((r) =>
+        r.id === newPay.collectionRoundId
+          ? { ...r, memberStatus: { ...r.memberStatus, [newPay.matchedMemberId!]: 'paid' } }
+          : r
+      );
+    }
+    const updated = {
+      ...trip,
+      payments: [newPay, ...trip.payments],
+      collectionRounds: updatedRounds,
+    };
     saveTripState(updated);
-    if (hasSupabase) await insertPaymentToSupabase(newPay);
+    if (hasSupabase) {
+      await insertPaymentToSupabase(newPay);
+      if (newPay.collectionRoundId && updatedRounds) {
+        const roundToSync = updatedRounds.find((r) => r.id === newPay.collectionRoundId);
+        if (roundToSync) await upsertCollectionRoundToSupabase(roundToSync);
+      }
+    }
   };
 
   const handleUpdateSettlement = async (updatedSettlements: SettlementTransfer[]) => {
@@ -414,10 +432,11 @@ export default function TripFinancePortal() {
 
       {/* ── MAIN ── */}
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 space-y-5">
-        {/* Pot Card — for trip managers and finance managers as the group overview */}
-        {canManageTrip && activeTab !== 'my_view' && (
+        {/* Pot Card — Group Treasury Overview visible on shared group tabs for everyone */}
+        {activeTab !== 'my_view' && (
           <PotCard
             trip={trip}
+            canManageFinance={canManageFinance}
             onOpenQR={() => setIsLeadQrOpen(true)}
             onOpenCapture={() => setIsCaptureOpen(true)}
             onOpenAddExpense={() => setIsAddExpenseOpen(true)}
@@ -726,10 +745,9 @@ export default function TripFinancePortal() {
       <PaymentCaptureModal
         isOpen={isCaptureOpen}
         onClose={() => setIsCaptureOpen(false)}
-        members={trip.members}
+        trip={trip}
         onPaymentCaptured={handlePaymentCaptured}
         financeLeadUpi={financeLead.upiId || trip.paymentMethods?.upiId || 'treasury@upi'}
-        tripId={trip.id}
       />
 
       <WhatsAppExportModal

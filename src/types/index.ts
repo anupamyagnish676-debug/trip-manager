@@ -24,6 +24,7 @@ export interface Member {
   loginId: string; // Manually assigned by Trip Manager
   password: string; // Manually assigned by Trip Manager
   role: MemberRole; // finance_manager | trip_manager | member
+  email?: string;
   specialty?: TripSpecialty; // Member duty: transport, stay, food, activities, photos
   upiId?: string;
   phone?: string;
@@ -68,6 +69,11 @@ export interface PaymentCapture {
   status: 'verified' | 'unassigned' | 'rejected';
   addedToPot: boolean;
   collectionRoundId?: string; // which round this belongs to
+  paymentMode?: 'upi' | 'cash' | 'bank_transfer' | 'paypal' | 'venmo' | 'other';
+  receiptNumber?: string;
+  memberEmail?: string;
+  notes?: string;
+  verifiedBy?: string;
 }
 
 export interface SettlementTransfer {

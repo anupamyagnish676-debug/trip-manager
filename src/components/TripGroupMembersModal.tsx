@@ -55,6 +55,7 @@ export function TripGroupMembersModal({
 
   // New member inputs
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
@@ -89,6 +90,7 @@ export function TripGroupMembersModal({
       password: trimmedPass,
       role,
       specialty,
+      email: email.trim() || undefined,
       phone: phone.trim() || undefined,
       upiId: upiId.trim() || undefined,
       avatarColor: AVATAR_PALETTE[members.length % AVATAR_PALETTE.length],
@@ -101,6 +103,7 @@ export function TripGroupMembersModal({
 
     // Reset form
     setName('');
+    setEmail('');
     setPhone('');
     setLoginId('');
     setPassword('');
@@ -214,6 +217,34 @@ export function TripGroupMembersModal({
                   placeholder="e.g. 9876543210"
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Email (for PDF Payment Slips)
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. rahul@example.com"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Member Role
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as MemberRole)}
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white"
+                >
+                  <option value="member">General Group Member</option>
+                  <option value="finance_manager">Finance Manager (FM - Treasury & Slips)</option>
+                  <option value="trip_manager">Trip Manager (TM - Onboarding & Admin)</option>
+                </select>
               </div>
 
               <div>

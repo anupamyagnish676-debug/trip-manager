@@ -11,6 +11,7 @@ interface PotCardProps {
   onOpenQR: () => void;
   onOpenCapture: () => void;
   onOpenAddExpense: () => void;
+  canManageFinance?: boolean;
 }
 
 export function PotCard({
@@ -18,6 +19,7 @@ export function PotCard({
   onOpenQR,
   onOpenCapture,
   onOpenAddExpense,
+  canManageFinance = false,
 }: PotCardProps) {
   const pot = calculatePotSummary(trip);
   const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0] || { name: 'Finance Lead', upiId: '' };
@@ -62,14 +64,25 @@ export function PotCard({
               Show Finance Lead QR
             </button>
 
-            <button
-              type="button"
-              onClick={onOpenCapture}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/30 hover:bg-emerald-500/40 border border-emerald-400/40 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition-all backdrop-blur-sm"
-            >
-              <Sparkles className="h-4 w-4 text-emerald-300" />
-              Capture / Record Payment
-            </button>
+            {canManageFinance ? (
+              <button
+                type="button"
+                onClick={onOpenCapture}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/30 hover:bg-emerald-500/40 border border-emerald-400/40 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition-all backdrop-blur-sm"
+              >
+                <Sparkles className="h-4 w-4 text-emerald-300" />
+                Record Payment & Issue Slip
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenAddExpense}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/30 hover:bg-emerald-500/40 border border-emerald-400/40 px-4 py-2.5 text-xs font-bold text-white shadow-md active:scale-95 transition-all backdrop-blur-sm"
+              >
+                <Plus className="h-4 w-4 text-emerald-300" />
+                Add / Split Group Bill
+              </button>
+            )}
           </div>
         </div>
 
