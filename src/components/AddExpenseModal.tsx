@@ -89,6 +89,12 @@ export function AddExpenseModal({
 
   const totalAmount = parseFloat(amount) || 0;
 
+  const allocatedTotal = Object.values(customAmounts).reduce(
+    (sum, val) => sum + (parseFloat(val) || 0),
+    0
+  );
+  const remainingToAllocate = Math.round((totalAmount - allocatedTotal) * 100) / 100;
+
   const toggleMemberSelection = (id: string) => {
     if (selectedMemberIds.includes(id)) {
       if (selectedMemberIds.length > 1) {
@@ -331,22 +337,45 @@ export function AddExpenseModal({
           )}
 
           {splitMode === 'custom' && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-48 overflow-y-auto space-y-2">
-              {members.map((m) => (
-                <div key={m.id} className="flex items-center justify-between text-xs gap-2">
-                  <span className="text-slate-700 dark:text-slate-300 truncate w-36">{m.name}</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400">{currSym}</span>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={customAmounts[m.id] || ''}
-                      onChange={(e) => handleCustomAmountChange(m.id, e.target.value)}
-                      className="w-24 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-right text-xs"
-                    />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] px-1 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-slate-600 dark:text-slate-300">
+                  Allocated: <strong className="text-slate-900 dark:text-white">{formatMoney(allocatedTotal, currency)}</strong> of {formatMoney(totalAmount, currency)}
+                </span>
+                <span className={`font-bold ${
+                  Math.abs(remainingToAllocate) < 0.01
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : remainingToAllocate > 0
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                }`}>
+                  {Math.abs(remainingToAllocate) < 0.01
+                    ? '✅ Exactly Matched'
+                    : remainingToAllocate > 0
+                    ? `${formatMoney(remainingToAllocate, currency)} remaining`
+                    : `${formatMoney(Math.abs(remainingToAllocate), currency)} over bill`}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-48 overflow-y-auto space-y-2">
+                {members.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between text-xs gap-2">
+                    <span className="text-slate-700 dark:text-slate-300 truncate w-36 font-medium">{m.name}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400">{currSym}</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        step="any"
+                        value={customAmounts[m.id] || ''}
+                        onChange={(e) => handleCustomAmountChange(m.id, e.target.value)}
+                        className="w-24 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-right text-xs bg-white dark:bg-slate-900 font-bold"
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
