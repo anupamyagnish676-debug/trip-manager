@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Wallet,
   Receipt,
@@ -17,6 +17,9 @@ import {
   ArrowRight,
   TrendingDown,
   RotateCcw,
+  Database,
+  Cloud,
+  CloudOff,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -27,6 +30,16 @@ import { SettleUpTab } from '@/components/SettleUpTab';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { WhatsAppExportModal } from '@/components/WhatsAppExportModal';
 import { calculatePotSummary, calculateMemberBalances } from '@/lib/calculations';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import {
+  fetchTripFromSupabase,
+  seedTripToSupabase,
+  insertExpenseToSupabase,
+  deleteExpenseFromSupabase,
+  insertPaymentToSupabase,
+  saveSettlementToSupabase,
+  subscribeToTripRealtime,
+} from '@/lib/tripService';
 
 const CATEGORY_ICONS: Record<Category, string> = {
   food: '🍽️',
@@ -47,6 +60,7 @@ export default function TripFinanceApp() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isLeadQrOpen, setIsLeadQrOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(4000);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [customQrModal, setCustomQrModal] = useState<{
     payeeUpi: string;
     payeeName: string;
@@ -54,19 +68,47 @@ export default function TripFinanceApp() {
     note?: string;
   } | null>(null);
 
-  // Load from LocalStorage if available
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('trip_split_data_v1');
-      if (saved) {
-        setTrip(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
+  const hasSupabase = isSupabaseConfigured();
 
-  // Save to LocalStorage on changes
+  // Load from Supabase or fallback to LocalStorage
+  const loadTripData = useCallback(async () => {
+    if (hasSupabase) {
+      setIsCloudSyncing(true);
+      const cloudTrip = await fetchTripFromSupabase(INITIAL_TRIP.id);
+      if (cloudTrip) {
+        setTrip(cloudTrip);
+      } else {
+        // First time initialization in Supabase
+        await seedTripToSupabase(INITIAL_TRIP);
+        setTrip(INITIAL_TRIP);
+      }
+      setIsCloudSyncing(false);
+    } else {
+      // LocalStorage fallback
+      try {
+        const saved = localStorage.getItem('trip_split_data_v1');
+        if (saved) {
+          setTrip(JSON.parse(saved));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [hasSupabase]);
+
+  useEffect(() => {
+    loadTripData();
+
+    // Subscribe to Supabase Realtime changes
+    if (hasSupabase) {
+      const unsubscribe = subscribeToTripRealtime(INITIAL_TRIP.id, () => {
+        loadTripData();
+      });
+      return () => unsubscribe();
+    }
+  }, [loadTripData, hasSupabase]);
+
+  // Save to LocalStorage & Supabase
   const saveTripState = (updated: Trip) => {
     setTrip(updated);
     try {
@@ -81,42 +123,61 @@ export default function TripFinanceApp() {
   const potSummary = calculatePotSummary(trip);
   const totalTripSpend = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  const handleAddExpense = (newExp: Expense) => {
+  const handleAddExpense = async (newExp: Expense) => {
     const updated: Trip = {
       ...trip,
       expenses: [newExp, ...trip.expenses],
     };
     saveTripState(updated);
+    if (hasSupabase) {
+      await insertExpenseToSupabase(newExp);
+    }
   };
 
-  const handleDeleteExpense = (id: string) => {
+  const handleDeleteExpense = async (id: string) => {
     const updated: Trip = {
       ...trip,
       expenses: trip.expenses.filter((e) => e.id !== id),
     };
     saveTripState(updated);
+    if (hasSupabase) {
+      await deleteExpenseFromSupabase(id);
+    }
   };
 
-  const handlePaymentCaptured = (newPay: PaymentCapture) => {
+  const handlePaymentCaptured = async (newPay: PaymentCapture) => {
     const updated: Trip = {
       ...trip,
       payments: [newPay, ...trip.payments],
     };
     saveTripState(updated);
+    if (hasSupabase) {
+      await insertPaymentToSupabase(newPay);
+    }
   };
 
-  const handleUpdateSettlement = (updatedSettlements: SettlementTransfer[]) => {
+  const handleUpdateSettlement = async (updatedSettlements: SettlementTransfer[]) => {
     const updated: Trip = {
       ...trip,
       settlements: updatedSettlements,
     };
     saveTripState(updated);
+
+    if (hasSupabase) {
+      const latest = updatedSettlements[updatedSettlements.length - 1];
+      if (latest) {
+        await saveSettlementToSupabase(trip.id, latest);
+      }
+    }
   };
 
-  const handleResetData = () => {
+  const handleResetData = async () => {
     if (confirm('Reset trip data back to original 10-member demo?')) {
       localStorage.removeItem('trip_split_data_v1');
       setTrip(INITIAL_TRIP);
+      if (hasSupabase) {
+        await seedTripToSupabase(INITIAL_TRIP);
+      }
     }
   };
 
@@ -134,9 +195,15 @@ export default function TripFinanceApp() {
                 <h1 className="text-base font-extrabold text-slate-900 dark:text-white sm:text-lg">
                   TripSplit UPI
                 </h1>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                  Finance Lead Mode
-                </span>
+                {hasSupabase ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    <Cloud className="h-2.5 w-2.5 text-emerald-600" /> Supabase Realtime
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                    <CloudOff className="h-2.5 w-2.5 text-amber-600" /> Local Mode (Supabase Ready)
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                 <MapPin className="h-3 w-3 text-emerald-500" /> {trip.destination} • {trip.members.length} Friends

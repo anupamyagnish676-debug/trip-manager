@@ -1,20 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseSmsPayment } from '@/lib/calculations';
-import { Member } from '@/types';
+import { Member, PaymentCapture } from '@/types';
+import { insertPaymentToSupabase } from '@/lib/tripService';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { rawMessage, amount, sender, utr, members } = body;
+    const { rawMessage, amount, sender, utr, members, tripId } = body;
 
     const memberList: Member[] = members || [];
+    const targetTripId = tripId || 'manali-winter-2026';
 
     if (rawMessage) {
       // Parse raw notification or SMS
       const parsed = parseSmsPayment(rawMessage, memberList);
+
+      if (parsed.amount && parsed.amount > 0) {
+        const paymentRecord: PaymentCapture = {
+          id: `pay-${Date.now()}`,
+          tripId: targetTripId,
+          senderName: parsed.senderName || 'UPI Friend',
+          amount: parsed.amount,
+          utr: parsed.utr || `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
+          timestamp: new Date().toISOString(),
+          rawText: rawMessage,
+          matchedMemberId: parsed.matchedMemberId,
+          status: 'verified',
+          addedToPot: true,
+        };
+
+        // Persist to Supabase if configured
+        await insertPaymentToSupabase(paymentRecord);
+
+        return NextResponse.json({
+          success: true,
+          source: 'sms_parser',
+          payment: paymentRecord,
+        });
+      }
+
       return NextResponse.json({
         success: true,
-        source: 'sms_parser',
+        source: 'sms_parser_unmatched',
         data: parsed,
       });
     }
@@ -31,15 +58,24 @@ export async function POST(req: NextRequest) {
         matchedMemberId = found?.id;
       }
 
+      const paymentRecord: PaymentCapture = {
+        id: `pay-${Date.now()}`,
+        tripId: targetTripId,
+        senderName: sender || 'UPI Sender',
+        amount: parseFloat(amount),
+        utr: utr || `UTR${Date.now().toString().slice(-8)}`,
+        timestamp: new Date().toISOString(),
+        matchedMemberId,
+        status: 'verified',
+        addedToPot: true,
+      };
+
+      await insertPaymentToSupabase(paymentRecord);
+
       return NextResponse.json({
         success: true,
         source: 'structured',
-        data: {
-          amount: parseFloat(amount),
-          senderName: sender || 'Unknown',
-          utr: utr || `UTR${Date.now().toString().slice(-8)}`,
-          matchedMemberId,
-        },
+        payment: paymentRecord,
       });
     }
 
