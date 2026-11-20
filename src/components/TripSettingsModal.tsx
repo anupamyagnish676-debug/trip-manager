@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, RefreshCw, Sparkles, Check, Trash2, Plus } from 'lucide-react';
+import { X, RefreshCw, Sparkles, Check, Trash2, Plus, Upload, QrCode as QrIcon } from 'lucide-react';
 import { Trip, Member } from '@/types';
 
 interface TripSettingsModalProps {
@@ -24,13 +24,33 @@ export function TripSettingsModal({
   const [members, setMembers] = useState<Member[]>(trip.members);
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberUpi, setNewMemberUpi] = useState('');
+  const [customQrImage, setCustomQrImage] = useState<string>(
+    trip.financeLeadCustomQrImage || ''
+  );
 
   if (!isOpen) return null;
+
+  const financeLead = members.find((m) => m.isFinanceLead) || members[0];
 
   const handleUpdateMember = (id: string, field: 'name' | 'upiId' | 'phone', val: string) => {
     setMembers((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: val } : m))
     );
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Please choose an image under 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCustomQrImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleAddMember = () => {
@@ -71,6 +91,7 @@ export function TripSettingsModal({
       ...trip,
       name: tripName.trim() || 'My Vacation Trip',
       destination: destination.trim() || 'Vacation',
+      financeLeadCustomQrImage: customQrImage || undefined,
       members,
     };
     onSaveTrip(updated);
@@ -88,13 +109,86 @@ export function TripSettingsModal({
         </button>
 
         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span>⚙️</span> Trip Settings & Friends Roster
+          <span>⚙️</span> Trip Settings & QR Configuration
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Customize your real trip name, destination, and the real names of your friends
+          Set your real receiving UPI ID and optionally upload a screenshot of your official bank QR
         </p>
 
-        {/* Trip Info Inputs */}
+        {/* 1. Finance Lead Receiving QR & UPI ID Section */}
+        <div className="mt-4 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wide">
+              <QrIcon className="h-4 w-4" /> Money Receiving Details (Your QR)
+            </h4>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+              Finance Lead
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Your Real UPI ID (VPA) *
+              </label>
+              <input
+                type="text"
+                value={financeLead.upiId || ''}
+                onChange={(e) => handleUpdateMember(financeLead.id, 'upiId', e.target.value)}
+                placeholder="e.g. yourname@oksbi or 9876543210@paytm"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Any dynamic QR generated will pay directly into this UPI ID.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Upload Real QR Screenshot (Optional)
+              </label>
+              <div className="flex items-center gap-2">
+                <label className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-750 transition-all">
+                  <Upload className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="truncate">
+                    {customQrImage ? 'Change QR Image' : 'Pick Screenshot'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+                {customQrImage && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomQrImage('')}
+                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl"
+                    title="Remove custom QR"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {customQrImage && (
+                <div className="mt-2 flex items-center gap-2">
+                  <img
+                    src={customQrImage}
+                    alt="Preview"
+                    className="h-10 w-10 rounded-lg object-cover border border-slate-300"
+                  />
+                  <span className="text-[10px] text-emerald-600 font-bold">
+                    ✓ Custom Bank QR Active
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Trip Info Inputs */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
@@ -122,12 +216,12 @@ export function TripSettingsModal({
           </div>
         </div>
 
-        {/* Members List */}
+        {/* 3. Members List */}
         <div className="mt-4">
           <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
             Trip Members ({members.length} friends):
           </label>
-          <div className="max-h-52 overflow-y-auto space-y-2 rounded-xl border border-slate-200 dark:border-slate-800 p-2.5 bg-slate-50 dark:bg-slate-950">
+          <div className="max-h-44 overflow-y-auto space-y-2 rounded-xl border border-slate-200 dark:border-slate-800 p-2.5 bg-slate-50 dark:bg-slate-950">
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-2 text-xs">
                 <div
@@ -187,7 +281,7 @@ export function TripSettingsModal({
           </div>
         </div>
 
-        {/* Clear Data / Wipe Demo Section */}
+        {/* 4. Clear Data / Wipe Demo Section */}
         <div className="mt-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 p-3.5 flex items-center justify-between">
           <div>
             <h4 className="text-xs font-bold text-rose-800 dark:text-rose-300">
@@ -206,14 +300,14 @@ export function TripSettingsModal({
           </button>
         </div>
 
-        {/* Save button */}
+        {/* 5. Save button */}
         <div className="mt-5">
           <button
             type="button"
             onClick={handleSave}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 text-xs font-bold shadow-md transition-all active:scale-95"
           >
-            <Check className="h-4 w-4" /> Save Trip & Members
+            <Check className="h-4 w-4" /> Save Settings & Update QR
           </button>
         </div>
       </div>

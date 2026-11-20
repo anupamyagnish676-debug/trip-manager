@@ -76,6 +76,7 @@ export interface Trip {
   startDate: string;
   endDate: string;
   financeLeadId: string; // Member who is the treasurer
+  financeLeadCustomQrImage?: string; // Optional uploaded screenshot of actual PhonePe/GPay QR
   members: Member[];
   expenses: Expense[];
   payments: PaymentCapture[];

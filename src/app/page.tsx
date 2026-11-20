@@ -687,6 +687,7 @@ export default function TripFinanceApp() {
         amount={depositAmount}
         note="TripPotDeposit"
         title="Central Trip Pot Deposit QR"
+        customQrImage={trip.financeLeadCustomQrImage}
       />
 
       <TripSettingsModal
