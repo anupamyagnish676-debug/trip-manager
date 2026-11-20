@@ -807,6 +807,17 @@ export default function TripFinancePortal() {
         note="TripPotDeposit"
         title="Central Trip Pot Deposit QR"
         customQrImage={trip.financeLeadCustomQrImage}
+        onSaveUpi={canManageFinance ? (newUpi) => {
+          const updatedMembers = trip.members.map((m) =>
+            m.id === financeLead.id ? { ...m, upiId: newUpi } : m
+          );
+          const updatedTrip: Trip = {
+            ...trip,
+            paymentMethods: { ...trip.paymentMethods, upiId: newUpi },
+            members: updatedMembers,
+          };
+          saveTripState(updatedTrip);
+        } : undefined}
       />
 
       {canManageFinance && (

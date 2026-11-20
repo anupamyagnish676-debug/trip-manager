@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { X, Copy, ExternalLink, Check, Smartphone, Image as ImageIcon, QrCode as QrIcon } from 'lucide-react';
+import { X, Copy, ExternalLink, Check, Smartphone, Image as ImageIcon, QrCode as QrIcon, Edit3 } from 'lucide-react';
 import { generateUpiUrl } from '@/lib/calculations';
 
 interface QRCodeModalProps {
@@ -14,6 +14,7 @@ interface QRCodeModalProps {
   note?: string;
   title?: string;
   customQrImage?: string;
+  onSaveUpi?: (newUpi: string) => void;
 }
 
 export function QRCodeModal({
@@ -25,15 +26,24 @@ export function QRCodeModal({
   note,
   title = 'Scan & Pay via UPI',
   customQrImage,
+  onSaveUpi,
 }: QRCodeModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [editedUpi, setEditedUpi] = useState(payeeUpi);
   const [viewMode, setViewMode] = useState<'custom' | 'dynamic'>(
     customQrImage ? 'custom' : 'dynamic'
   );
 
+  useEffect(() => {
+    setEditedUpi(payeeUpi);
+  }, [payeeUpi]);
+
+  const effectiveUpi = isEditingUpi ? editedUpi : payeeUpi;
+
   const upiUrl = generateUpiUrl({
-    upiId: payeeUpi,
+    upiId: effectiveUpi,
     payeeName,
     amount,
     note: note || 'TripSplit Settlement',
@@ -129,20 +139,73 @@ export function QRCodeModal({
             )}
           </div>
 
-          {/* UPI ID Copy Box */}
-          <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700">
-            <div className="text-left text-xs">
-              <p className="text-slate-400">Receiving UPI ID</p>
-              <p className="font-mono font-medium text-slate-700 dark:text-slate-200">{payeeUpi}</p>
+          {/* UPI ID Box / Editor */}
+          {isEditingUpi ? (
+            <div className="rounded-xl bg-slate-50 p-3 border border-emerald-300 dark:bg-slate-800/80 dark:border-emerald-800 space-y-2 text-left">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                Enter your real UPI ID (Google Pay / PhonePe / Paytm):
+              </label>
+              <input
+                type="text"
+                value={editedUpi}
+                onChange={(e) => setEditedUpi(e.target.value)}
+                placeholder="e.g. yourname@okaxis or 9876543210@ybl"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-1.5 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <div className="flex justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingUpi(false);
+                    setEditedUpi(payeeUpi);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editedUpi.trim() && onSaveUpi) {
+                      onSaveUpi(editedUpi.trim());
+                    }
+                    setIsEditingUpi(false);
+                  }}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-sm"
+                >
+                  Save UPI ID
+                </button>
+              </div>
             </div>
-            <button
-              onClick={copyUpi}
-              className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700">
+              <div className="text-left text-xs">
+                <p className="text-slate-400">Receiving UPI ID</p>
+                <p className="font-mono font-medium text-slate-700 dark:text-slate-200">{payeeUpi}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {onSaveUpi && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingUpi(true)}
+                    className="flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400"
+                    title="Change this UPI ID to your real account"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span>Change</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={copyUpi}
+                  className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Mobile Direct Pay Buttons */}
           <div className="mt-4 space-y-2">
