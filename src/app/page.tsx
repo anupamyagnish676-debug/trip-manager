@@ -213,18 +213,25 @@ export default function TripFinancePortal() {
   };
 
   // ── Tab definitions ──
-  // My View is always visible — Finance Manager and Trip Manager are ALSO people/members
-  // Additional tabs unlock for Trip Managers and above
+  // Strict Member Isolation: General members ONLY see their personal portal & group bills.
+  // Group-wide debt matrix, collection roster, bank SMS feeds & member balances are restricted to Managers.
   const allTabs: { key: TabKey; label: string; icon: React.ReactNode; count?: number; managerOnly?: boolean }[] = [
-    { key: 'my_view', label: 'My View', icon: <Users className="h-4 w-4" /> },             // ALL roles
-    { key: 'expenses', label: 'Expenses', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },  // ALL roles
-    { key: 'settle', label: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },                // ALL roles
-    { key: 'collections', label: 'Collections', icon: <Bell className="h-4 w-4 text-amber-500" />, count: (trip.collectionRounds || []).length }, // ALL roles
-    { key: 'qr_capture', label: 'QR & Payments', icon: <QrCode className="h-4 w-4 text-teal-500" />, count: trip.payments.length, managerOnly: true }, // managers
-    { key: 'members', label: 'Members', icon: <Users className="h-4 w-4" />, count: trip.members.length, managerOnly: true }, // managers
+    { key: 'my_view', label: 'My Portal', icon: <Users className="h-4 w-4" /> }, // ALL roles (strictly isolated to personal details)
+    { key: 'expenses', label: 'Trip Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length }, // ALL roles (view & add expenses)
+    { key: 'settle', label: 'Settle Up Matrix', icon: <Scale className="h-4 w-4 text-emerald-500" />, managerOnly: true }, // MANAGER ONLY
+    { key: 'collections', label: 'Collection Manager', icon: <Bell className="h-4 w-4 text-amber-500" />, count: (trip.collectionRounds || []).length, managerOnly: true }, // MANAGER ONLY
+    { key: 'qr_capture', label: 'QR & Inbound Bank Feed', icon: <QrCode className="h-4 w-4 text-teal-500" />, count: trip.payments.length, managerOnly: true }, // MANAGER ONLY
+    { key: 'members', label: 'All Friends & Net Balances', icon: <Users className="h-4 w-4" />, count: trip.members.length, managerOnly: true }, // MANAGER ONLY
   ];
 
   const visibleTabs = allTabs.filter((t) => !t.managerOnly || canManageTrip);
+
+  // Security guard: ensure general member is locked to personal tabs only
+  useEffect(() => {
+    if (sessionChecked && !canManageTrip && activeTab !== 'my_view' && activeTab !== 'expenses') {
+      setActiveTab('my_view');
+    }
+  }, [sessionChecked, canManageTrip, activeTab]);
 
   if (!sessionChecked) return null;
 
@@ -261,24 +268,34 @@ export default function TripFinancePortal() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {/* Export */}
-            <button onClick={() => setIsExportOpen(true)}
-              className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-slate-700 dark:text-slate-200">
-              <Share2 className="h-3.5 w-3.5" /> WhatsApp
-            </button>
+            {/* Export (Trip Managers & Finance Lead only) */}
+            {canManageTrip && (
+              <button
+                onClick={() => setIsExportOpen(true)}
+                className="hidden sm:flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-slate-700 dark:text-slate-200"
+              >
+                <Share2 className="h-3.5 w-3.5" /> WhatsApp
+              </button>
+            )}
 
-            {/* Capture (all roles) */}
-            <button onClick={() => setIsCaptureOpen(true)}
-              className="flex items-center gap-1 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1.5 text-xs font-bold transition-all">
-              <Sparkles className="h-3.5 w-3.5 text-teal-500" />
-              <span className="hidden sm:inline">UPI</span>
-            </button>
+            {/* Inbound Simulator (Finance Lead only) */}
+            {canManageFinance && (
+              <button
+                onClick={() => setIsCaptureOpen(true)}
+                className="flex items-center gap-1 rounded-xl bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 px-2.5 py-1.5 text-xs font-bold transition-all"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-teal-500" />
+                <span className="hidden sm:inline">UPI Simulator</span>
+              </button>
+            )}
 
-            {/* Add expense (all roles) */}
-            <button onClick={() => setIsAddExpenseOpen(true)}
-              className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-md transition-all active:scale-95">
+            {/* Add expense (available to all members) */}
+            <button
+              onClick={() => setIsAddExpenseOpen(true)}
+              className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white shadow-md transition-all active:scale-95"
+            >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Add</span>
+              <span className="hidden sm:inline">Add Expense</span>
             </button>
 
             {/* Identity chip */}

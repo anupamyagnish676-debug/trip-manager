@@ -19,6 +19,7 @@ export interface Member {
   isFinanceLead?: boolean;
   role?: MemberRole; // finance_manager | trip_manager | member
   joinCode?: string; // unique code for self-onboarding
+  pin?: string; // 4-digit security PIN for role-based access
 }
 
 export type SplitType = 'equal' | 'exact' | 'shares';
