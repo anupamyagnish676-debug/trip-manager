@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Plus, Users, Wallet, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Users, Wallet, Tag, Edit3 } from 'lucide-react';
 import { Member, Category, Expense, SplitType } from '@/types';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 
@@ -10,6 +10,8 @@ interface AddExpenseModalProps {
   onClose: () => void;
   members: Member[];
   onAddExpense: (expense: Expense) => void;
+  onUpdateExpense?: (expense: Expense) => void;
+  expenseToEdit?: Expense | null;
   potBalance: number;
   tripId?: string;
   currency?: string;
@@ -31,6 +33,8 @@ export function AddExpenseModal({
   onClose,
   members,
   onAddExpense,
+  onUpdateExpense,
+  expenseToEdit,
   potBalance,
   tripId,
   currency,
@@ -47,6 +51,39 @@ export function AddExpenseModal({
   const [notes, setNotes] = useState('');
 
   const currSym = getCurrencySymbol(currency);
+
+  useEffect(() => {
+    if (expenseToEdit) {
+      setTitle(expenseToEdit.title);
+      setAmount(expenseToEdit.amount.toString());
+      setCategory(expenseToEdit.category);
+      setPaidBy(expenseToEdit.paidBy);
+      setNotes(expenseToEdit.notes || '');
+      if (expenseToEdit.splitType === 'exact') {
+        setSplitMode('custom');
+        const custom: Record<string, string> = {};
+        expenseToEdit.splits.forEach((s) => {
+          custom[s.memberId] = s.amount.toString();
+        });
+        setCustomAmounts(custom);
+      } else if (expenseToEdit.splits.length === members.length) {
+        setSplitMode('all');
+        setSelectedMemberIds(members.map((m) => m.id));
+      } else {
+        setSplitMode('subset');
+        setSelectedMemberIds(expenseToEdit.splits.map((s) => s.memberId));
+      }
+    } else {
+      setTitle('');
+      setAmount('');
+      setCategory('food');
+      setPaidBy('POT');
+      setSplitMode('all');
+      setSelectedMemberIds(members.map((m) => m.id));
+      setCustomAmounts({});
+      setNotes('');
+    }
+  }, [expenseToEdit, isOpen, members]);
 
   if (!isOpen) return null;
 
@@ -92,20 +129,24 @@ export function AddExpenseModal({
         .filter((s) => s.amount > 0);
     }
 
-    const newExpense: Expense = {
-      id: `exp-${Date.now()}`,
+    const finalExpense: Expense = {
+      id: expenseToEdit ? expenseToEdit.id : `exp-${Date.now()}`,
       tripId: tripId || 'trip_default',
       title: title.trim(),
       amount: totalAmount,
       category,
       paidBy,
-      paidAt: new Date().toISOString().split('T')[0],
+      paidAt: expenseToEdit ? expenseToEdit.paidAt : new Date().toISOString().split('T')[0],
       splitType,
       splits,
       notes: notes.trim() || undefined,
     };
 
-    onAddExpense(newExpense);
+    if (expenseToEdit && onUpdateExpense) {
+      onUpdateExpense(finalExpense);
+    } else {
+      onAddExpense(finalExpense);
+    }
     onClose();
   };
 
@@ -120,10 +161,12 @@ export function AddExpenseModal({
         </button>
 
         <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span>➕</span> Log New Trip Expense
+          <span>{expenseToEdit ? '✏️' : '➕'}</span> {expenseToEdit ? 'Edit Trip Expense' : 'Log New Trip Expense'}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Record any expense paid by the pot or any of the 10 members
+          {expenseToEdit
+            ? 'Adjust who paid (Kitty or individual friend), amount, or split breakdown'
+            : 'Record any expense paid by the pot or any friend'}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -333,8 +376,8 @@ export function AddExpenseModal({
               disabled={totalAmount <= 0 || !title.trim()}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-98"
             >
-              <Plus className="h-4 w-4" />
-              Save Expense & Update Balances
+              {expenseToEdit ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {expenseToEdit ? 'Save Changes & Recalculate' : 'Save Expense & Update Balances'}
             </button>
           </div>
         </form>

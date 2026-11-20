@@ -236,6 +236,16 @@ export async function insertExpenseToSupabase(expense: Expense): Promise<boolean
   return !error;
 }
 
+export async function upsertExpenseToSupabase(expense: Expense): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+  const { error } = await supabase.from('expenses').upsert({
+    id: expense.id, trip_id: expense.tripId, title: expense.title,
+    amount: expense.amount, category: expense.category, paid_by: expense.paidBy,
+    paid_at: expense.paidAt, split_type: expense.splitType, splits: expense.splits, notes: expense.notes,
+  });
+  return !error;
+}
+
 export async function deleteExpenseFromSupabase(id: string): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
   const { error } = await supabase.from('expenses').delete().eq('id', id);

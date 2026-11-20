@@ -5,7 +5,7 @@ import {
   Wallet, Receipt, Scale, QrCode, Users, Plus, Sparkles, Share2,
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
-  Briefcase, Bell, ChevronDown, Menu, X, Compass,
+  Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, MemberRole, CollectionRound, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -26,7 +26,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { getSession, saveSession, clearSession, isFinanceManager, isTripManager } from '@/lib/session';
 import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
-  deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
+  upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
   subscribeToTripRealtime, updateTripInSupabase, clearTripExpensesAndPayments,
   upsertCollectionRoundToSupabase,
 } from '@/lib/tripService';
@@ -50,6 +50,7 @@ export default function TripFinancePortal() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('my_view');
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [isCaptureOpen, setIsCaptureOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isLeadQrOpen, setIsLeadQrOpen] = useState(false);
@@ -161,8 +162,18 @@ export default function TripFinancePortal() {
     if (hasSupabase) await insertExpenseToSupabase(newExp);
   };
 
+  const handleUpdateExpense = async (updatedExp: Expense) => {
+    const updated = {
+      ...trip,
+      expenses: trip.expenses.map((e) => (e.id === updatedExp.id ? updatedExp : e)),
+    };
+    saveTripState(updated);
+    if (hasSupabase) await upsertExpenseToSupabase(updatedExp);
+    setEditingExpense(null);
+  };
+
   const handleDeleteExpense = async (id: string) => {
-    if (!canManageTrip) return;
+    if (!canManageTrip && !canManageFinance) return;
     const updated = { ...trip, expenses: trip.expenses.filter((e) => e.id !== id) };
     saveTripState(updated);
     if (hasSupabase) await deleteExpenseFromSupabase(id);
@@ -541,7 +552,7 @@ export default function TripFinancePortal() {
                   Total: <strong>{formatMoney(totalTripSpend, trip.currency)}</strong> across {trip.expenses.length} bills
                 </p>
               </div>
-              <button onClick={() => setIsAddExpenseOpen(true)}
+              <button onClick={() => { setEditingExpense(null); setIsAddExpenseOpen(true); }}
                 className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-all">
                 <Plus className="h-3.5 w-3.5" /> Add Expense
               </button>
@@ -580,11 +591,26 @@ export default function TripFinancePortal() {
                         <span className="text-base font-black text-slate-900 dark:text-white">{formatMoney(exp.amount, trip.currency)}</span>
                         <p className="text-[10px] text-slate-400">{exp.paidAt}</p>
                       </div>
-                      {canManageTrip && (
-                        <button onClick={() => handleDeleteExpense(exp.id)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition-all">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      {(canManageTrip || canManageFinance) && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              setEditingExpense(exp);
+                              setIsAddExpenseOpen(true);
+                            }}
+                            title="Edit Bill (Who Paid, Amount, Splits)"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-all"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteExpense(exp.id)}
+                            title="Delete Bill"
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -776,9 +802,14 @@ export default function TripFinancePortal() {
       {/* MODALS */}
       <AddExpenseModal
         isOpen={isAddExpenseOpen}
-        onClose={() => setIsAddExpenseOpen(false)}
+        onClose={() => {
+          setIsAddExpenseOpen(false);
+          setEditingExpense(null);
+        }}
         members={trip.members}
         onAddExpense={handleAddExpense}
+        onUpdateExpense={handleUpdateExpense}
+        expenseToEdit={editingExpense}
         potBalance={potSummary.balance}
         tripId={trip.id}
         currency={trip.currency}
