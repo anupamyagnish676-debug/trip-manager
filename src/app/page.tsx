@@ -244,21 +244,60 @@ export default function TripFinancePortal() {
     memberId: string,
     status: 'paid' | 'pending' | 'partial'
   ) => {
+    const targetRound = (trip.collectionRounds || []).find((r) => r.id === roundId);
+    const targetMember = trip.members.find((m) => m.id === memberId);
+
     const updatedRounds = (trip.collectionRounds || []).map((r) =>
       r.id === roundId
         ? { ...r, memberStatus: { ...r.memberStatus, [memberId]: status } }
         : r
     );
+
+    let updatedPayments = [...(trip.payments || [])];
+
+    if (status === 'paid' && targetRound && targetMember) {
+      const existingPay = updatedPayments.find(
+        (p) => p.collectionRoundId === roundId && p.matchedMemberId === memberId
+      );
+      if (!existingPay) {
+        const year = new Date().getFullYear();
+        const randNum = Math.floor(1000 + Math.random() * 9000);
+        const autoPayment: PaymentCapture = {
+          id: `pay-${roundId}-${memberId}`,
+          tripId: trip.id,
+          senderName: targetMember.name,
+          amount: targetRound.targetPerPerson,
+          utr: `ROUND-${targetRound.title.slice(0, 4).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
+          timestamp: new Date().toISOString(),
+          rawText: `Collection payment for "${targetRound.title}" by ${targetMember.name}`,
+          matchedMemberId: memberId,
+          status: 'verified',
+          addedToPot: true,
+          collectionRoundId: roundId,
+          receiptNumber: `REC-${year}-${randNum}`,
+          verifiedBy: financeLead.name,
+        };
+        updatedPayments = [autoPayment, ...updatedPayments];
+        if (hasSupabase) {
+          insertPaymentToSupabase(autoPayment).catch((e) => console.error(e));
+        }
+      }
+    } else if (status !== 'paid') {
+      updatedPayments = updatedPayments.filter(
+        (p) => !(p.collectionRoundId === roundId && p.matchedMemberId === memberId)
+      );
+    }
+
     const updated: Trip = {
       ...trip,
       collectionRounds: updatedRounds,
+      payments: updatedPayments,
     };
+
     saveTripState(updated);
     if (hasSupabase) {
-      const targetRound = updatedRounds.find((r) => r.id === roundId);
-      if (targetRound) {
-        await upsertCollectionRoundToSupabase(targetRound);
-      }
+      const roundToSync = updatedRounds.find((r) => r.id === roundId);
+      if (roundToSync) await upsertCollectionRoundToSupabase(roundToSync);
     }
   };
 

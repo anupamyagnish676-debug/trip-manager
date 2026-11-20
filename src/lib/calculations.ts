@@ -45,6 +45,27 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
     }
   });
 
+  // Also reconcile collection rounds marked as 'paid' by Finance Manager
+  (trip.collectionRounds || []).forEach((round) => {
+    Object.entries(round.memberStatus || {}).forEach(([memberId, status]) => {
+      if (status === 'paid') {
+        const alreadyCountedInPayments = trip.payments.some(
+          (p) =>
+            p.collectionRoundId === round.id &&
+            p.matchedMemberId === memberId &&
+            p.status === 'verified' &&
+            p.addedToPot
+        );
+        if (!alreadyCountedInPayments) {
+          const current = balanceMap.get(memberId);
+          if (current) {
+            current.depositedToPot += round.targetPerPerson;
+          }
+        }
+      }
+    });
+  });
+
   // 2. Process Expenses
   trip.expenses.forEach((expense) => {
     const isFromPot = expense.paidBy === 'POT';
@@ -117,11 +138,30 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
  * - balance: deposited - spent
  */
 export function calculatePotSummary(trip: Trip) {
-  const totalDeposited = trip.payments
-    .filter((p) => p.status === 'verified' && p.addedToPot)
-    .reduce((sum, p) => sum + p.amount, 0);
+  const verifiedPayments = (trip.payments || []).filter(
+    (p) => p.status === 'verified' && p.addedToPot
+  );
 
-  const totalSpent = trip.expenses
+  const directDeposits = verifiedPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  // Reconcile collection rounds marked as 'paid' that are not yet standalone payment objects
+  let unrecordedRoundDeposits = 0;
+  (trip.collectionRounds || []).forEach((round) => {
+    Object.entries(round.memberStatus || {}).forEach(([memberId, status]) => {
+      if (status === 'paid') {
+        const alreadyCountedInPayments = verifiedPayments.some(
+          (p) => p.collectionRoundId === round.id && p.matchedMemberId === memberId
+        );
+        if (!alreadyCountedInPayments) {
+          unrecordedRoundDeposits += round.targetPerPerson;
+        }
+      }
+    });
+  });
+
+  const totalDeposited = directDeposits + unrecordedRoundDeposits;
+
+  const totalSpent = (trip.expenses || [])
     .filter((e) => e.paidBy === 'POT')
     .reduce((sum, e) => sum + e.amount, 0);
 
