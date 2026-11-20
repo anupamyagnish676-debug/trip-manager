@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseSmsPayment } from '@/lib/calculations';
 import { Member, PaymentCapture } from '@/types';
-import { insertPaymentToSupabase } from '@/lib/tripService';
+import { insertPaymentToSupabase, fetchTripFromSupabase } from '@/lib/tripService';
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,35 +23,64 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { rawMessage, amount, sender, utr, members, tripId } = body;
 
-    const memberList: Member[] = members || [];
     const targetTripId = tripId || 'manali-winter-2026';
+    let memberList: Member[] = members || [];
+
+    // If members not passed in payload, fetch from Supabase
+    if (memberList.length === 0) {
+      const trip = await fetchTripFromSupabase(targetTripId);
+      if (trip) {
+        memberList = trip.members;
+      }
+    }
 
     if (rawMessage) {
       // Parse raw notification or SMS
       const parsed = parseSmsPayment(rawMessage, memberList);
 
       if (parsed.amount && parsed.amount > 0) {
+        // STRICT SAFETY CHECK: Did this payment match a real trip friend?
+        const isFriendMatched = Boolean(parsed.matchedMemberId);
+        const containsTripNote = /trip|pot|settle|manali|kasol|vacation/i.test(rawMessage);
+
+        // If neither the friend's name nor a trip keyword is in the message,
+        // it is an unrelated personal payment (e.g. salary, family, shop refund).
+        // We do NOT add it to the trip pot!
+        const isTripRelated = isFriendMatched || containsTripNote;
+
         const paymentRecord: PaymentCapture = {
           id: `pay-${Date.now()}`,
           tripId: targetTripId,
-          senderName: parsed.senderName || 'UPI Friend',
+          senderName: parsed.senderName || 'External Sender',
           amount: parsed.amount,
           utr: parsed.utr || `${Math.floor(100000000000 + Math.random() * 900000000000)}`,
           timestamp: new Date().toISOString(),
           rawText: rawMessage,
           matchedMemberId: parsed.matchedMemberId,
-          status: 'verified',
-          addedToPot: true,
+          // Only verified and added to pot if it actually belongs to a friend!
+          status: isFriendMatched ? 'verified' : 'unassigned',
+          addedToPot: isTripRelated && isFriendMatched,
         };
 
-        // Persist to Supabase if configured
-        await insertPaymentToSupabase(paymentRecord);
-
-        return NextResponse.json({
-          success: true,
-          source: 'sms_parser',
-          payment: paymentRecord,
-        });
+        if (isTripRelated) {
+          // Persist to Supabase
+          await insertPaymentToSupabase(paymentRecord);
+          return NextResponse.json({
+            success: true,
+            source: 'sms_parser',
+            payment: paymentRecord,
+            creditedToPot: paymentRecord.addedToPot,
+          });
+        } else {
+          // Completely ignore unrelated personal/salary credits
+          return NextResponse.json({
+            success: true,
+            ignored: true,
+            reason: 'Ignored: Sender is not a trip friend and does not contain trip keywords',
+            sender: parsed.senderName,
+            amount: parsed.amount,
+          });
+        }
       }
 
       return NextResponse.json({
@@ -73,6 +102,8 @@ export async function POST(req: NextRequest) {
         matchedMemberId = found?.id;
       }
 
+      const isFriendMatched = Boolean(matchedMemberId);
+
       const paymentRecord: PaymentCapture = {
         id: `pay-${Date.now()}`,
         tripId: targetTripId,
@@ -81,16 +112,19 @@ export async function POST(req: NextRequest) {
         utr: utr || `UTR${Date.now().toString().slice(-8)}`,
         timestamp: new Date().toISOString(),
         matchedMemberId,
-        status: 'verified',
-        addedToPot: true,
+        status: isFriendMatched ? 'verified' : 'unassigned',
+        addedToPot: isFriendMatched,
       };
 
-      await insertPaymentToSupabase(paymentRecord);
+      if (isFriendMatched) {
+        await insertPaymentToSupabase(paymentRecord);
+      }
 
       return NextResponse.json({
         success: true,
         source: 'structured',
         payment: paymentRecord,
+        creditedToPot: isFriendMatched,
       });
     }
 
