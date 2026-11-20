@@ -12,11 +12,14 @@ import {
   Share2,
   ChevronDown,
   ChevronUp,
+  FileText,
+  Download,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Member, Trip, SettlementTransfer } from '@/types';
 import { calculateMemberBalances, simplifyDebts, generateUpiUrl } from '@/lib/calculations';
 import { formatMoney } from '@/lib/currency';
+import { downloadExpenseInvoice, downloadMemberStatement } from '@/lib/pdfReceipt';
 
 interface MemberViewProps {
   trip: Trip;
@@ -333,25 +336,36 @@ export function MemberView({
 
       {/* ── MY EXPENSE FEED (Collapsible) ── */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowHistory((v) => !v)}
-          className="w-full flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-emerald-500" />
+        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-3 border-b border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
+          >
+            <Receipt className="h-4 w-4 text-emerald-500 flex-shrink-0" />
             <span className="text-sm font-bold text-slate-900 dark:text-white">
               My Trip Expense Breakdown ({myExpenses.length} bills)
             </span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span>{showHistory ? 'Collapse' : 'Expand'}</span>
-            {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </div>
-        </button>
+            <span className="text-xs text-slate-400 ml-1 inline-flex items-center">
+              {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </span>
+          </button>
+
+          {myExpenses.length > 0 && (
+            <button
+              type="button"
+              onClick={() => downloadMemberStatement(trip, currentMember)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 text-xs font-bold transition-all border border-emerald-200 dark:border-emerald-800 shadow-sm active:scale-95"
+              title="Download Full Personal Expense Statement (PDF)"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download Statement (PDF)</span>
+            </button>
+          )}
+        </div>
 
         {showHistory && (
-          <div className="border-t border-slate-100 dark:border-slate-800 p-5 space-y-2.5">
+          <div className="p-5 space-y-3">
             {myExpenses.length === 0 ? (
               <p className="text-center text-xs text-slate-400 py-3">
                 No bills recorded with your share yet. Click &ldquo;Add Bill / Expense&rdquo; above!
@@ -365,18 +379,32 @@ export function MemberView({
                 return (
                   <div
                     key={exp.id}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                   >
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white">{exp.title}</p>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{exp.title}</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">
-                        {isPayer ? 'You paid' : `Paid by ${payer.name}`} • Bill: {formatMoney(exp.amount, trip.currency)}
+                        {isPayer ? 'You paid' : `Paid by ${payer.name}`} • Bill: <strong className="text-slate-700 dark:text-slate-300 font-bold">{formatMoney(exp.amount, trip.currency)}</strong>
                       </p>
                     </div>
-                    <div className="text-right">
-                      <span className="font-black text-slate-800 dark:text-slate-200">
-                        My share: {formatMoney(mySplit?.amount || 0, trip.currency)}
-                      </span>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
+                      <div className="text-left sm:text-right">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">My Share</span>
+                        <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                          {formatMoney(mySplit?.amount || 0, trip.currency)}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => downloadExpenseInvoice(trip, exp, currentMember)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold shadow-sm transition-all active:scale-95 flex-shrink-0"
+                        title="Download Official PDF Invoice Slip"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Download Invoice Slip</span>
+                      </button>
                     </div>
                   </div>
                 );

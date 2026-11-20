@@ -6,7 +6,7 @@ import {
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
-  TrendingUp,
+  TrendingUp, FileText,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -22,6 +22,7 @@ import { MemberView } from '@/components/MemberView';
 import { calculateMemberBalances } from '@/lib/calculations';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getSession, saveSession, clearSession } from '@/lib/session';
+import { downloadExpenseInvoice } from '@/lib/pdfReceipt';
 import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
   upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
@@ -527,8 +528,18 @@ export default function TripFinancePortal() {
                         <p className="text-[10px] text-slate-400">{exp.paidAt}</p>
                       </div>
 
-                      {/* Edit and Delete accessible to all friends */}
-                      <div className="flex items-center gap-1">
+                      {/* Actions: Download PDF Invoice Slip, Edit and Delete */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => downloadExpenseInvoice(trip, exp, currentMember || undefined)}
+                          title="Download Official PDF Invoice Slip"
+                          className="flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95"
+                        >
+                          <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Invoice Slip</span>
+                        </button>
+
                         <button
                           onClick={() => {
                             setEditingExpense(exp);
