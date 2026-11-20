@@ -12,12 +12,9 @@ import {
   Shield,
   Briefcase,
   Share2,
-  Car,
-  Hotel,
-  UtensilsCrossed,
-  Compass,
-  Camera,
   UserPlus,
+  Edit2,
+  Save,
 } from 'lucide-react';
 import { Trip, Member, MemberRole, TripSpecialty } from '@/types';
 
@@ -52,6 +49,15 @@ export function TripGroupMembersModal({
   const [members, setMembers] = useState<Member[]>(trip.members);
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    phone: string;
+    loginId: string;
+    password: string;
+    upiId: string;
+  }>({ name: '', phone: '', loginId: '', password: '', upiId: '' });
+  const [savedSuccessId, setSavedSuccessId] = useState<string | null>(null);
 
   // New member inputs
   const [name, setName] = useState('');
@@ -117,6 +123,42 @@ export function TripGroupMembersModal({
     const updated = members.map((m) => (m.id === id ? { ...m, [field]: val } : m));
     setMembers(updated);
     onSaveMembers(updated);
+  };
+
+  const handleStartEdit = (m: Member) => {
+    setEditingMemberId(m.id);
+    setEditForm({
+      name: m.name,
+      phone: m.phone || '',
+      loginId: m.loginId,
+      password: m.password,
+      upiId: m.upiId || '',
+    });
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if (!editForm.name.trim() || !editForm.loginId.trim() || !editForm.password.trim()) {
+      alert('Name, Login ID, and Password cannot be empty.');
+      return;
+    }
+
+    const updated = members.map((m) =>
+      m.id === id
+        ? {
+            ...m,
+            name: editForm.name.trim(),
+            phone: editForm.phone.trim() || undefined,
+            loginId: editForm.loginId.trim().toLowerCase(),
+            password: editForm.password.trim(),
+            upiId: editForm.upiId.trim() || undefined,
+          }
+        : m
+    );
+    setMembers(updated);
+    onSaveMembers(updated);
+    setEditingMemberId(null);
+    setSavedSuccessId(id);
+    setTimeout(() => setSavedSuccessId(null), 2500);
   };
 
   const handleDeleteMember = (id: string) => {
@@ -340,103 +382,187 @@ export function TripGroupMembersModal({
           </form>
         )}
 
-        {/* Members Roster with Credentials */}
+        {/* Members Roster with Edit Mode */}
         <div className="max-h-96 overflow-y-auto space-y-3 pr-1">
           {members.map((member) => {
             const isCopied = copiedId === member.id;
-            const spec = SPECIALTY_OPTIONS.find((s) => s.value === member.specialty) || SPECIALTY_OPTIONS[5];
+            const isEditing = editingMemberId === member.id;
 
             return (
               <div
                 key={member.id}
-                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 space-y-2.5"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3.5 space-y-3"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl text-white font-extrabold text-xs shadow-sm ${member.avatarColor}`}
-                    >
-                      {member.name.slice(0, 2).toUpperCase()}
+                {isEditing ? (
+                  <div className="rounded-xl border border-sky-300 dark:border-sky-800 bg-sky-50/60 dark:bg-sky-950/40 p-3.5 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-sky-200 dark:border-sky-900/60">
+                      <h5 className="text-xs font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
+                        <Edit2 className="h-3.5 w-3.5 text-sky-500" />
+                        <span>Edit Details for {member.name}</span>
+                      </h5>
+                      <span className="text-[10px] text-sky-600 dark:text-sky-400">Modify any field & save</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-bold text-slate-900 dark:text-white">
-                          {member.name}
-                        </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.name}
+                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          placeholder="e.g. Laxman Sahoo"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        📞 +91 {member.phone || 'Not set'} • UPI: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{member.upiId || 'Not set'}</strong>
-                      </p>
+
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Phone Number (WhatsApp)
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.phone}
+                          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                          placeholder="e.g. 7008995654"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Login ID *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.loginId}
+                          onChange={(e) => setEditForm({ ...editForm, loginId: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                          placeholder="e.g. laxmansahoo"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Account Password *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editForm.password}
+                          onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                          placeholder="e.g. laxman123"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Receiving UPI ID (for GPay / PhonePe settlements)
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.upiId}
+                          onChange={(e) => setEditForm({ ...editForm, upiId: e.target.value })}
+                          placeholder="e.g. laxman@okaxis or 7008995654@ybl"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => copyCredentials(member)}
-                      className={`flex items-center gap-1 rounded-xl px-2.5 py-1 text-[11px] font-bold border transition-all ${
-                        isCopied
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                      }`}
-                      title="Copy WhatsApp invite with Login ID & Password"
-                    >
-                      {isCopied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
-                      <span>{isCopied ? 'Copied!' : 'Send WhatsApp Invite'}</span>
-                    </button>
-
-                    {members.length > 1 && (
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-sky-200 dark:border-sky-900/60">
                       <button
                         type="button"
-                        onClick={() => handleDeleteMember(member.id)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-                        title="Remove member"
+                        onClick={() => setEditingMemberId(null)}
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        Cancel
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(member.id)}
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white shadow-md active:scale-95"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Save Changes</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-2xl text-white font-black text-sm flex-shrink-0 shadow-sm ${member.avatarColor}`}
+                      >
+                        {member.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                            {member.name}
+                          </h4>
+                          {savedSuccessId === member.id && (
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-in fade-in">
+                              <Check className="h-3 w-3" /> Updated!
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span>📞 {member.phone ? `+91 ${member.phone}` : 'No phone set'}</span>
+                          <span>•</span>
+                          <span>
+                            💳 UPI: <strong className={member.upiId ? "text-emerald-600 dark:text-emerald-400 font-mono" : "text-slate-400 italic"}>{member.upiId || 'Not set'}</strong>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-1">
+                          <span>ID: <strong className="text-slate-800 dark:text-slate-200">{member.loginId}</strong></span>
+                          <span>•</span>
+                          <span>Pass: <strong className="text-slate-800 dark:text-slate-200">{member.password}</strong></span>
+                        </div>
+                      </div>
+                    </div>
 
-                {/* Inline Credential & Payment Editor */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-[11px]">
-                  <div>
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">
-                      Login ID
-                    </span>
-                    <input
-                      type="text"
-                      value={member.loginId}
-                      onChange={(e) => handleUpdateMember(member.id, 'loginId', e.target.value)}
-                      className="w-full bg-transparent font-mono font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:underline"
-                    />
-                  </div>
+                    <div className="flex items-center gap-1.5 self-end sm:self-center flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(member)}
+                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+                        title="Edit member details"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 text-sky-500" />
+                        <span>Edit</span>
+                      </button>
 
-                  <div>
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">
-                      Password
-                    </span>
-                    <input
-                      type="text"
-                      value={member.password}
-                      onChange={(e) => handleUpdateMember(member.id, 'password', e.target.value)}
-                      className="w-full bg-transparent font-mono font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:underline"
-                    />
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => copyCredentials(member)}
+                        className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border transition-all active:scale-95 shadow-sm ${
+                          isCopied
+                            ? 'bg-emerald-600 text-white border-emerald-600'
+                            : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
+                        }`}
+                        title="Copy WhatsApp invite with Login ID & Password"
+                      >
+                        {isCopied ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5 text-emerald-500" />}
+                        <span>{isCopied ? 'Copied!' : 'WhatsApp'}</span>
+                      </button>
 
-                  <div>
-                    <span className="text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold block">
-                      Receiving UPI ID
-                    </span>
-                    <input
-                      type="text"
-                      value={member.upiId || ''}
-                      placeholder="e.g. name@okaxis"
-                      onChange={(e) => handleUpdateMember(member.id, 'upiId', e.target.value)}
-                      className="w-full bg-transparent font-mono font-bold text-emerald-600 dark:text-emerald-400 placeholder-slate-400 focus:outline-none focus:underline"
-                    />
+                      {members.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMember(member.id)}
+                          className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
+                          title="Remove member"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}

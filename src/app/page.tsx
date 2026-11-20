@@ -47,6 +47,7 @@ export default function TripFinancePortal() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [customQrModal, setCustomQrModal] = useState<{
     payeeUpi: string; payeeName: string; amount?: number; note?: string;
@@ -305,62 +306,100 @@ export default function TripFinancePortal() {
             </div>
           </div>
 
-          {/* Right Action Bar */}
-          <div className="flex items-center gap-2">
-            {/* WhatsApp Export for everyone */}
-            <button
-              onClick={() => setIsExportOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-slate-700 dark:text-slate-200 shadow-sm"
-              title="Share trip summary on WhatsApp"
-            >
-              <Share2 className="h-3.5 w-3.5 text-emerald-500" /> WhatsApp
-            </button>
-
-            {/* Prominent Add Bill button */}
-            <button
-              onClick={() => {
-                setEditingExpense(null);
-                setIsAddExpenseOpen(true);
-              }}
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-md transition-all active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Bill</span>
-            </button>
-
-            {/* Manage Friends */}
-            <button
-              onClick={() => setIsGroupMembersOpen(true)}
-              className="hidden md:flex items-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm"
-              title="Add or invite friends"
-            >
-              <Users className="h-3.5 w-3.5 text-sky-500" /> Friends
-            </button>
-
-            {/* Settings */}
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Trip Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-
-            {/* User Identity Chip */}
-            <div className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5">
-              <div className={`flex h-6 w-6 items-center justify-center rounded-lg text-white text-[10px] font-black ${currentMember?.avatarColor || 'bg-slate-500'}`}>
-                {currentMember?.name.slice(0, 2).toUpperCase() || '??'}
-              </div>
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 hidden sm:block max-w-[90px] truncate">
-                {currentMember?.name}
-              </span>
+          {/* Right Action Bar: Ultra-clean & Professional */}
+          <div className="flex items-center gap-2 relative">
+            {/* User Identity & Menu Dropdown */}
+            <div className="relative">
               <button
-                onClick={handleLogout}
-                title="Switch User / Sign Out"
-                className="text-slate-400 hover:text-rose-500 transition-colors ml-0.5"
+                type="button"
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-1.5 pr-2.5 shadow-sm transition-all"
               >
-                <LogOut className="h-3.5 w-3.5" />
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white text-xs font-black shadow-sm ${currentMember?.avatarColor || 'bg-slate-500'}`}>
+                  {currentMember?.name.slice(0, 2).toUpperCase() || '??'}
+                </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[110px]">
+                    {currentMember?.name}
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    @{currentMember?.loginId || 'member'}
+                  </p>
+                </div>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* Modern User Dropdown Menu */}
+              {isUserMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {currentMember?.name}
+                      </p>
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">
+                        {currentMember?.upiId ? `UPI: ${currentMember.upiId}` : 'No UPI ID set'}
+                      </p>
+                    </div>
+
+                    <div className="py-1 space-y-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsExportOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
+                      >
+                        <Share2 className="h-4 w-4 text-emerald-500" />
+                        <span>WhatsApp Summary</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsGroupMembersOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
+                      >
+                        <Users className="h-4 w-4 text-sky-500" />
+                        <span>Friends & Sign-Ins</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          setIsSettingsOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
+                      >
+                        <Settings className="h-4 w-4 text-slate-400" />
+                        <span>Trip Settings</span>
+                      </button>
+                    </div>
+
+                    <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors text-left"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Switch User / Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -692,6 +731,20 @@ export default function TripFinancePortal() {
           saveTripState(updated);
         }}
       />
+
+      {/* ── FLOATING ACTION BUTTON FOR ADD BILL ── */}
+      <button
+        type="button"
+        onClick={() => {
+          setEditingExpense(null);
+          setIsAddExpenseOpen(true);
+        }}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 text-sm font-extrabold shadow-2xl hover:shadow-emerald-600/40 transition-all hover:scale-105 active:scale-95 border border-emerald-400/40"
+        title="Add a new trip bill"
+      >
+        <Plus className="h-5 w-5" />
+        <span>Add Bill</span>
+      </button>
     </div>
   );
 }

@@ -591,35 +591,35 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
               </button>
             </form>
 
-            {/* Bottom Actions: Create New Trip & Join with Code */}
-            <div className="pt-3 border-t border-slate-800/80 space-y-2">
-              <p className="text-[11px] text-center text-slate-400">Starting a new trip or joining another group?</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
-                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm active:scale-98"
-                >
-                  <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>Create a New Trip</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
-                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-750 border border-slate-700 text-xs font-bold text-slate-200 hover:text-white transition-all shadow-sm active:scale-98"
-                >
-                  <Compass className="h-3.5 w-3.5 text-sky-400" />
-                  <span>Join with Code</span>
-                </button>
-              </div>
-            </div>
-
             {/* Privacy Footnote */}
-            <div className="text-center pt-1">
+            <div className="text-center pt-2 border-t border-slate-800/80">
               <p className="text-[10px] text-slate-500 leading-tight">
                 🔒 Live group expense tracking with instant UPI settlement for all friends.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Clean, elegant footer links outside the card */}
+        {mode === 'login' && (
+          <div className="mt-5 flex items-center justify-center gap-3 text-xs text-slate-400">
+            <button
+              type="button"
+              onClick={() => { setMode('create_trip'); setErrorMsg(''); }}
+              className="hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1"
+            >
+              <PlusCircle className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Create a New Trip</span>
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => { setMode('find_trip'); setErrorMsg(''); }}
+              className="hover:text-sky-400 font-semibold transition-colors flex items-center gap-1"
+            >
+              <Compass className="h-3.5 w-3.5 text-sky-400" />
+              <span>Join with Trip Code</span>
+            </button>
           </div>
         )}
       </div>
