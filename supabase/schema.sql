@@ -1,8 +1,9 @@
 -- =========================================================================
--- TripSplit UPI: Supabase PostgreSQL Schema & Realtime Configuration
+-- TripSplit UPI: Clean & Idempotent Supabase SQL Setup
+-- Run this in your Supabase SQL Editor
 -- =========================================================================
 
--- 1. Trips Table
+-- 1. Create Tables in strict dependency order
 create table if not exists public.trips (
     id text primary key,
     name text not null,
@@ -13,7 +14,6 @@ create table if not exists public.trips (
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- 2. Members Table
 create table if not exists public.members (
     id text primary key,
     trip_id text not null references public.trips(id) on delete cascade,
@@ -25,14 +25,13 @@ create table if not exists public.members (
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- 3. Expenses Table
 create table if not exists public.expenses (
     id text primary key,
     trip_id text not null references public.trips(id) on delete cascade,
     title text not null,
     amount numeric(12, 2) not null,
     category text not null,
-    paid_by text not null, -- 'POT' or member id
+    paid_by text not null,
     paid_at text not null,
     split_type text default 'equal',
     splits jsonb not null default '[]'::jsonb,
@@ -40,7 +39,6 @@ create table if not exists public.expenses (
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- 4. Inbound Payments / QR Credits Table
 create table if not exists public.payments (
     id text primary key,
     trip_id text not null references public.trips(id) on delete cascade,
@@ -55,51 +53,63 @@ create table if not exists public.payments (
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- 5. Settlements Table
 create table if not exists public.settlements (
     id text primary key,
     trip_id text not null references public.trips(id) on delete cascade,
     from_member_id text not null references public.members(id) on delete cascade,
     to_member_id text not null references public.members(id) on delete cascade,
     amount numeric(12, 2) not null,
-    status text default 'pending', -- 'pending' or 'settled'
+    status text default 'pending',
     settled_at timestamptz,
     utr text,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Indexes for lightning fast queries
+-- 2. Indexes
 create index if not exists idx_members_trip on public.members(trip_id);
 create index if not exists idx_expenses_trip on public.expenses(trip_id);
 create index if not exists idx_payments_trip on public.payments(trip_id);
 create index if not exists idx_settlements_trip on public.settlements(trip_id);
 
--- Enable Row Level Security (RLS)
+-- 3. Row Level Security (RLS)
 alter table public.trips enable row level security;
 alter table public.members enable row level security;
 alter table public.expenses enable row level security;
 alter table public.payments enable row level security;
 alter table public.settlements enable row level security;
 
--- Open policies for group trip access (can be scoped to auth user later)
-create policy "Allow public read access on trips" on public.trips for select using (true);
-create policy "Allow public insert/update on trips" on public.trips for all using (true);
+-- 4. Drop and recreate policies safely
+drop policy if exists "Allow public all on trips" on public.trips;
+create policy "Allow public all on trips" on public.trips for all using (true) with check (true);
 
-create policy "Allow public read access on members" on public.members for select using (true);
-create policy "Allow public insert/update on members" on public.members for all using (true);
+drop policy if exists "Allow public all on members" on public.members;
+create policy "Allow public all on members" on public.members for all using (true) with check (true);
 
-create policy "Allow public read access on expenses" on public.expenses for select using (true);
-create policy "Allow public insert/update on expenses" on public.expenses for all using (true);
+drop policy if exists "Allow public all on expenses" on public.expenses;
+create policy "Allow public all on expenses" on public.expenses for all using (true) with check (true);
 
-create policy "Allow public read access on payments" on public.payments for select using (true);
-create policy "Allow public insert/update on payments" on public.payments for all using (true);
+drop policy if exists "Allow public all on payments" on public.payments;
+create policy "Allow public all on payments" on public.payments for all using (true) with check (true);
 
-create policy "Allow public read access on settlements" on public.settlements for select using (true);
-create policy "Allow public insert/update on settlements" on public.settlements for all using (true);
+drop policy if exists "Allow public all on settlements" on public.settlements;
+create policy "Allow public all on settlements" on public.settlements for all using (true) with check (true);
 
--- Enable Supabase Realtime broadcast on all tables
-alter publication supabase_realtime add table public.trips;
-alter publication supabase_realtime add table public.members;
-alter publication supabase_realtime add table public.expenses;
-alter publication supabase_realtime add table public.payments;
-alter publication supabase_realtime add table public.settlements;
+-- 5. Safely add to Realtime Publication (idempotent block)
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'trips') then
+    alter publication supabase_realtime add table public.trips;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'members') then
+    alter publication supabase_realtime add table public.members;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'expenses') then
+    alter publication supabase_realtime add table public.expenses;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'payments') then
+    alter publication supabase_realtime add table public.payments;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'settlements') then
+    alter publication supabase_realtime add table public.settlements;
+  end if;
+end $$;
