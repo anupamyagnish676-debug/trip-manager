@@ -149,6 +149,7 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
       phone: m.phone,
       avatar_color: m.avatarColor,
       is_finance_lead: m.isFinanceLead || false,
+      email: m.email || null,
       role: m.role || 'member',
     }));
     await supabase.from('members').upsert(membersPayload);
@@ -204,7 +205,7 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
     await supabase.from('members').upsert(trip.members.map((m) => ({
       id: m.id, trip_id: trip.id, name: m.name, upi_id: m.upiId,
       login_id: m.loginId, password: m.password, specialty: m.specialty || 'none',
-      phone: m.phone, avatar_color: m.avatarColor,
+      email: m.email || null, phone: m.phone, avatar_color: m.avatarColor,
       is_finance_lead: m.isFinanceLead || false, role: m.role || 'member',
     })));
 

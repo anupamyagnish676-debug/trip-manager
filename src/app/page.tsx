@@ -145,6 +145,9 @@ export default function TripFinancePortal() {
       localStorage.setItem('trip_portal_clean_v1', JSON.stringify(updated));
       localStorage.setItem('active_trip_id', updated.id);
     } catch (e) { console.error(e); }
+    if (hasSupabase) {
+      updateTripInSupabase(updated).catch((err) => console.error('Cloud sync error:', err));
+    }
   };
 
   const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0] || { id: 'm_lead', name: 'Finance Lead', upiId: '' };

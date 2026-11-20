@@ -1,6 +1,7 @@
 -- =========================================================================
--- TripSplit Portal: Clean & Idempotent Supabase SQL Setup v2
--- Run this in your Supabase SQL Editor (safe to run multiple times)
+-- TripSplit Portal: Complete Supabase SQL Setup & Permissions v3
+-- Run this in your Supabase SQL Editor:
+-- https://supabase.com/dashboard/project/dgagflzecpwvknelfbbl/sql/new
 -- =========================================================================
 
 -- 1. Create Tables in strict dependency order
@@ -9,15 +10,19 @@ create table if not exists public.trips (
     id text primary key,
     name text not null,
     destination text not null,
+    currency text default 'INR',
     start_date text not null,
     end_date text not null,
     finance_lead_id text not null,
     finance_lead_custom_qr_image text,
+    payment_methods jsonb,
     invite_code text,
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Add invite_code if upgrading from v1
+-- Upgrade columns on trips if already existing
+alter table public.trips add column if not exists currency text default 'INR';
+alter table public.trips add column if not exists payment_methods jsonb;
 alter table public.trips add column if not exists invite_code text;
 alter table public.trips add column if not exists finance_lead_custom_qr_image text;
 
@@ -25,16 +30,26 @@ create table if not exists public.members (
     id text primary key,
     trip_id text not null references public.trips(id) on delete cascade,
     name text not null,
-    upi_id text,
+    login_id text,
+    password text,
+    role text default 'member', -- 'finance_manager' | 'trip_manager' | 'member'
+    specialty text default 'none',
+    email text,
     phone text,
+    upi_id text,
     avatar_color text default 'bg-emerald-600',
     is_finance_lead boolean default false,
-    role text default 'member', -- 'finance_manager' | 'trip_manager' | 'member'
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Add role column if upgrading from v1
+-- Upgrade columns on members if already existing
+alter table public.members add column if not exists login_id text;
+alter table public.members add column if not exists password text;
 alter table public.members add column if not exists role text default 'member';
+alter table public.members add column if not exists specialty text default 'none';
+alter table public.members add column if not exists email text;
+alter table public.members add column if not exists phone text;
+alter table public.members add column if not exists upi_id text;
 
 create table if not exists public.expenses (
     id text primary key,
@@ -78,7 +93,7 @@ create table if not exists public.settlements (
     created_at timestamptz default timezone('utc'::text, now()) not null
 );
 
--- Collection rounds table (new in v2)
+-- Collection rounds table
 create table if not exists public.collection_rounds (
     id text primary key,
     trip_id text not null references public.trips(id) on delete cascade,
@@ -104,7 +119,7 @@ alter table public.payments enable row level security;
 alter table public.settlements enable row level security;
 alter table public.collection_rounds enable row level security;
 
--- 4. Drop and recreate open policies (all members can read and write)
+-- 4. Drop and recreate open policies
 drop policy if exists "Allow public all on trips" on public.trips;
 create policy "Allow public all on trips" on public.trips for all using (true) with check (true);
 
@@ -123,7 +138,7 @@ create policy "Allow public all on settlements" on public.settlements for all us
 drop policy if exists "Allow public all on collection_rounds" on public.collection_rounds;
 create policy "Allow public all on collection_rounds" on public.collection_rounds for all using (true) with check (true);
 
--- 5. Safely add all tables to Realtime Publication (idempotent)
+-- 5. Realtime Publication (idempotent)
 do $$
 begin
   if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'trips') then
@@ -150,3 +165,6 @@ end $$;
 grant usage on schema public to anon, authenticated;
 grant all on all tables in schema public to anon, authenticated;
 grant all on all sequences in schema public to anon, authenticated;
+
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
