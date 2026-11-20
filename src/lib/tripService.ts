@@ -1,50 +1,20 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { Trip, Expense, PaymentCapture, SettlementTransfer, Member } from '@/types';
+import { Trip, Expense, PaymentCapture, SettlementTransfer, Member, CollectionRound } from '@/types';
 import { INITIAL_TRIP } from './mockData';
 
 export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null> {
-  if (!supabase || !isSupabaseConfigured()) {
-    return null;
-  }
+  if (!supabase || !isSupabaseConfigured()) return null;
 
   try {
-    // 1. Fetch Trip
     const { data: tripData, error: tripErr } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('id', tripId)
-      .single();
+      .from('trips').select('*').eq('id', tripId).single();
+    if (tripErr || !tripData) { console.warn('Trip not found in Supabase:', tripErr); return null; }
 
-    if (tripErr || !tripData) {
-      console.warn('Trip not found in Supabase:', tripErr);
-      return null;
-    }
-
-    // 2. Fetch Members
-    const { data: membersData } = await supabase
-      .from('members')
-      .select('*')
-      .eq('trip_id', tripId);
-
-    // 3. Fetch Expenses
-    const { data: expensesData } = await supabase
-      .from('expenses')
-      .select('*')
-      .eq('trip_id', tripId)
-      .order('created_at', { ascending: false });
-
-    // 4. Fetch Payments
-    const { data: paymentsData } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('trip_id', tripId)
-      .order('created_at', { ascending: false });
-
-    // 5. Fetch Settlements
-    const { data: settlementsData } = await supabase
-      .from('settlements')
-      .select('*')
-      .eq('trip_id', tripId);
+    const { data: membersData } = await supabase.from('members').select('*').eq('trip_id', tripId);
+    const { data: expensesData } = await supabase.from('expenses').select('*').eq('trip_id', tripId).order('created_at', { ascending: false });
+    const { data: paymentsData } = await supabase.from('payments').select('*').eq('trip_id', tripId).order('created_at', { ascending: false });
+    const { data: settlementsData } = await supabase.from('settlements').select('*').eq('trip_id', tripId);
+    const { data: roundsData } = await supabase.from('collection_rounds').select('*').eq('trip_id', tripId).order('created_at', { ascending: true });
 
     const members: Member[] = (membersData || []).map((m: any) => ({
       id: m.id,
@@ -53,6 +23,7 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       phone: m.phone,
       avatarColor: m.avatar_color,
       isFinanceLead: m.is_finance_lead,
+      role: m.role || 'member',
     }));
 
     const expenses: Expense[] = (expensesData || []).map((e: any) => ({
@@ -66,6 +37,7 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       splitType: e.split_type,
       splits: e.splits || [],
       notes: e.notes,
+      receiptUrl: e.receipt_url,
     }));
 
     const payments: PaymentCapture[] = (paymentsData || []).map((p: any) => ({
@@ -79,6 +51,7 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       matchedMemberId: p.matched_member_id,
       status: p.status,
       addedToPot: p.added_to_pot,
+      collectionRoundId: p.collection_round_id,
     }));
 
     const settlements: SettlementTransfer[] = (settlementsData || []).map((s: any) => ({
@@ -90,6 +63,16 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       utr: s.utr,
     }));
 
+    const collectionRounds: CollectionRound[] = (roundsData || []).map((r: any) => ({
+      id: r.id,
+      tripId: r.trip_id,
+      title: r.title,
+      targetPerPerson: parseFloat(r.target_per_person),
+      dueDate: r.due_date,
+      createdAt: r.created_at,
+      memberStatus: r.member_status || {},
+    }));
+
     return {
       id: tripData.id,
       name: tripData.name,
@@ -97,10 +80,13 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       startDate: tripData.start_date,
       endDate: tripData.end_date,
       financeLeadId: tripData.finance_lead_id,
+      financeLeadCustomQrImage: tripData.finance_lead_custom_qr_image,
+      inviteCode: tripData.invite_code,
       members,
       expenses,
       payments,
       settlements,
+      collectionRounds,
     };
   } catch (err) {
     console.error('Error fetching from Supabase:', err);
@@ -108,14 +94,10 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
   }
 }
 
-/**
- * Seeds initial trip and all members to Supabase if it doesn't exist yet
- */
 export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
 
   try {
-    // 1. Insert Trip
     await supabase.from('trips').upsert({
       id: trip.id,
       name: trip.name,
@@ -123,9 +105,10 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
       start_date: trip.startDate,
       end_date: trip.endDate,
       finance_lead_id: trip.financeLeadId,
+      finance_lead_custom_qr_image: trip.financeLeadCustomQrImage || null,
+      invite_code: trip.inviteCode || null,
     });
 
-    // 2. Insert Members
     const membersPayload = trip.members.map((m) => ({
       id: m.id,
       trip_id: trip.id,
@@ -134,41 +117,32 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
       phone: m.phone,
       avatar_color: m.avatarColor,
       is_finance_lead: m.isFinanceLead || false,
+      role: m.role || 'member',
     }));
     await supabase.from('members').upsert(membersPayload);
 
-    // 3. Insert Initial Expenses
     if (trip.expenses.length > 0) {
-      const expensesPayload = trip.expenses.map((e) => ({
-        id: e.id,
-        trip_id: trip.id,
-        title: e.title,
-        amount: e.amount,
-        category: e.category,
-        paid_by: e.paidBy,
-        paid_at: e.paidAt,
-        split_type: e.splitType,
-        splits: e.splits,
-        notes: e.notes,
-      }));
-      await supabase.from('expenses').upsert(expensesPayload);
+      await supabase.from('expenses').upsert(trip.expenses.map((e) => ({
+        id: e.id, trip_id: trip.id, title: e.title, amount: e.amount,
+        category: e.category, paid_by: e.paidBy, paid_at: e.paidAt,
+        split_type: e.splitType, splits: e.splits, notes: e.notes,
+      })));
     }
 
-    // 4. Insert Initial Payments
     if (trip.payments.length > 0) {
-      const paymentsPayload = trip.payments.map((p) => ({
-        id: p.id,
-        trip_id: trip.id,
-        sender_name: p.senderName,
-        amount: p.amount,
-        utr: p.utr,
-        timestamp: p.timestamp,
-        raw_text: p.rawText,
-        matched_member_id: p.matchedMemberId,
-        status: p.status,
-        added_to_pot: p.addedToPot,
-      }));
-      await supabase.from('payments').upsert(paymentsPayload);
+      await supabase.from('payments').upsert(trip.payments.map((p) => ({
+        id: p.id, trip_id: trip.id, sender_name: p.senderName, amount: p.amount,
+        utr: p.utr, timestamp: p.timestamp, raw_text: p.rawText,
+        matched_member_id: p.matchedMemberId, status: p.status, added_to_pot: p.addedToPot,
+      })));
+    }
+
+    if ((trip.collectionRounds || []).length > 0) {
+      await supabase.from('collection_rounds').upsert((trip.collectionRounds || []).map((r) => ({
+        id: r.id, trip_id: trip.id, title: r.title,
+        target_per_person: r.targetPerPerson, due_date: r.dueDate || null,
+        member_status: r.memberStatus, created_at: r.createdAt,
+      })));
     }
 
     return true;
@@ -183,24 +157,19 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
 
   try {
     await supabase.from('trips').upsert({
-      id: trip.id,
-      name: trip.name,
-      destination: trip.destination,
-      start_date: trip.startDate,
-      end_date: trip.endDate,
+      id: trip.id, name: trip.name, destination: trip.destination,
+      start_date: trip.startDate, end_date: trip.endDate,
       finance_lead_id: trip.financeLeadId,
+      finance_lead_custom_qr_image: trip.financeLeadCustomQrImage || null,
+      invite_code: trip.inviteCode || null,
     });
 
-    const membersPayload = trip.members.map((m) => ({
-      id: m.id,
-      trip_id: trip.id,
-      name: m.name,
-      upi_id: m.upiId,
-      phone: m.phone,
-      avatar_color: m.avatarColor,
-      is_finance_lead: m.isFinanceLead || false,
-    }));
-    await supabase.from('members').upsert(membersPayload);
+    await supabase.from('members').upsert(trip.members.map((m) => ({
+      id: m.id, trip_id: trip.id, name: m.name, upi_id: m.upiId,
+      phone: m.phone, avatar_color: m.avatarColor,
+      is_finance_lead: m.isFinanceLead || false, role: m.role || 'member',
+    })));
+
     return true;
   } catch (e) {
     console.error(e);
@@ -210,34 +179,21 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
 
 export async function clearTripExpensesAndPayments(tripId: string): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
-
   try {
     await supabase.from('expenses').delete().eq('trip_id', tripId);
     await supabase.from('payments').delete().eq('trip_id', tripId);
     await supabase.from('settlements').delete().eq('trip_id', tripId);
     return true;
-  } catch (e) {
-    console.error(e);
-    return false;
-  }
+  } catch (e) { console.error(e); return false; }
 }
 
 export async function insertExpenseToSupabase(expense: Expense): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
-
   const { error } = await supabase.from('expenses').insert({
-    id: expense.id,
-    trip_id: expense.tripId,
-    title: expense.title,
-    amount: expense.amount,
-    category: expense.category,
-    paid_by: expense.paidBy,
-    paid_at: expense.paidAt,
-    split_type: expense.splitType,
-    splits: expense.splits,
-    notes: expense.notes,
+    id: expense.id, trip_id: expense.tripId, title: expense.title,
+    amount: expense.amount, category: expense.category, paid_by: expense.paidBy,
+    paid_at: expense.paidAt, split_type: expense.splitType, splits: expense.splits, notes: expense.notes,
   });
-
   return !error;
 }
 
@@ -249,29 +205,18 @@ export async function deleteExpenseFromSupabase(id: string): Promise<boolean> {
 
 export async function insertPaymentToSupabase(payment: PaymentCapture): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
-
   const { error } = await supabase.from('payments').insert({
-    id: payment.id,
-    trip_id: payment.tripId,
-    sender_name: payment.senderName,
-    amount: payment.amount,
-    utr: payment.utr,
-    timestamp: payment.timestamp,
-    raw_text: payment.rawText,
-    matched_member_id: payment.matchedMemberId,
-    status: payment.status,
-    added_to_pot: payment.addedToPot,
+    id: payment.id, trip_id: payment.tripId, sender_name: payment.senderName,
+    amount: payment.amount, utr: payment.utr, timestamp: payment.timestamp,
+    raw_text: payment.rawText, matched_member_id: payment.matchedMemberId,
+    status: payment.status, added_to_pot: payment.addedToPot,
+    collection_round_id: payment.collectionRoundId || null,
   });
-
   return !error;
 }
 
-export async function saveSettlementToSupabase(
-  tripId: string,
-  settlement: SettlementTransfer
-): Promise<boolean> {
+export async function saveSettlementToSupabase(tripId: string, settlement: SettlementTransfer): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
-
   const { error } = await supabase.from('settlements').insert({
     id: `set-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     trip_id: tripId,
@@ -282,28 +227,27 @@ export async function saveSettlementToSupabase(
     settled_at: settlement.settledAt,
     utr: settlement.utr,
   });
+  return !error;
+}
 
+export async function upsertCollectionRoundToSupabase(round: CollectionRound): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+  const { error } = await supabase.from('collection_rounds').upsert({
+    id: round.id, trip_id: round.tripId, title: round.title,
+    target_per_person: round.targetPerPerson, due_date: round.dueDate || null,
+    member_status: round.memberStatus, created_at: round.createdAt,
+  });
   return !error;
 }
 
 export function subscribeToTripRealtime(tripId: string, onUpdate: () => void) {
-  if (!supabase || !isSupabaseConfigured()) {
-    return () => {};
-  }
+  if (!supabase || !isSupabaseConfigured()) return () => {};
 
   const client = supabase;
   const channel = client
     .channel(`trip-changes-${tripId}`)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', filter: `trip_id=eq.${tripId}` },
-      () => {
-        onUpdate();
-      }
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', filter: `trip_id=eq.${tripId}` }, () => { onUpdate(); })
     .subscribe();
 
-  return () => {
-    client.removeChannel(channel);
-  };
+  return () => { client.removeChannel(channel); };
 }

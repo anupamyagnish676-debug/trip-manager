@@ -1,4 +1,4 @@
-export type Category = 
+export type Category =
   | 'stay'
   | 'food'
   | 'travel'
@@ -8,6 +8,8 @@ export type Category =
   | 'groceries'
   | 'misc';
 
+export type MemberRole = 'finance_manager' | 'trip_manager' | 'member';
+
 export interface Member {
   id: string;
   name: string;
@@ -15,6 +17,8 @@ export interface Member {
   phone?: string;
   avatarColor: string;
   isFinanceLead?: boolean;
+  role?: MemberRole; // finance_manager | trip_manager | member
+  joinCode?: string; // unique code for self-onboarding
 }
 
 export type SplitType = 'equal' | 'exact' | 'shares';
@@ -22,7 +26,7 @@ export type SplitType = 'equal' | 'exact' | 'shares';
 export interface ExpenseSplit {
   memberId: string;
   amount: number;
-  share?: number; // e.g. 1 share, 2 shares
+  share?: number;
 }
 
 export interface Expense {
@@ -36,6 +40,8 @@ export interface Expense {
   splitType: SplitType;
   splits: ExpenseSplit[];
   notes?: string;
+  receiptUrl?: string; // AI scanned receipt
+  claimable?: boolean; // Bill self-claim mode
 }
 
 export interface PaymentCapture {
@@ -49,6 +55,7 @@ export interface PaymentCapture {
   matchedMemberId?: string;
   status: 'verified' | 'unassigned' | 'rejected';
   addedToPot: boolean;
+  collectionRoundId?: string; // which round this belongs to
 }
 
 export interface SettlementTransfer {
@@ -66,7 +73,17 @@ export interface MemberBalance {
   totalDepositedToPot: number;
   totalDirectConsumption: number;
   totalPotConsumption: number;
-  netBalance: number; // positive = creditor (receives), negative = debtor (owes)
+  netBalance: number;
+}
+
+export interface CollectionRound {
+  id: string;
+  tripId: string;
+  title: string;
+  targetPerPerson: number;
+  dueDate?: string;
+  createdAt: string;
+  memberStatus: Record<string, 'paid' | 'pending' | 'partial'>;
 }
 
 export interface Trip {
@@ -75,10 +92,19 @@ export interface Trip {
   destination: string;
   startDate: string;
   endDate: string;
-  financeLeadId: string; // Member who is the treasurer
-  financeLeadCustomQrImage?: string; // Optional uploaded screenshot of actual PhonePe/GPay QR
+  financeLeadId: string;
+  financeLeadCustomQrImage?: string;
   members: Member[];
   expenses: Expense[];
   payments: PaymentCapture[];
   settlements: SettlementTransfer[];
+  collectionRounds?: CollectionRound[];
+  inviteCode?: string; // e.g. MANALI26 — friends use this to join
+  createdAt?: string;
+}
+
+export interface AppSession {
+  memberId: string;
+  tripId: string;
+  role: MemberRole;
 }
