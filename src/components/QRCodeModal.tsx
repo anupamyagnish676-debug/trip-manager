@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { X, Copy, ExternalLink, Check, Smartphone, Image as ImageIcon, QrCode as QrIcon, Edit3 } from 'lucide-react';
+import { X, Copy, Check, Smartphone, Edit3 } from 'lucide-react';
 import { generateUpiUrl } from '@/lib/calculations';
 
 interface QRCodeModalProps {
@@ -32,9 +32,6 @@ export function QRCodeModal({
   const [copied, setCopied] = useState(false);
   const [isEditingUpi, setIsEditingUpi] = useState(false);
   const [editedUpi, setEditedUpi] = useState(payeeUpi);
-  const [viewMode, setViewMode] = useState<'custom' | 'dynamic'>(
-    customQrImage ? 'custom' : 'dynamic'
-  );
 
   useEffect(() => {
     setEditedUpi(payeeUpi);
@@ -50,7 +47,7 @@ export function QRCodeModal({
   });
 
   useEffect(() => {
-    if (isOpen && canvasRef.current && (viewMode === 'dynamic' || !customQrImage)) {
+    if (isOpen && canvasRef.current && !customQrImage) {
       QRCode.toCanvas(canvasRef.current, upiUrl, {
         width: 240,
         margin: 2,
@@ -60,7 +57,7 @@ export function QRCodeModal({
         },
       });
     }
-  }, [isOpen, upiUrl, viewMode, customQrImage]);
+  }, [isOpen, upiUrl, customQrImage]);
 
   if (!isOpen) return null;
 
@@ -94,37 +91,9 @@ export function QRCodeModal({
             </div>
           )}
 
-          {/* Toggle between Uploaded Bank QR and Dynamic QR if custom image exists */}
-          {customQrImage && (
-            <div className="flex justify-center gap-1 my-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setViewMode('custom')}
-                className={`flex-1 py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-all ${
-                  viewMode === 'custom'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500'
-                }`}
-              >
-                <ImageIcon className="h-3.5 w-3.5" /> Actual Bank QR
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('dynamic')}
-                className={`flex-1 py-1 px-2 rounded-lg flex items-center justify-center gap-1 transition-all ${
-                  viewMode === 'dynamic'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                    : 'text-slate-500'
-                }`}
-              >
-                <QrIcon className="h-3.5 w-3.5" /> Auto-Amount QR
-              </button>
-            </div>
-          )}
-
           {/* QR Display Area */}
-          <div className="my-3 flex justify-center">
-            {customQrImage && viewMode === 'custom' ? (
+          <div className="my-4 flex justify-center">
+            {customQrImage ? (
               <div className="rounded-2xl border-4 border-slate-100 dark:border-slate-800 p-2 bg-white shadow-inner max-w-[250px] max-h-[250px] flex items-center justify-center overflow-hidden">
                 <img
                   src={customQrImage}
@@ -217,7 +186,7 @@ export function QRCodeModal({
               Open UPI App (GPay / PhonePe)
             </a>
             <p className="text-[11px] text-slate-400">
-              *Scanning either QR sends money straight to this UPI ID
+              *Scan with Google Pay, PhonePe, Paytm, or any UPI app
             </p>
           </div>
         </div>
