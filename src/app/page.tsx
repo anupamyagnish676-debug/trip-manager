@@ -214,6 +214,20 @@ export default function TripFinancePortal() {
     setActiveTab('my_view');
   };
 
+  const handleUpdateMemberUpi = (payeeName: string, newUpi: string) => {
+    const cleanUpi = newUpi.trim();
+    const updatedMembers = trip.members.map((m) =>
+      m.name.toLowerCase() === payeeName.toLowerCase() || m.id === payeeName
+        ? { ...m, upiId: cleanUpi }
+        : m
+    );
+    const updatedTrip = { ...trip, members: updatedMembers };
+    saveTripState(updatedTrip);
+    if (customQrModal) {
+      setCustomQrModal({ ...customQrModal, payeeUpi: cleanUpi });
+    }
+  };
+
   // ── Universal Tabs (Identical for ALL members) ──
   const allTabs: { key: TabKey; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: 'my_view', label: 'My Overview & Dues', icon: <User className="h-4 w-4" /> },
@@ -508,7 +522,11 @@ export default function TripFinancePortal() {
 
         {/* ── TAB 3: GROUP SETTLEMENT MATRIX ── */}
         {activeTab === 'settle' && (
-          <SettleUpTab trip={trip} onUpdateSettlement={handleUpdateSettlement} />
+          <SettleUpTab
+            trip={trip}
+            onUpdateSettlement={handleUpdateSettlement}
+            onUpdateMemberUpi={handleUpdateMemberUpi}
+          />
         )}
 
         {/* ── TAB 4: GROUP FRIENDS & BALANCES ── */}
@@ -525,7 +543,7 @@ export default function TripFinancePortal() {
                 onClick={() => setIsGroupMembersOpen(true)}
                 className="flex items-center gap-1.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3.5 py-1.5 text-xs font-bold shadow-sm hover:opacity-90 transition-all"
               >
-                <Users className="h-3.5 w-3.5" /> + Manage Friends
+                <Users className="h-3.5 w-3.5" /> + Manage Friends & UPI
               </button>
             </div>
 
@@ -555,7 +573,18 @@ export default function TripFinancePortal() {
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-400 font-mono truncate">{member.upiId || 'No UPI ID'}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className={`text-[11px] font-mono truncate ${member.upiId ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
+                            {member.upiId || 'No UPI ID'}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setIsGroupMembersOpen(true)}
+                            className="text-[10px] text-sky-500 hover:text-sky-400 font-semibold underline"
+                          >
+                            {member.upiId ? 'Edit' : 'Set UPI'}
+                          </button>
+                        </div>
                         <p className="text-[10px] text-slate-500 mt-0.5">
                           Paid: {formatMoney(bal?.totalDirectPaid || 0, trip.currency)}
                         </p>
@@ -641,6 +670,7 @@ export default function TripFinancePortal() {
           amount={customQrModal.amount || 0}
           note={customQrModal.note || 'TripSettlement'}
           title={`Pay ${customQrModal.payeeName}`}
+          onSaveUpi={(newUpi) => handleUpdateMemberUpi(customQrModal.payeeName, newUpi)}
         />
       )}
 

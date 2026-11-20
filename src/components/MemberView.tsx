@@ -237,10 +237,10 @@ export function MemberView({
                       </a>
                     )}
 
-                    {to?.upiId && onOpenQR && (
+                    {onOpenQR && (
                       <button
                         type="button"
-                        onClick={() => onOpenQR(to.upiId!, to.name, s.amount, noteText)}
+                        onClick={() => onOpenQR(to?.upiId || 'friend@upi', to?.name || 'Friend', s.amount, noteText)}
                         className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all"
                         title="Show UPI QR Code"
                       >

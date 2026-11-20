@@ -133,7 +133,7 @@ export function TripGroupMembersModal({
 
   const copyCredentials = (member: Member) => {
     const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?trip=${trip.id}` : 'https://trip-manager.vercel.app';
-    const text = `✈️ *${trip.name} Portal Invite*\nHey ${member.name}, you have been added to our trip group!\n\n🌐 Portal Link: ${appUrl}\n🔑 Trip Code: *${trip.inviteCode || trip.id}*\n👤 Your Login ID: *${member.loginId}*\n🔑 Your Password: *${member.password}*\n🎯 Role: ${member.role === 'finance_manager' ? 'Treasurer' : member.role === 'trip_manager' ? 'Trip Lead' : member.specialty !== 'none' ? member.specialty : 'Member'}\n\nTap the link to sign in, check pending dues, and split bills!`;
+    const text = `✈️ *${trip.name} Portal Invite*\nHey ${member.name}, you are in our trip group!\n\n🌐 Portal Link: ${appUrl}\n🔑 Trip Code: *${trip.inviteCode || trip.id}*\n👤 Your Login ID: *${member.loginId}*\n🔑 Your Password: *${member.password}*\n${member.upiId ? `💳 Receiving UPI: ${member.upiId}\n` : ''}\nTap the link to sign in, check pending dues, and split bills!`;
 
     navigator.clipboard.writeText(text);
     setCopiedId(member.id);
@@ -171,15 +171,15 @@ export function TripGroupMembersModal({
 
         {/* Modal Header */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
             <Users className="h-6 w-6" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              Trip Group Members & Credentials Manager
+              Trip Friends & Sign-In Details
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Trip Manager sets each member&apos;s Login ID, Password, and Trip Duty
+              Manage members, login credentials, and receiving UPI IDs for instant payouts.
             </p>
           </div>
         </div>
@@ -296,7 +296,7 @@ export function TripGroupMembersModal({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Password (Assigned by TM) *
+                  Password *
                 </label>
                 <input
                   type="text"
@@ -310,30 +310,13 @@ export function TripGroupMembersModal({
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Trip Duty / Role Specialty
-                </label>
-                <select
-                  value={specialty}
-                  onChange={(e) => setSpecialty(e.target.value as TripSpecialty)}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white"
-                >
-                  {SPECIALTY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.icon} {opt.label} ({opt.desc})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  UPI ID (Optional)
+                  Receiving UPI ID (Optional)
                 </label>
                 <input
                   type="text"
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
-                  placeholder="e.g. rahul@okhdfc"
+                  placeholder="e.g. rahul@okaxis or 9876543210@ybl"
                   className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-mono text-slate-900 dark:text-white"
                 />
               </div>
@@ -380,22 +363,9 @@ export function TripGroupMembersModal({
                         <span className="text-xs font-bold text-slate-900 dark:text-white">
                           {member.name}
                         </span>
-                        {member.role === 'finance_manager' && (
-                          <span className="rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1.5 py-0.2 text-[9px] font-bold">
-                            Treasurer (FM)
-                          </span>
-                        )}
-                        {member.role === 'trip_manager' && (
-                          <span className="rounded bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-1.5 py-0.2 text-[9px] font-bold">
-                            Trip Lead (TM)
-                          </span>
-                        )}
-                        <span className="rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-1.5 py-0.2 text-[9px] font-medium">
-                          {spec.icon} {spec.label}
-                        </span>
                       </div>
                       <p className="text-[10px] text-slate-400 mt-0.5">
-                        📞 +91 {member.phone || 'Not set'} • UPI: {member.upiId || 'Not set'}
+                        📞 +91 {member.phone || 'Not set'} • UPI: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{member.upiId || 'Not set'}</strong>
                       </p>
                     </div>
                   </div>
@@ -415,7 +385,7 @@ export function TripGroupMembersModal({
                       <span>{isCopied ? 'Copied!' : 'Send WhatsApp Invite'}</span>
                     </button>
 
-                    {member.role === 'member' && (
+                    {members.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleDeleteMember(member.id)}
@@ -428,7 +398,7 @@ export function TripGroupMembersModal({
                   </div>
                 </div>
 
-                {/* Inline Credential Editor */}
+                {/* Inline Credential & Payment Editor */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-[11px]">
                   <div>
                     <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">
@@ -455,20 +425,16 @@ export function TripGroupMembersModal({
                   </div>
 
                   <div>
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">
-                      Trip Duty
+                    <span className="text-[9px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold block">
+                      Receiving UPI ID
                     </span>
-                    <select
-                      value={member.specialty || 'none'}
-                      onChange={(e) => handleUpdateMember(member.id, 'specialty', e.target.value as TripSpecialty)}
-                      className="w-full bg-transparent text-[11px] font-semibold text-slate-700 dark:text-slate-300 focus:outline-none"
-                    >
-                      {SPECIALTY_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.icon} {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      value={member.upiId || ''}
+                      placeholder="e.g. name@okaxis"
+                      onChange={(e) => handleUpdateMember(member.id, 'upiId', e.target.value)}
+                      className="w-full bg-transparent font-mono font-bold text-emerald-600 dark:text-emerald-400 placeholder-slate-400 focus:outline-none focus:underline"
+                    />
                   </div>
                 </div>
               </div>

@@ -11,9 +11,10 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 interface SettleUpTabProps {
   trip: Trip;
   onUpdateSettlement: (updatedSettlements: SettlementTransfer[]) => void;
+  onUpdateMemberUpi?: (memberName: string, newUpi: string) => void;
 }
 
-export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
+export function SettleUpTab({ trip, onUpdateSettlement, onUpdateMemberUpi }: SettleUpTabProps) {
   const [selectedPayment, setSelectedPayment] = useState<{
     payeeUpi: string;
     payeeName: string;
@@ -290,6 +291,12 @@ export function SettleUpTab({ trip, onUpdateSettlement }: SettleUpTabProps) {
           payeeName={selectedPayment.payeeName}
           amount={selectedPayment.amount}
           note={selectedPayment.note}
+          onSaveUpi={(newUpi) => {
+            if (onUpdateMemberUpi) {
+              onUpdateMemberUpi(selectedPayment.payeeName, newUpi);
+            }
+            setSelectedPayment({ ...selectedPayment, payeeUpi: newUpi });
+          }}
         />
       )}
     </div>

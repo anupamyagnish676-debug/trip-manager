@@ -37,7 +37,9 @@ export function QRCodeModal({
     setEditedUpi(payeeUpi);
   }, [payeeUpi]);
 
-  const effectiveUpi = isEditingUpi ? editedUpi : payeeUpi;
+  const effectiveUpi = (isEditingUpi ? editedUpi : (editedUpi || payeeUpi)).trim();
+
+  const isPlaceholderUpi = effectiveUpi === 'friend@upi' || !effectiveUpi;
 
   const upiUrl = generateUpiUrl({
     upiId: effectiveUpi,
@@ -88,6 +90,17 @@ export function QRCodeModal({
               <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
                 ₹{amount.toLocaleString('en-IN')}
               </span>
+            </div>
+          )}
+
+          {isPlaceholderUpi && !isEditingUpi && (
+            <div className="my-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs text-amber-800 dark:text-amber-200 text-left">
+              <p className="font-bold flex items-center gap-1.5">
+                <span>⚠️</span> No real UPI ID set for {payeeName}
+              </p>
+              <p className="text-[11px] text-amber-700/90 dark:text-amber-300 mt-0.5">
+                Currently showing placeholder ({effectiveUpi}). Click <strong className="underline cursor-pointer" onClick={() => setIsEditingUpi(true)}>Change UPI</strong> below to enter their PhonePe, Google Pay, or BHIM ID.
+              </p>
             </div>
           )}
 
@@ -150,26 +163,26 @@ export function QRCodeModal({
             <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700">
               <div className="text-left text-xs">
                 <p className="text-slate-400">Receiving UPI ID</p>
-                <p className="font-mono font-medium text-slate-700 dark:text-slate-200">{payeeUpi}</p>
+                <p className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                  {effectiveUpi}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                {onSaveUpi && (
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingUpi(true)}
-                    className="flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 dark:text-sky-400"
-                    title="Change this UPI ID to your real account"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    <span>Change</span>
-                  </button>
-                )}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingUpi(true)}
+                  className="flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 px-2 py-1 rounded-lg transition-all"
+                  title="Change this UPI ID to a real Google Pay / PhonePe account"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  <span>Change UPI</span>
+                </button>
                 <button
                   type="button"
                   onClick={copyUpi}
-                  className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                  className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-2 py-1"
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
