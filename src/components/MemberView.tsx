@@ -15,6 +15,7 @@ import {
   FileText,
   Download,
   Edit3,
+  KeyRound,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Member, Trip, SettlementTransfer } from '@/types';
@@ -29,6 +30,7 @@ interface MemberViewProps {
   onUpdateSettlement?: (settlements: SettlementTransfer[]) => void;
   onOpenAddExpense?: () => void;
   onUpdateMemberUpi?: (newUpi: string) => void;
+  onOpenChangePassword?: () => void;
 }
 
 export function MemberView({
@@ -38,6 +40,7 @@ export function MemberView({
   onUpdateSettlement,
   onOpenAddExpense,
   onUpdateMemberUpi,
+  onOpenChangePassword,
 }: MemberViewProps) {
   const [showHistory, setShowHistory] = useState(true);
   const [isEditingMyUpi, setIsEditingMyUpi] = useState(false);
@@ -111,13 +114,28 @@ export function MemberView({
             {currentMember.name.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
                 {currentMember.name}
               </h3>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-bold flex-shrink-0">
                 Active Member
               </span>
+              {onOpenChangePassword && (
+                <button
+                  type="button"
+                  onClick={onOpenChangePassword}
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border transition-colors flex-shrink-0 ${
+                    currentMember.hasChangedPassword
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                      : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200'
+                  }`}
+                  title="Click to change your login password"
+                >
+                  <KeyRound className="h-2.5 w-2.5 text-amber-500" />
+                  <span>{currentMember.hasChangedPassword ? 'Password Set' : 'Set Custom Password'}</span>
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
               <span>

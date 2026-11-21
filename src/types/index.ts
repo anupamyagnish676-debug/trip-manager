@@ -32,6 +32,7 @@ export interface Member {
   isFinanceLead?: boolean;
   joinCode?: string;
   pin?: string;
+  hasChangedPassword?: boolean;
 }
 
 export type SplitType = 'equal' | 'exact' | 'shares';
@@ -138,4 +139,5 @@ export interface AppSession {
   memberId: string;
   tripId: string;
   role: MemberRole;
+  isFirstLogin?: boolean;
 }

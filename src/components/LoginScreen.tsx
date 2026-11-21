@@ -113,6 +113,7 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
       memberId: found.id,
       tripId: trip.id,
       role: found.role || 'member',
+      isFirstLogin: !found.hasChangedPassword,
     });
 
     onLoggedIn();

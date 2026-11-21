@@ -6,7 +6,7 @@ import {
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
-  TrendingUp, FileText,
+  TrendingUp, FileText, KeyRound,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -17,6 +17,7 @@ import { QRCodeModal } from '@/components/QRCodeModal';
 import { WhatsAppExportModal } from '@/components/WhatsAppExportModal';
 import { TripSettingsModal } from '@/components/TripSettingsModal';
 import { TripGroupMembersModal } from '@/components/TripGroupMembersModal';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { LoginScreen } from '@/components/LoginScreen';
 import { MemberView } from '@/components/MemberView';
 import { calculateMemberBalances } from '@/lib/calculations';
@@ -49,6 +50,7 @@ export default function TripFinancePortal() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [customQrModal, setCustomQrModal] = useState<{
@@ -75,12 +77,36 @@ export default function TripFinancePortal() {
     const s = getSession();
     setSession(s);
     setSessionChecked(true);
+    if (s?.isFirstLogin) {
+      setIsChangePasswordOpen(true);
+    }
   }, []);
 
   const handleLoggedIn = () => {
     const s = getSession();
     setSession(s);
     setActiveTab('my_view');
+    if (s?.isFirstLogin) {
+      setIsChangePasswordOpen(true);
+    }
+  };
+
+  const handleSaveNewPassword = (newPassword: string) => {
+    if (!currentMember) return;
+    const cleanPass = newPassword.trim();
+    const updatedMembers = trip.members.map((m) =>
+      m.id === currentMember.id
+        ? { ...m, password: cleanPass, hasChangedPassword: true }
+        : m
+    );
+    const updatedTrip = { ...trip, members: updatedMembers };
+    saveTripState(updatedTrip);
+
+    if (session) {
+      const updatedSession = { ...session, isFirstLogin: false };
+      saveSession(updatedSession);
+      setSession(updatedSession);
+    }
   };
 
   // ── Load trip data ──
@@ -391,6 +417,18 @@ export default function TripFinancePortal() {
                         type="button"
                         onClick={() => {
                           setIsUserMenuOpen(false);
+                          setIsChangePasswordOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
+                      >
+                        <KeyRound className="h-4 w-4 text-amber-500" />
+                        <span>Change Password</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
                           setIsSettingsOpen(true);
                         }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
@@ -473,6 +511,7 @@ export default function TripFinancePortal() {
             }
             onUpdateSettlement={handleUpdateSettlement}
             onUpdateMemberUpi={(newUpi) => handleUpdateMemberUpi(currentMember.id, newUpi)}
+            onOpenChangePassword={() => setIsChangePasswordOpen(true)}
             onOpenAddExpense={() => {
               setEditingExpense(null);
               setIsAddExpenseOpen(true);
@@ -792,6 +831,23 @@ export default function TripFinancePortal() {
           saveTripState(updated);
         }}
       />
+
+      {currentMember && (
+        <ChangePasswordModal
+          isOpen={isChangePasswordOpen}
+          onClose={() => {
+            setIsChangePasswordOpen(false);
+            if (session?.isFirstLogin) {
+              const updatedSession = { ...session, isFirstLogin: false };
+              saveSession(updatedSession);
+              setSession(updatedSession);
+            }
+          }}
+          currentMember={currentMember}
+          isFirstLogin={Boolean(session?.isFirstLogin && !currentMember.hasChangedPassword)}
+          onSavePassword={handleSaveNewPassword}
+        />
+      )}
 
       {/* ── MOBILE BOTTOM NAVIGATION BAR ── */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 backdrop-blur-xl px-2 py-1.5 flex justify-around items-center shadow-2xl pb-[max(0.6rem,env(safe-area-inset-bottom))]">
