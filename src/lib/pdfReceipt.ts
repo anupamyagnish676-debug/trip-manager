@@ -430,20 +430,39 @@ export function generateExpenseInvoicePdf(
 
   // ── 2. Verified Status Ribbon ──
   let y = 39;
-  doc.setFillColor(236, 253, 245); // emerald-50
-  doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
-  doc.setDrawColor(167, 243, 208); // emerald-200
-  doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'S');
+  const isPersonalExp = Boolean(expense.isPersonal);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(6, 95, 70); // emerald-800
-  doc.text('STATUS: VERIFIED & RECORDED IN GROUP AUDIT LEDGER', margin + 6, y + 6.5);
+  if (isPersonalExp) {
+    doc.setFillColor(250, 245, 255); // purple-50
+    doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
+    doc.setDrawColor(216, 180, 254); // purple-300
+    doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'S');
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(4, 120, 87);
-  doc.text(`Trip Manager: ${managerName}`, pageWidth - margin - 6, y + 6.5, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(126, 34, 206); // purple-700
+    doc.text('STATUS: PERSONAL EXPENSE (PRIVATE LEDGER • NO GROUP DEBT)', margin + 6, y + 6.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(107, 33, 168);
+    doc.text(`Authenticated for: ${payer.name}`, pageWidth - margin - 6, y + 6.5, { align: 'right' });
+  } else {
+    doc.setFillColor(236, 253, 245); // emerald-50
+    doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'F');
+    doc.setDrawColor(167, 243, 208); // emerald-200
+    doc.roundedRect(margin, y, contentWidth, 10, 2, 2, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(6, 95, 70); // emerald-800
+    doc.text('STATUS: VERIFIED & RECORDED IN GROUP AUDIT LEDGER', margin + 6, y + 6.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(4, 120, 87);
+    doc.text(`Trip Manager: ${managerName}`, pageWidth - margin - 6, y + 6.5, { align: 'right' });
+  }
 
   // ── 3. Expense & Payer Summary Box (2 columns) ──
   y += 16;
@@ -469,7 +488,9 @@ export function generateExpenseInvoicePdf(
   const catLabel = CATEGORY_NAMES[expense.category] || expense.category;
   doc.text(`Category: ${catLabel}`, margin + 6, y + 23);
   doc.text(
-    `Split Method: ${expense.splitType === 'equal' ? 'Equal Split' : 'Custom Weighted Split'} (${expense.splits.length} participants)`,
+    isPersonalExp
+      ? 'Split Method: Personal Spend (100% Private Out-of-Pocket)'
+      : `Split Method: ${expense.splitType === 'equal' ? 'Equal Split' : 'Custom Weighted Split'} (${expense.splits.length} participants)`,
     margin + 6,
     y + 29
   );
@@ -494,7 +515,13 @@ export function generateExpenseInvoicePdf(
   doc.setTextColor(71, 85, 105);
   doc.text(`UPI / Reference: ${payer.upiId || 'Direct Payment'}`, rightColX, y + 23);
   doc.text(`Payment Date: ${date}`, rightColX, y + 29);
-  doc.text(`Ledger Settlement: Distributed Automatically`, rightColX, y + 35);
+  doc.text(
+    isPersonalExp
+      ? 'Ledger Settlement: Personal Private Spend (No Debt Created)'
+      : 'Ledger Settlement: Distributed Automatically',
+    rightColX,
+    y + 35
+  );
 
   // ── 4. Total Amount Banner ──
   y += 44;
@@ -676,18 +703,27 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
   const managerName = getTripManagerName(trip);
   const currency = trip.currency || 'INR';
 
+  // All expenses that involve the user (either in splits, or paid personal expenses)
   const myExpenses = trip.expenses.filter((e) =>
-    e.splits.some((s) => s.memberId === currentMember.id)
+    e.splits.some((s) => s.memberId === currentMember.id) || (e.isPersonal && e.paidBy === currentMember.id)
   );
+
+  const groupShareConsumed = trip.expenses
+    .filter((e) => !e.isPersonal)
+    .reduce((sum, e) => {
+      const mySplit = e.splits.find((s) => s.memberId === currentMember.id);
+      return sum + (mySplit?.amount || 0);
+    }, 0);
+
+  const personalSpend = trip.expenses
+    .filter((e) => e.isPersonal && e.paidBy === currentMember.id)
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  const grandTotalCost = groupShareConsumed + personalSpend;
 
   const totalIPaid = trip.expenses
     .filter((e) => e.paidBy === currentMember.id)
     .reduce((sum, e) => sum + e.amount, 0);
-
-  const totalIConsumed = myExpenses.reduce((sum, e) => {
-    const mySplit = e.splits.find((s) => s.memberId === currentMember.id);
-    return sum + (mySplit?.amount || 0);
-  }, 0);
 
   const statementNumber = `STMT-${(trip.inviteCode || 'TRIP').toUpperCase()}-${currentMember.name.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
   const date = new Date().toISOString().split('T')[0];
@@ -721,9 +757,9 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
   // ── Member Info Box ──
   let y = 39;
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'F');
+  doc.roundedRect(margin, y, contentWidth, 26, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'S');
+  doc.roundedRect(margin, y, contentWidth, 26, 2, 2, 'S');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
@@ -738,23 +774,26 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Login ID: ${currentMember.loginId || 'member'} | UPI: ${currentMember.upiId || 'Not set'}`, margin + 6, y + 20);
+  doc.text(`Login ID: ${currentMember.loginId || 'member'} | UPI: ${currentMember.upiId || 'Not set'}`, margin + 6, y + 21);
 
   // Financial summary on right
-  const summaryX = margin + contentWidth / 2 + 10;
+  const summaryX = margin + contentWidth / 2 + 5;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text('PERSONAL SUMMARY', summaryX, y + 7);
+  doc.text('TRIP EXPENDITURE SUMMARY', summaryX, y + 7);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text(`Total Paid Out-of-Pocket: ${formatSafePdfMoney(totalIPaid, currency)}`, summaryX, y + 14);
-  doc.text(`Total Share Consumed: ${formatSafePdfMoney(totalIConsumed, currency)}`, summaryX, y + 20);
+  doc.text(`Group Share: ${formatSafePdfMoney(groupShareConsumed, currency)}`, summaryX, y + 13);
+  doc.text(`Personal Spend: ${formatSafePdfMoney(personalSpend, currency)}`, summaryX, y + 18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(5, 150, 105);
+  doc.text(`Total Out-of-Pocket: ${formatSafePdfMoney(grandTotalCost, currency)}`, summaryX, y + 23);
 
   // ── Itemized Bills Table ──
-  y += 32;
+  y += 33;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
   doc.setTextColor(71, 85, 105);
@@ -777,9 +816,11 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
 
   y += 8;
   myExpenses.forEach((exp, idx) => {
+    const isPersonal = Boolean(exp.isPersonal);
     const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Friend' };
     const mySplit = exp.splits.find((s) => s.memberId === currentMember.id);
     const isPayer = exp.paidBy === currentMember.id;
+    const myShareAmount = isPersonal ? exp.amount : (mySplit?.amount || 0);
 
     const rowHeight = 7.5;
     if (idx % 2 === 1) {
@@ -794,13 +835,18 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
     doc.setTextColor(15, 23, 42);
 
     doc.text(String(idx + 1), margin + 4, y + 5);
-    doc.text(exp.title, margin + 14, y + 5);
-    doc.text(isPayer ? 'You' : payer.name, margin + 85, y + 5);
+    const titleText = isPersonal ? `[Personal] ${exp.title}` : exp.title;
+    doc.text(titleText, margin + 14, y + 5);
+    doc.text(isPersonal ? 'You (Solo)' : (isPayer ? 'You' : payer.name), margin + 85, y + 5);
     doc.text(formatSafePdfMoney(exp.amount, currency), margin + 120, y + 5);
 
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(5, 150, 105);
-    doc.text(formatSafePdfMoney(mySplit?.amount || 0, currency), pageWidth - margin - 6, y + 5, { align: 'right' });
+    if (isPersonal) {
+      doc.setTextColor(126, 34, 206); // purple-700
+    } else {
+      doc.setTextColor(5, 150, 105); // emerald-600
+    }
+    doc.text(formatSafePdfMoney(myShareAmount, currency), pageWidth - margin - 6, y + 5, { align: 'right' });
 
     y += rowHeight;
   });
@@ -814,8 +860,9 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text('NET CONSUMED SHARE ACROSS ALL BILLS', margin + 14, y + 5.5);
-  doc.text(formatSafePdfMoney(totalIConsumed, currency), pageWidth - margin - 6, y + 5.5, { align: 'right' });
+  doc.text('GRAND TOTAL OUT-OF-POCKET (GROUP + PERSONAL)', margin + 14, y + 5.5);
+  doc.setTextColor(5, 150, 105);
+  doc.text(formatSafePdfMoney(grandTotalCost, currency), pageWidth - margin - 6, y + 5.5, { align: 'right' });
   y += 14;
 
   // ── Signature & Authentication Block (Mandatory) ──

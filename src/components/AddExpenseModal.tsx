@@ -9,6 +9,7 @@ interface AddExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   members: Member[];
+  currentMember?: Member | null;
   onAddExpense: (expense: Expense) => void;
   onUpdateExpense?: (expense: Expense) => void;
   expenseToEdit?: Expense | null;
@@ -32,6 +33,7 @@ export function AddExpenseModal({
   isOpen,
   onClose,
   members,
+  currentMember,
   onAddExpense,
   onUpdateExpense,
   expenseToEdit,
@@ -39,10 +41,11 @@ export function AddExpenseModal({
   tripId,
   currency,
 }: AddExpenseModalProps) {
+  const [isPersonal, setIsPersonal] = useState<boolean>(false);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category>('food');
-  const [paidBy, setPaidBy] = useState<string>(members[0]?.id || '');
+  const [paidBy, setPaidBy] = useState<string>(currentMember?.id || members[0]?.id || '');
   const [splitMode, setSplitMode] = useState<'all' | 'subset' | 'custom'>('all');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
     members.map((m) => m.id)
@@ -54,10 +57,11 @@ export function AddExpenseModal({
 
   useEffect(() => {
     if (expenseToEdit) {
+      setIsPersonal(Boolean(expenseToEdit.isPersonal));
       setTitle(expenseToEdit.title);
       setAmount(expenseToEdit.amount.toString());
       setCategory(expenseToEdit.category);
-      setPaidBy(expenseToEdit.paidBy || members[0]?.id || '');
+      setPaidBy(expenseToEdit.paidBy || currentMember?.id || members[0]?.id || '');
       setNotes(expenseToEdit.notes || '');
       if (expenseToEdit.splitType === 'exact') {
         setSplitMode('custom');
@@ -74,16 +78,17 @@ export function AddExpenseModal({
         setSelectedMemberIds(expenseToEdit.splits.map((s) => s.memberId));
       }
     } else {
+      setIsPersonal(false);
       setTitle('');
       setAmount('');
       setCategory('food');
-      setPaidBy(members[0]?.id || '');
+      setPaidBy(currentMember?.id || members[0]?.id || '');
       setSplitMode('all');
       setSelectedMemberIds(members.map((m) => m.id));
       setCustomAmounts({});
       setNotes('');
     }
-  }, [expenseToEdit, isOpen, members]);
+  }, [expenseToEdit, isOpen, members, currentMember]);
 
   if (!isOpen) return null;
 
@@ -119,7 +124,10 @@ export function AddExpenseModal({
     let splits: { memberId: string; amount: number }[] = [];
     let splitType: SplitType = 'equal';
 
-    if (splitMode === 'all') {
+    if (isPersonal) {
+      splitType = 'exact';
+      splits = [{ memberId: paidBy, amount: totalAmount }];
+    } else if (splitMode === 'all') {
       const perHead = Math.round((totalAmount / members.length) * 100) / 100;
       splits = members.map((m) => ({ memberId: m.id, amount: perHead }));
     } else if (splitMode === 'subset') {
@@ -146,6 +154,7 @@ export function AddExpenseModal({
       splitType,
       splits,
       notes: notes.trim() || undefined,
+      isPersonal: Boolean(isPersonal),
     };
 
     if (expenseToEdit && onUpdateExpense) {
@@ -172,10 +181,40 @@ export function AddExpenseModal({
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           {expenseToEdit
             ? 'Adjust who paid, bill amount, or split breakdown'
-            : 'Record any bill paid by any friend and split it automatically'}
+            : 'Record a shared group bill or track your private personal expense'}
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 sm:mt-5 space-y-4">
+        {/* ── Group vs Personal Expense Switcher ── */}
+        <div className="mt-4 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setIsPersonal(false)}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all touch-manipulation ${
+              !isPersonal
+                ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-500/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Users className="h-3.5 w-3.5" />
+            <span>👥 Group Expense (Split)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsPersonal(true);
+              if (currentMember) setPaidBy(currentMember.id);
+            }}
+            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all touch-manipulation ${
+              isPersonal
+                ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-sm border border-purple-500/30'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <span>👤 Personal (Just for Me)</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {/* Title & Amount */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
@@ -250,133 +289,149 @@ export function AddExpenseModal({
             </select>
           </div>
 
-          {/* Split Mode Options */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-              How to Split?
-            </label>
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-              <button
-                type="button"
-                onClick={() => setSplitMode('all')}
-                className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
-                  splitMode === 'all'
-                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                All Friends
-              </button>
-              <button
-                type="button"
-                onClick={() => setSplitMode('subset')}
-                className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
-                  splitMode === 'subset'
-                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                Selected Only
-              </button>
-              <button
-                type="button"
-                onClick={() => setSplitMode('custom')}
-                className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
-                  splitMode === 'custom'
-                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                Exact Amounts
-              </button>
-            </div>
-          </div>
-
-          {/* Conditional Split Pickers */}
-          {splitMode === 'all' && totalAmount > 0 && (
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-600 dark:text-slate-300 flex justify-between items-center">
-              <span>Split across all {members.length} members:</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                {formatMoney(totalAmount / members.length, currency)} / person
-              </span>
-            </div>
-          )}
-
-          {splitMode === 'subset' && (
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-40 overflow-y-auto space-y-1.5">
-              <p className="text-[11px] text-slate-400 mb-2">Check the friends who participated:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {members.map((m) => {
-                  const isChecked = selectedMemberIds.includes(m.id);
-                  return (
-                    <label
-                      key={m.id}
-                      className={`flex items-center gap-2 rounded-lg p-2 text-xs cursor-pointer border ${
-                        isChecked
-                          ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 text-slate-900 dark:text-white font-medium'
-                          : 'border-slate-200 dark:border-slate-800 text-slate-500'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleMemberSelection(m.id)}
-                        className="rounded text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <span className="truncate">{m.name}</span>
-                    </label>
-                  );
-                })}
+          {/* Split Mode Options or Personal Notice */}
+          {isPersonal ? (
+            <div className="rounded-2xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/70 dark:bg-purple-950/30 p-3.5 space-y-1.5 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👤</span>
+                <h4 className="text-xs font-bold text-purple-900 dark:text-purple-200">
+                  Personal Expense (100% Solo Spend)
+                </h4>
               </div>
-              {selectedMemberIds.length > 0 && totalAmount > 0 && (
-                <div className="mt-2 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatMoney(totalAmount / selectedMemberIds.length, currency)} per participant
+              <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                This expense is assigned 100% to <strong className="font-bold underline">{members.find((m) => m.id === paidBy)?.name || 'You'}</strong>. It is tracked purely in your private personal ledger (e.g. personal shopping, souvenirs, snacks) and will <strong>NOT</strong> create any debt or affect any other friend&apos;s settlement balance.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  How to Split?
+                </label>
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode('all')}
+                    className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
+                      splitMode === 'all'
+                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    All Friends
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode('subset')}
+                    className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
+                      splitMode === 'subset'
+                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Selected Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode('custom')}
+                    className={`rounded-xl py-2 px-2 text-[11px] sm:text-xs font-semibold border transition-all text-center touch-manipulation ${
+                      splitMode === 'custom'
+                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    Exact Amounts
+                  </button>
+                </div>
+              </div>
+
+              {/* Conditional Split Pickers */}
+              {splitMode === 'all' && totalAmount > 0 && (
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs text-slate-600 dark:text-slate-300 flex justify-between items-center">
+                  <span>Split across all {members.length} members:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {formatMoney(totalAmount / members.length, currency)} / person
+                  </span>
                 </div>
               )}
-            </div>
-          )}
 
-          {splitMode === 'custom' && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] px-1 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="text-slate-600 dark:text-slate-300">
-                  Allocated: <strong className="text-slate-900 dark:text-white">{formatMoney(allocatedTotal, currency)}</strong> of {formatMoney(totalAmount, currency)}
-                </span>
-                <span className={`font-bold ${
-                  Math.abs(remainingToAllocate) < 0.01
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : remainingToAllocate > 0
-                    ? 'text-amber-600 dark:text-amber-400'
-                    : 'text-rose-600 dark:text-rose-400'
-                }`}>
-                  {Math.abs(remainingToAllocate) < 0.01
-                    ? '✅ Exactly Matched'
-                    : remainingToAllocate > 0
-                    ? `${formatMoney(remainingToAllocate, currency)} remaining`
-                    : `${formatMoney(Math.abs(remainingToAllocate), currency)} over bill`}
-                </span>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-48 overflow-y-auto space-y-2">
-                {members.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between text-xs gap-2">
-                    <span className="text-slate-700 dark:text-slate-300 truncate w-36 font-medium">{m.name}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-slate-400">{currSym}</span>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        min="0"
-                        step="any"
-                        value={customAmounts[m.id] || ''}
-                        onChange={(e) => handleCustomAmountChange(m.id, e.target.value)}
-                        className="w-24 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-right text-xs bg-white dark:bg-slate-900 font-bold"
-                      />
-                    </div>
+              {splitMode === 'subset' && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-40 overflow-y-auto space-y-1.5">
+                  <p className="text-[11px] text-slate-400 mb-2">Check the friends who participated:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {members.map((m) => {
+                      const isChecked = selectedMemberIds.includes(m.id);
+                      return (
+                        <label
+                          key={m.id}
+                          className={`flex items-center gap-2 rounded-lg p-2 text-xs cursor-pointer border ${
+                            isChecked
+                              ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/40 text-slate-900 dark:text-white font-medium'
+                              : 'border-slate-200 dark:border-slate-800 text-slate-500'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleMemberSelection(m.id)}
+                            className="rounded text-emerald-600 focus:ring-emerald-500"
+                          />
+                          <span className="truncate">{m.name}</span>
+                        </label>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
+                  {selectedMemberIds.length > 0 && totalAmount > 0 && (
+                    <div className="mt-2 text-right text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      {formatMoney(totalAmount / selectedMemberIds.length, currency)} per participant
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {splitMode === 'custom' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] px-1 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-slate-600 dark:text-slate-300">
+                      Allocated: <strong className="text-slate-900 dark:text-white">{formatMoney(allocatedTotal, currency)}</strong> of {formatMoney(totalAmount, currency)}
+                    </span>
+                    <span className={`font-bold ${
+                      Math.abs(remainingToAllocate) < 0.01
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : remainingToAllocate > 0
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {Math.abs(remainingToAllocate) < 0.01
+                        ? '✅ Exactly Matched'
+                        : remainingToAllocate > 0
+                        ? `${formatMoney(remainingToAllocate, currency)} remaining`
+                        : `${formatMoney(Math.abs(remainingToAllocate), currency)} over bill`}
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 max-h-48 overflow-y-auto space-y-2">
+                    {members.map((m) => (
+                      <div key={m.id} className="flex items-center justify-between text-xs gap-2">
+                        <span className="text-slate-700 dark:text-slate-300 truncate w-36 font-medium">{m.name}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-slate-400">{currSym}</span>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="any"
+                            value={customAmounts[m.id] || ''}
+                            onChange={(e) => handleCustomAmountChange(m.id, e.target.value)}
+                            className="w-24 rounded-lg border border-slate-300 dark:border-slate-700 px-2 py-1 text-right text-xs bg-white dark:bg-slate-900 font-bold"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Optional Notes */}
@@ -398,10 +453,16 @@ export function AddExpenseModal({
             <button
               type="submit"
               disabled={totalAmount <= 0 || !title.trim()}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700 disabled:opacity-50 transition-all active:scale-98 min-h-[44px] touch-manipulation"
+              className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold text-white shadow-lg disabled:opacity-50 transition-all active:scale-98 min-h-[44px] touch-manipulation ${
+                isPersonal
+                  ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/30'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30'
+              }`}
             >
               {expenseToEdit ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {expenseToEdit ? 'Save Changes & Recalculate' : 'Save Expense & Update Balances'}
+              {expenseToEdit
+                ? (isPersonal ? 'Save Personal Spend' : 'Save Changes & Recalculate')
+                : (isPersonal ? 'Save Personal Spend (Just for Me)' : 'Save Expense & Update Balances')}
             </button>
           </div>
         </form>

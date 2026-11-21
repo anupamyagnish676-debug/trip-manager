@@ -56,6 +56,7 @@ export interface Expense {
   notes?: string;
   receiptUrl?: string; // AI scanned receipt
   claimable?: boolean; // Bill self-claim mode
+  isPersonal?: boolean; // Personal spend (100% self - does not affect group debt)
 }
 
 export interface PaymentCapture {
@@ -92,6 +93,7 @@ export interface MemberBalance {
   totalDepositedToPot: number;
   totalDirectConsumption: number;
   totalPotConsumption: number;
+  totalPersonalPaid: number;
   netBalance: number;
 }
 

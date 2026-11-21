@@ -23,6 +23,7 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
     depositedToPot: number;
     directConsumption: number;
     potConsumption: number;
+    personalPaid: number;
   }>();
 
   // Initialize for all members
@@ -32,6 +33,7 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
       depositedToPot: 0,
       directConsumption: 0,
       potConsumption: 0,
+      personalPaid: 0,
     });
   });
 
@@ -69,9 +71,19 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
   // 2. Process Expenses
   trip.expenses.forEach((expense) => {
     const isFromPot = expense.paidBy === 'POT';
+    const isPersonal = Boolean(expense.isPersonal);
+
+    if (isPersonal) {
+      // Personal expense: 100% private to the payer, does not affect group debts
+      const payerStats = balanceMap.get(expense.paidBy);
+      if (payerStats) {
+        payerStats.personalPaid += expense.amount;
+      }
+      return;
+    }
 
     if (!isFromPot) {
-      // Direct payment by an individual member
+      // Direct payment by an individual member for the group
       const payerStats = balanceMap.get(expense.paidBy);
       if (payerStats) {
         payerStats.directPaid += expense.amount;
@@ -114,6 +126,7 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
       depositedToPot: 0,
       directConsumption: 0,
       potConsumption: 0,
+      personalPaid: 0,
     };
 
     const totalContributed = stats.directPaid + stats.depositedToPot;
@@ -126,6 +139,7 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
       totalDepositedToPot: stats.depositedToPot,
       totalDirectConsumption: stats.directConsumption,
       totalPotConsumption: stats.potConsumption,
+      totalPersonalPaid: stats.personalPaid,
       netBalance,
     };
   });

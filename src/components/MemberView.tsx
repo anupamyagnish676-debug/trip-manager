@@ -43,6 +43,7 @@ export function MemberView({
   onOpenChangePassword,
 }: MemberViewProps) {
   const [showHistory, setShowHistory] = useState(true);
+  const [filterType, setFilterType] = useState<'all' | 'group' | 'personal'>('all');
   const [isEditingMyUpi, setIsEditingMyUpi] = useState(false);
   const [myUpiInput, setMyUpiInput] = useState(currentMember.upiId || '');
   const [savedUpiSuccess, setSavedUpiSuccess] = useState(false);
@@ -60,18 +61,38 @@ export function MemberView({
 
   const getMember = (id: string) => trip.members.find((m) => m.id === id);
 
+  // All expenses that involve the user (either in splits, or paid personal expenses)
   const myExpenses = trip.expenses.filter((e) =>
-    e.splits.some((s) => s.memberId === currentMember.id)
+    e.splits.some((s) => s.memberId === currentMember.id) || (e.isPersonal && e.paidBy === currentMember.id)
   );
 
+  // Group share consumed (only from shared group bills)
+  const groupShareConsumed = trip.expenses
+    .filter((e) => !e.isPersonal)
+    .reduce((sum, e) => {
+      const mySplit = e.splits.find((s) => s.memberId === currentMember.id);
+      return sum + (mySplit?.amount || 0);
+    }, 0);
+
+  // Personal spend (100% solo purchases)
+  const personalSpend = trip.expenses
+    .filter((e) => e.isPersonal && e.paidBy === currentMember.id)
+    .reduce((sum, e) => sum + e.amount, 0);
+
+  // Grand Total Out-of-Pocket: Group Share + Personal Spend
+  const grandTotalCost = groupShareConsumed + personalSpend;
+
+  // Total fronted by user (both group bills fronted and personal bills paid)
   const totalIPaid = trip.expenses
     .filter((e) => e.paidBy === currentMember.id)
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalIConsumed = myExpenses.reduce((sum, e) => {
-    const mySplit = e.splits.find((s) => s.memberId === currentMember.id);
-    return sum + (mySplit?.amount || 0);
-  }, 0);
+  // Filtered expenses for the breakdown list
+  const filteredExpenses = myExpenses.filter((e) => {
+    if (filterType === 'group') return !e.isPersonal;
+    if (filterType === 'personal') return Boolean(e.isPersonal);
+    return true;
+  });
 
   const net = myBalance?.netBalance || 0;
 
@@ -243,19 +264,25 @@ export function MemberView({
           </div>
         </div>
 
-        {/* 2-Column Breakdown Row */}
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:gap-3">
-          <div className="rounded-2xl bg-white/15 p-3 sm:p-3.5 text-center backdrop-blur-sm border border-white/10">
-            <p className="text-base sm:text-lg font-black text-white leading-tight">
-              {formatMoney(totalIPaid, trip.currency)}
+        {/* 3-Column Breakdown Row */}
+        <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-2xl bg-white/15 p-2.5 sm:p-3 text-center backdrop-blur-sm border border-white/10">
+            <p className="text-sm sm:text-lg font-black text-white leading-tight">
+              {formatMoney(groupShareConsumed, trip.currency)}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-white/80 mt-1">Total I Paid (Out of Pocket)</p>
+            <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold">Group Share</p>
           </div>
-          <div className="rounded-2xl bg-white/15 p-3 sm:p-3.5 text-center backdrop-blur-sm border border-white/10">
-            <p className="text-base sm:text-lg font-black text-white leading-tight">
-              {formatMoney(totalIConsumed, trip.currency)}
+          <div className="rounded-2xl bg-white/15 p-2.5 sm:p-3 text-center backdrop-blur-sm border border-white/10">
+            <p className="text-sm sm:text-lg font-black text-white leading-tight">
+              {formatMoney(personalSpend, trip.currency)}
             </p>
-            <p className="text-[10px] sm:text-[11px] text-white/80 mt-1">My Total Share of Bills</p>
+            <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold">Personal Spend</p>
+          </div>
+          <div className="rounded-2xl bg-white/25 p-2.5 sm:p-3 text-center backdrop-blur-sm border border-white/20 shadow-inner">
+            <p className="text-sm sm:text-lg font-black text-white leading-tight">
+              {formatMoney(grandTotalCost, trip.currency)}
+            </p>
+            <p className="text-[9px] sm:text-[10px] text-white/95 mt-1 uppercase tracking-wider font-extrabold">Grand Total</p>
           </div>
         </div>
       </div>
@@ -419,20 +446,59 @@ export function MemberView({
 
       {/* ── MY EXPENSE FEED (Collapsible) ── */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-3 border-b border-slate-100 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={() => setShowHistory((v) => !v)}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
-          >
-            <Receipt className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-            <span className="text-sm font-bold text-slate-900 dark:text-white">
-              My Trip Expense Breakdown ({myExpenses.length} bills)
-            </span>
-            <span className="text-xs text-slate-400 ml-1 inline-flex items-center">
-              {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </span>
-          </button>
+        <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between sm:justify-start gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
+            >
+              <Receipt className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+              <span className="text-sm font-bold text-slate-900 dark:text-white">
+                My Trip Expenses ({myExpenses.length})
+              </span>
+              <span className="text-xs text-slate-400 ml-1 inline-flex items-center">
+                {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </span>
+            </button>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={() => setFilterType('all')}
+                className={`px-2 py-0.5 rounded-lg transition-all ${
+                  filterType === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                All ({myExpenses.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('group')}
+                className={`px-2 py-0.5 rounded-lg transition-all ${
+                  filterType === 'group'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                👥 Shared ({myExpenses.filter((e) => !e.isPersonal).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterType('personal')}
+                className={`px-2 py-0.5 rounded-lg transition-all ${
+                  filterType === 'personal'
+                    ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                👤 Personal ({myExpenses.filter((e) => e.isPersonal).length})
+              </button>
+            </div>
+          </div>
 
           {myExpenses.length > 0 && (
             <button
@@ -448,34 +514,62 @@ export function MemberView({
         </div>
 
         {showHistory && (
-          <div className="p-5 space-y-3">
-            {myExpenses.length === 0 ? (
+          <div className="p-4 sm:p-5 space-y-3">
+            {filteredExpenses.length === 0 ? (
               <p className="text-center text-xs text-slate-400 py-3">
-                No bills recorded with your share yet. Click &ldquo;Add Bill / Expense&rdquo; above!
+                {filterType === 'personal'
+                  ? 'No personal expenses recorded yet. Click "Add Bill / Expense" and select "Personal"!'
+                  : 'No bills found matching this filter.'}
               </p>
             ) : (
-              myExpenses.map((exp) => {
+              filteredExpenses.map((exp) => {
                 const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Friend' };
                 const mySplit = exp.splits.find((s) => s.memberId === currentMember.id);
                 const isPayer = exp.paidBy === currentMember.id;
+                const isPersonal = Boolean(exp.isPersonal);
+                const myShareAmount = isPersonal ? exp.amount : (mySplit?.amount || 0);
 
                 return (
                   <div
                     key={exp.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border text-xs transition-all ${
+                      isPersonal
+                        ? 'bg-purple-50/40 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/50 hover:border-purple-300'
+                        : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
                   >
                     <div>
-                      <p className="font-bold text-slate-900 dark:text-white text-sm">{exp.title}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {isPayer ? 'You paid' : `Paid by ${payer.name}`} • Bill: <strong className="text-slate-700 dark:text-slate-300 font-bold">{formatMoney(exp.amount, trip.currency)}</strong>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm">{exp.title}</p>
+                        {isPersonal ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                            <span>👤</span> Personal Expense
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                            👥 Group Shared
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        {isPersonal
+                          ? `Sole personal spend • Total: `
+                          : `${isPayer ? 'You paid' : `Paid by ${payer.name}`} • Bill: `}
+                        <strong className="text-slate-700 dark:text-slate-300 font-bold">{formatMoney(exp.amount, trip.currency)}</strong>
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
                       <div className="text-left sm:text-right">
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">My Share</span>
-                        <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                          {formatMoney(mySplit?.amount || 0, trip.currency)}
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">
+                          {isPersonal ? 'Personal Cost' : 'My Share'}
+                        </span>
+                        <span className={`font-black text-sm ${
+                          isPersonal
+                            ? 'text-purple-600 dark:text-purple-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {formatMoney(myShareAmount, trip.currency)}
                         </span>
                       </div>
 

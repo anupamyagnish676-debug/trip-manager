@@ -186,6 +186,8 @@ export default function TripFinancePortal() {
   };
 
   const totalTripSpend = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalGroupSpend = trip.expenses.filter((e) => !e.isPersonal).reduce((sum, e) => sum + e.amount, 0);
+  const totalPersonalSpend = trip.expenses.filter((e) => e.isPersonal).reduce((sum, e) => sum + e.amount, 0);
 
   // ── Handlers ──
   const handleAddExpense = async (newExp: Expense) => {
@@ -526,7 +528,12 @@ export default function TripFinancePortal() {
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Trip Expense Feed</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Total group spend: <strong className="text-slate-900 dark:text-white">{formatMoney(totalTripSpend, trip.currency)}</strong> across {trip.expenses.length} bills
+                  Total spend: <strong className="text-slate-900 dark:text-white">{formatMoney(totalTripSpend, trip.currency)}</strong>
+                  {totalPersonalSpend > 0 && (
+                    <span className="text-[11px] text-slate-400 ml-1">
+                      (Group: {formatMoney(totalGroupSpend, trip.currency)} • Personal: {formatMoney(totalPersonalSpend, trip.currency)})
+                    </span>
+                  )} across {trip.expenses.length} bills
                 </p>
               </div>
               <button
@@ -542,6 +549,7 @@ export default function TripFinancePortal() {
 
             <div className="space-y-3">
               {trip.expenses.map((exp) => {
+                const isPersonal = Boolean(exp.isPersonal);
                 const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Friend', avatarColor: 'bg-slate-600' };
                 const myShare = exp.splits.find((s) => s.memberId === currentMember?.id);
                 const isMyPayment = exp.paidBy === currentMember?.id;
@@ -556,17 +564,30 @@ export default function TripFinancePortal() {
                         {CATEGORY_ICONS[exp.category] || '💸'}
                       </div>
                       <div>
-                        <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">{exp.title}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">{exp.title}</h4>
+                          {isPersonal && (
+                            <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-2 py-0.5 text-[10px] font-bold">
+                              👤 Personal Spend
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
                           <span>
-                            Paid by <strong className={isMyPayment ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-700 dark:text-slate-300'}>{isMyPayment ? 'You' : payer.name}</strong>
+                            Paid by <strong className={isMyPayment ? (isPersonal ? 'text-purple-600 dark:text-purple-400 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-bold') : 'text-slate-700 dark:text-slate-300'}>{isMyPayment ? 'You' : payer.name}</strong>
                           </span>
                           <span>•</span>
-                          <span>{exp.splits.length} friends splitting</span>
-                          {myShare && (
-                            <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
-                              Your share: {formatMoney(myShare.amount, trip.currency)}
-                            </span>
+                          {isPersonal ? (
+                            <span className="text-purple-600 dark:text-purple-400 font-medium">100% private solo spend</span>
+                          ) : (
+                            <>
+                              <span>{exp.splits.length} friends splitting</span>
+                              {myShare && (
+                                <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
+                                  Your share: {formatMoney(myShare.amount, trip.currency)}
+                                </span>
+                              )}
+                            </>
                           )}
                           {exp.notes && <span className="italic text-slate-400">({exp.notes})</span>}
                         </div>
@@ -786,6 +807,7 @@ export default function TripFinancePortal() {
           setEditingExpense(null);
         }}
         members={trip.members}
+        currentMember={currentMember}
         onAddExpense={handleAddExpense}
         onUpdateExpense={handleUpdateExpense}
         expenseToEdit={editingExpense}

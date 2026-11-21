@@ -140,7 +140,7 @@ export function TripGroupMembersModal({
   };
 
   const handleStartEdit = (m: Member) => {
-    if (!isTripManager) return;
+    if (!isTripManager && m.id !== currentMember?.id) return;
     setEditingMemberId(m.id);
     setEditForm({
       name: m.name,
@@ -152,7 +152,7 @@ export function TripGroupMembersModal({
   };
 
   const handleSaveEdit = (id: string) => {
-    if (!isTripManager) return;
+    if (!isTripManager && id !== currentMember?.id) return;
     if (!editForm.name.trim() || !editForm.loginId.trim() || !editForm.password.trim()) {
       alert('Name, Login ID, and Password cannot be empty.');
       return;
@@ -255,15 +255,15 @@ export function TripGroupMembersModal({
                   <span>🛡️</span> Trip Manager Access
                 </span>
               ) : (
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span>🔒</span> View-Only (Manager Restricted)
+                <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/70 border border-sky-300 dark:border-sky-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>✏️</span> Member Profile Access
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {isTripManager
-                ? 'Trip Manager has full access to update login IDs, passwords, phone numbers, and receiving UPI IDs.'
-                : 'Directory of trip friends and payment IDs. Only the Trip Manager can modify member details.'}
+                ? 'Trip Manager has full access to update login IDs, passwords, phone numbers, and receiving UPI IDs for all friends.'
+                : 'You have full access to edit your own name, phone number, login credentials, and receiving UPI ID at any time.'}
             </p>
           </div>
         </div>
@@ -442,7 +442,7 @@ export function TripGroupMembersModal({
                     <div className="flex items-center justify-between pb-2 border-b border-sky-200 dark:border-sky-900/60">
                       <h5 className="text-xs font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
                         <Edit2 className="h-3.5 w-3.5 text-sky-500" />
-                        <span>Edit Details for {member.name}</span>
+                        <span>{member.id === currentMember?.id ? 'Edit Your Details' : `Edit Details for ${member.name}`}</span>
                       </h5>
                       <span className="text-[10px] text-sky-600 dark:text-sky-400">Modify any field & save</span>
                     </div>
@@ -623,7 +623,7 @@ export function TripGroupMembersModal({
                           type="button"
                           onClick={() => handleStartEdit(member)}
                           className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
-                          title="Edit member details (Trip Manager only)"
+                          title="Edit member details (Trip Manager)"
                         >
                           <Edit2 className="h-3.5 w-3.5 text-sky-500" />
                           <span>Edit</span>
@@ -631,15 +631,12 @@ export function TripGroupMembersModal({
                       ) : member.id === currentMember?.id ? (
                         <button
                           type="button"
-                          onClick={() => {
-                            setEditingMyUpiId(member.id);
-                            setMyUpiInput(member.upiId || '');
-                          }}
+                          onClick={() => handleStartEdit(member)}
                           className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-all shadow-sm active:scale-95"
-                          title="Change your receiving UPI ID"
+                          title="Edit your own name, phone, login ID, password, or receiving UPI ID"
                         >
                           <Edit2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>{member.upiId ? 'Change My UPI' : '+ Set My UPI'}</span>
+                          <span>✏️ Edit My Details</span>
                         </button>
                       ) : null}
 
