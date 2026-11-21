@@ -6,7 +6,7 @@ import {
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
-  TrendingUp, FileText, KeyRound, Folder, ExternalLink,
+  TrendingUp, FileText, KeyRound, Folder, ExternalLink, Download,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -23,7 +23,7 @@ import { MemberView } from '@/components/MemberView';
 import { calculateMemberBalances } from '@/lib/calculations';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getSession, saveSession, clearSession } from '@/lib/session';
-import { downloadExpenseInvoice } from '@/lib/pdfReceipt';
+import { downloadExpenseInvoice, downloadOverallTripReport } from '@/lib/pdfReceipt';
 import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
   upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
@@ -648,15 +648,29 @@ export default function TripFinancePortal() {
                   )} across {trip.expenses.length} bills
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setEditingExpense(null);
-                  setIsAddExpenseOpen(true);
-                }}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 touch-manipulation min-h-[36px]"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Bill
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {trip.expenses.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => downloadOverallTripReport(trip)}
+                    className="flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 touch-manipulation min-h-[36px]"
+                    title="Download consolidated PDF statement of overall trip expenses and bills"
+                  >
+                    <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Download Overall Bills</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    setEditingExpense(null);
+                    setIsAddExpenseOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 touch-manipulation min-h-[36px]"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add Bill
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">

@@ -945,3 +945,318 @@ export function downloadMemberStatement(trip: Trip, member: Member) {
   const cleanName = member.name.replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Statement_${trip.name.replace(/[^a-zA-Z0-9]/g, '_')}_${cleanName}.pdf`);
 }
+
+/**
+ * Generates Master Overall Trip Expense & Bills Statement PDF
+ */
+export function generateOverallTripReportPdf(trip: Trip): jsPDF {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
+  const managerName = getTripManagerName(trip);
+  const currency = trip.currency || 'INR';
+
+  const totalTripSpend = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalGroupSpend = trip.expenses.filter((e) => !e.isPersonal).reduce((sum, e) => sum + e.amount, 0);
+  const totalPersonalSpend = trip.expenses.filter((e) => e.isPersonal).reduce((sum, e) => sum + e.amount, 0);
+
+  const reportNumber = `EXP-ALL-${(trip.inviteCode || 'TRIP').toUpperCase()}-${Date.now().toString().slice(-4)}`;
+  const date = new Date().toISOString().split('T')[0];
+
+  // ── Top Header ──
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, pageWidth, 28, 'F');
+  doc.setFillColor(16, 185, 129); // emerald-500
+  doc.rect(0, 28, pageWidth, 2.5, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`${trip.name.toUpperCase()} • OVERALL BILL REPORT`, margin, 13);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Official Consolidated Trip Expense Ledger | Destination: ${trip.destination}`, margin, 21);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(52, 211, 153);
+  doc.text(reportNumber, pageWidth - margin, 13, { align: 'right' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Generated Date: ${date}`, pageWidth - margin, 21, { align: 'right' });
+
+  let y = 38;
+
+  // ── Summary Cards Box ──
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, contentWidth, 26, 2, 2, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, y, contentWidth, 26, 2, 2, 'S');
+
+  // Col 1: Total Spend
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('TOTAL GROUP SPEND', margin + 6, y + 8);
+  doc.setFontSize(13);
+  doc.setTextColor(5, 150, 105); // emerald-600
+  doc.text(formatSafePdfMoney(totalTripSpend, currency), margin + 6, y + 18);
+
+  // Col 2: Shared vs Personal
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('BREAKDOWN', margin + 65, y + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`Group Bills: ${formatSafePdfMoney(totalGroupSpend, currency)}`, margin + 65, y + 14);
+  doc.text(`Personal Bills: ${formatSafePdfMoney(totalPersonalSpend, currency)}`, margin + 65, y + 20);
+
+  // Col 3: Members & Count
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('TRIP PARTICIPATION', margin + 125, y + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${trip.members.length} Registered Friends`, margin + 125, y + 14);
+  doc.text(`${trip.expenses.length} Total Bills Logged`, margin + 125, y + 20);
+
+  y += 33;
+
+  // ── Who Fronted What Summary ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('WHO FRONTED THE BILLS (PAID OUT-OF-POCKET)', margin, y);
+  y += 4;
+
+  const payerTotals = new Map<string, number>();
+  trip.expenses.forEach((e) => {
+    payerTotals.set(e.paidBy, (payerTotals.get(e.paidBy) || 0) + e.amount);
+  });
+
+  const payerList = Array.from(payerTotals.entries()).map(([memberId, amt]) => {
+    const member = trip.members.find((m) => m.id === memberId);
+    return {
+      name: member?.name || 'Group Member',
+      amount: amt,
+      percentage: totalTripSpend > 0 ? ((amt / totalTripSpend) * 100).toFixed(1) : '0',
+    };
+  });
+
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, y, contentWidth, 7, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(margin, y, contentWidth, 7, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('MEMBER NAME', margin + 5, y + 4.5);
+  doc.text('PERCENTAGE', margin + 95, y + 4.5);
+  doc.text('TOTAL AMOUNT FRONTED', pageWidth - margin - 5, y + 4.5, { align: 'right' });
+  y += 7;
+
+  payerList.forEach((p, idx) => {
+    doc.setFillColor(idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 255 : 252);
+    doc.rect(margin, y, contentWidth, 6.5, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(margin, y, contentWidth, 6.5, 'S');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(p.name, margin + 5, y + 4.5);
+    doc.text(`${p.percentage}%`, margin + 95, y + 4.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(5, 150, 105);
+    doc.text(formatSafePdfMoney(p.amount, currency), pageWidth - margin - 5, y + 4.5, { align: 'right' });
+
+    y += 6.5;
+  });
+
+  y += 8;
+
+  // ── Master Itemized Bills Table ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`ITEMIZED BILLS REGISTER (${trip.expenses.length} BILLS)`, margin, y);
+  y += 4;
+
+  const tableHeaderY = y;
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, tableHeaderY, contentWidth, 7.5, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(margin, tableHeaderY, contentWidth, 7.5, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text('#', margin + 3, tableHeaderY + 5);
+  doc.text('DATE', margin + 10, tableHeaderY + 5);
+  doc.text('BILL TITLE / PURPOSE', margin + 32, tableHeaderY + 5);
+  doc.text('CATEGORY', margin + 95, tableHeaderY + 5);
+  doc.text('PAID BY', margin + 120, tableHeaderY + 5);
+  doc.text('AMOUNT', pageWidth - margin - 5, tableHeaderY + 5, { align: 'right' });
+  y += 7.5;
+
+  trip.expenses.forEach((exp, idx) => {
+    // Pagination check
+    if (y > 262) {
+      doc.addPage();
+      y = 20;
+
+      // Repeat table header on new page
+      doc.setFillColor(241, 245, 249);
+      doc.rect(margin, y, contentWidth, 7.5, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(margin, y, contentWidth, 7.5, 'S');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text('#', margin + 3, y + 5);
+      doc.text('DATE', margin + 10, y + 5);
+      doc.text('BILL TITLE / PURPOSE', margin + 32, y + 5);
+      doc.text('CATEGORY', margin + 95, y + 5);
+      doc.text('PAID BY', margin + 120, y + 5);
+      doc.text('AMOUNT', pageWidth - margin - 5, y + 5, { align: 'right' });
+      y += 7.5;
+    }
+
+    const rowHeight = 7;
+    doc.setFillColor(idx % 2 === 0 ? 255 : 248, idx % 2 === 0 ? 255 : 250, idx % 2 === 0 ? 255 : 252);
+    doc.rect(margin, y, contentWidth, rowHeight, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(margin, y, contentWidth, rowHeight, 'S');
+
+    const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Member' };
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(String(idx + 1), margin + 3, y + 4.8);
+    doc.text(exp.paidAt ? exp.paidAt.slice(5) : '—', margin + 10, y + 4.8);
+
+    const titleStr = exp.isPersonal ? `[Personal] ${exp.title}` : exp.title;
+    doc.text(titleStr.slice(0, 32), margin + 32, y + 4.8);
+    doc.text(exp.category.toUpperCase().slice(0, 10), margin + 95, y + 4.8);
+    doc.text(payer.name.slice(0, 16), margin + 120, y + 4.8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(exp.isPersonal ? 126 : 15, exp.isPersonal ? 34 : 23, exp.isPersonal ? 206 : 42);
+    doc.text(formatSafePdfMoney(exp.amount, currency), pageWidth - margin - 5, y + 4.8, { align: 'right' });
+
+    y += rowHeight;
+  });
+
+  // Table Total Row
+  doc.setFillColor(241, 245, 249);
+  doc.rect(margin, y, contentWidth, 8, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.rect(margin, y, contentWidth, 8, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('TOTAL GROUP BILLS ACCUMULATED', margin + 32, y + 5.5);
+  doc.setTextColor(5, 150, 105);
+  doc.text(formatSafePdfMoney(totalTripSpend, currency), pageWidth - margin - 5, y + 5.5, { align: 'right' });
+  y += 14;
+
+  // ── Authentication & Signature Block ──
+  if (y > 235) {
+    doc.addPage();
+    y = 25;
+  } else {
+    y = Math.max(y, 220);
+  }
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 7;
+
+  const sigBoxWidth = 80;
+  const sigBoxHeight = 32;
+
+  // Manager box
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, sigBoxWidth, sigBoxHeight, 2, 2, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(margin, y, sigBoxWidth, sigBoxHeight, 2, 2, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('VERIFIED & ISSUED BY', margin + 5, y + 6);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(managerName, margin + 5, y + 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Designated Finance Manager (FM)', margin + 5, y + 20);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(16, 185, 129);
+  doc.text('Verified Master Trip Statement ✓', margin + 5, y + 26);
+
+  // Digital Stamp Box
+  const stampX = pageWidth - margin - sigBoxWidth;
+  doc.setFillColor(240, 253, 244);
+  doc.roundedRect(stampX, y, sigBoxWidth, sigBoxHeight, 2, 2, 'F');
+  doc.setDrawColor(52, 211, 153);
+  doc.roundedRect(stampX, y, sigBoxWidth, sigBoxHeight, 2, 2, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(5, 150, 105);
+  doc.text('CONSOLIDATED BILL STATEMENT', stampX + 5, y + 6);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(6, 95, 70);
+  doc.text(`Reference: ${reportNumber}`, stampX + 5, y + 13);
+  doc.text(`Timestamp: ${new Date().toLocaleString()}`, stampX + 5, y + 19);
+  doc.text(`Total Spend: ${formatSafePdfMoney(totalTripSpend, currency)}`, stampX + 5, y + 25);
+
+  // Bottom Footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'This is an official computer-generated Master Expense Statement from the Odisha Ghumming Trip Portal.',
+    pageWidth / 2,
+    285,
+    { align: 'center' }
+  );
+
+  return doc;
+}
+
+/**
+ * Trigger download of overall trip expenses and bills PDF
+ */
+export function downloadOverallTripReport(trip: Trip) {
+  const doc = generateOverallTripReportPdf(trip);
+  const cleanTripName = trip.name.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Overall_Trip_Bills_${cleanTripName}.pdf`);
+}
