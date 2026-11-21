@@ -705,7 +705,7 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
 
   // All expenses that involve the user (either in splits, or paid by the user)
   const myExpenses = trip.expenses.filter((e) =>
-    e.splits.some((s) => s.memberId === currentMember.id) || e.paidBy === currentMember.id
+    e.splits.some((s) => s.memberId === currentMember.id) || (!e.isPersonal && e.paidBy === currentMember.id)
   );
 
   const groupShareConsumed = trip.expenses
@@ -716,7 +716,7 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
     }, 0);
 
   const personalSpend = trip.expenses
-    .filter((e) => e.isPersonal && (e.splits[0]?.memberId === currentMember.id || (!e.splits.length && e.paidBy === currentMember.id)))
+    .filter((e) => e.isPersonal && (e.splits[0]?.memberId === currentMember.id || e.paidBy === currentMember.id))
     .reduce((sum, e) => sum + e.amount, 0);
 
   const grandTotalCost = groupShareConsumed + personalSpend;
@@ -817,13 +817,10 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
   y += 8;
   myExpenses.forEach((exp, idx) => {
     const isPersonal = Boolean(exp.isPersonal);
-    const beneficiaryId = exp.splits[0]?.memberId || exp.paidBy;
-    const isBeneficiary = beneficiaryId === currentMember.id;
-    const isSelfPaid = exp.paidBy === beneficiaryId;
     const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Friend' };
     const mySplit = exp.splits.find((s) => s.memberId === currentMember.id);
     const isPayer = exp.paidBy === currentMember.id;
-    const myShareAmount = isPersonal ? (isBeneficiary ? exp.amount : 0) : (mySplit?.amount || 0);
+    const myShareAmount = isPersonal ? exp.amount : (mySplit?.amount || 0);
 
     const rowHeight = 7.5;
     if (idx % 2 === 1) {
@@ -838,24 +835,16 @@ export function generateMemberStatementPdf(trip: Trip, currentMember: Member): j
     doc.setTextColor(15, 23, 42);
 
     doc.text(String(idx + 1), margin + 4, y + 5);
-    const titleText = isPersonal
-      ? (isSelfPaid ? `[Personal] ${exp.title}` : `[1-on-1 Advance] ${exp.title}`)
-      : exp.title;
+    const titleText = isPersonal ? `[Personal] ${exp.title}` : exp.title;
     doc.text(titleText, margin + 14, y + 5);
 
-    const paidByText = isPersonal
-      ? (isSelfPaid
-          ? 'You (Self)'
-          : (isPayer
-              ? `You (For ${trip.members.find(m => m.id === beneficiaryId)?.name || 'Friend'})`
-              : `${payer.name} (For You)`))
-      : (isPayer ? 'You' : payer.name);
+    const paidByText = isPersonal ? 'You (Private)' : (isPayer ? 'You' : payer.name);
     doc.text(paidByText, margin + 85, y + 5);
     doc.text(formatSafePdfMoney(exp.amount, currency), margin + 120, y + 5);
 
     doc.setFont('helvetica', 'bold');
     if (isPersonal) {
-      doc.setTextColor(isBeneficiary ? 126 : 13, isBeneficiary ? 34 : 148, isBeneficiary ? 206 : 136);
+      doc.setTextColor(126, 34, 206);
     } else {
       doc.setTextColor(5, 150, 105);
     }

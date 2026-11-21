@@ -280,49 +280,43 @@ export function AddExpenseModal({
             <select
               value={paidBy}
               onChange={(e) => setPaidBy(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 sm:py-2 text-base sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              disabled={isPersonal && Boolean(currentMember)}
+              className={`w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 sm:py-2 text-base sm:text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                isPersonal ? 'focus:ring-purple-500 bg-purple-50/30 dark:bg-purple-950/20' : 'focus:ring-emerald-500'
+              }`}
             >
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  👤 {m.name}
+              {isPersonal && currentMember ? (
+                <option value={currentMember.id}>
+                  👤 {currentMember.name} (Yourself)
                 </option>
-              ))}
+              ) : (
+                members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    👤 {m.name}
+                  </option>
+                ))
+              )}
             </select>
+            {isPersonal && currentMember && (
+              <p className="text-[10px] text-purple-600 dark:text-purple-400 mt-1 font-medium">
+                🔒 Personal spend is strictly for your own private purchases ({currentMember.name}).
+              </p>
+            )}
           </div>
 
           {/* Split Mode Options or Personal Notice */}
           {isPersonal ? (
-            (() => {
-              const payer = members.find((m) => m.id === paidBy);
-              const payerName = payer?.name || 'Friend';
-              const isSelfPaid = !currentMember || paidBy === currentMember.id;
-
-              return isSelfPaid ? (
-                <div className="rounded-2xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/70 dark:bg-purple-950/30 p-3.5 space-y-1.5 animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">👤</span>
-                    <h4 className="text-xs font-bold text-purple-900 dark:text-purple-200">
-                      Personal Expense (Paid by You)
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                    You paid directly out of your own pocket. This is tracked in your private trip budget and will <strong>NOT</strong> create any debt with other friends.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-amber-300 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/30 p-3.5 space-y-1.5 animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🤝</span>
-                    <h4 className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                      1-on-1 Friend Advance (Paid by {payerName} for You)
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                    <strong>{payerName}</strong> fronted this money for you. The portal will create a direct 1-to-1 settlement: <strong>You will owe {payerName} {formatMoney(totalAmount, currency)}</strong>. The other friends in the group will not be affected.
-                  </p>
-                </div>
-              );
-            })()
+            <div className="rounded-2xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/70 dark:bg-purple-950/30 p-3.5 space-y-1.5 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👤</span>
+                <h4 className="text-xs font-bold text-purple-900 dark:text-purple-200">
+                  Personal Expense (Paid by You)
+                </h4>
+              </div>
+              <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                You paid directly out of your own pocket. This is tracked strictly in your private personal budget and will <strong>NOT</strong> create any debt with other friends.
+              </p>
+            </div>
           ) : (
             <>
               <div>
@@ -483,11 +477,7 @@ export function AddExpenseModal({
               {expenseToEdit ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {expenseToEdit
                 ? (isPersonal ? 'Save Personal Spend' : 'Save Changes & Recalculate')
-                : (isPersonal
-                    ? (!currentMember || paidBy === currentMember.id
-                        ? 'Save Personal Spend (Self-Paid)'
-                        : `Record Advance (Paid by ${members.find((m) => m.id === paidBy)?.name || 'Friend'})`)
-                    : 'Save Expense & Update Balances')}
+                : (isPersonal ? 'Save Personal Spend (Just for Me)' : 'Save Expense & Update Balances')}
             </button>
           </div>
         </form>

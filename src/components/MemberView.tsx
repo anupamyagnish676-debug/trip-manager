@@ -63,9 +63,9 @@ export function MemberView({
 
   // All expenses that involve the user:
   // - Either the user is in splits (group bill or personal bill for them)
-  // - OR the user paid for it (including when they fronted a personal bill for a friend)
+  // - OR the user paid for a shared group bill
   const myExpenses = trip.expenses.filter((e) =>
-    e.splits.some((s) => s.memberId === currentMember.id) || e.paidBy === currentMember.id
+    e.splits.some((s) => s.memberId === currentMember.id) || (!e.isPersonal && e.paidBy === currentMember.id)
   );
 
   // Group share consumed (only from shared group bills)
@@ -76,9 +76,9 @@ export function MemberView({
       return sum + (mySplit?.amount || 0);
     }, 0);
 
-  // Personal spend (100% solo purchases where currentMember is beneficiary)
+  // Personal spend (100% solo purchases for this member)
   const personalSpend = trip.expenses
-    .filter((e) => e.isPersonal && (e.splits[0]?.memberId === currentMember.id || (!e.splits.length && e.paidBy === currentMember.id)))
+    .filter((e) => e.isPersonal && (e.splits[0]?.memberId === currentMember.id || e.paidBy === currentMember.id))
     .reduce((sum, e) => sum + e.amount, 0);
 
   // Grand Total Out-of-Pocket: Group Share + Personal Spend
@@ -528,24 +528,16 @@ export function MemberView({
                 const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Friend' };
                 const isPayer = exp.paidBy === currentMember.id;
                 const isPersonal = Boolean(exp.isPersonal);
-                const beneficiaryId = exp.splits[0]?.memberId || exp.paidBy;
-                const beneficiary = trip.members.find((m) => m.id === beneficiaryId) || payer;
-                const isBeneficiary = beneficiaryId === currentMember.id;
-                const isSelfPaid = exp.paidBy === beneficiaryId;
 
                 const mySplit = exp.splits.find((s) => s.memberId === currentMember.id);
-                const myShareAmount = isPersonal
-                  ? (isBeneficiary ? exp.amount : 0)
-                  : (mySplit?.amount || 0);
+                const myShareAmount = isPersonal ? exp.amount : (mySplit?.amount || 0);
 
                 return (
                   <div
                     key={exp.id}
                     className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border text-xs transition-all ${
                       isPersonal
-                        ? (isSelfPaid
-                            ? 'bg-purple-50/40 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/50 hover:border-purple-300'
-                            : 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 hover:border-amber-300')
+                        ? 'bg-purple-50/40 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/50 hover:border-purple-300'
                         : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
@@ -553,19 +545,9 @@ export function MemberView({
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-bold text-slate-900 dark:text-white text-sm">{exp.title}</p>
                         {isPersonal ? (
-                          isSelfPaid ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
-                              <span>👤</span> Personal (Self-Paid)
-                            </span>
-                          ) : isBeneficiary ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                              <span>🤝</span> 1-on-1 Advance (Paid by {payer.name})
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950/70 dark:text-teal-300 border border-teal-300 dark:border-teal-800 flex items-center gap-1">
-                              <span>🤝</span> Fronted for {beneficiary.name}
-                            </span>
-                          )
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                            <span>👤</span> Personal Expense
+                          </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                             👥 Group Shared
@@ -574,13 +556,7 @@ export function MemberView({
                       </div>
                       <p className="text-[11px] text-slate-400 mt-1">
                         {isPersonal ? (
-                          isSelfPaid ? (
-                            <>Paid from your pocket • Total: <strong className="text-slate-700 dark:text-slate-300 font-bold">{formatMoney(exp.amount, trip.currency)}</strong></>
-                          ) : isBeneficiary ? (
-                            <>{payer.name} paid for you • <span className="text-rose-600 dark:text-rose-400 font-semibold">You owe {payer.name} {formatMoney(exp.amount, trip.currency)}</span></>
-                          ) : (
-                            <>You fronted for {beneficiary.name} • <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{beneficiary.name} owes you {formatMoney(exp.amount, trip.currency)}</span></>
-                          )
+                          <>Paid from your pocket • Total: <strong className="text-slate-700 dark:text-slate-300 font-bold">{formatMoney(exp.amount, trip.currency)}</strong></>
                         ) : (
                           `${isPayer ? 'You paid' : `Paid by ${payer.name}`} • Bill: `
                         )}
@@ -591,13 +567,11 @@ export function MemberView({
                     <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
                       <div className="text-left sm:text-right">
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">
-                          {isPersonal
-                            ? (isBeneficiary ? 'Personal Cost' : 'Fronted Share')
-                            : 'My Share'}
+                          {isPersonal ? 'Personal Cost' : 'My Share'}
                         </span>
                         <span className={`font-black text-sm ${
                           isPersonal
-                            ? (isBeneficiary ? 'text-purple-600 dark:text-purple-400' : 'text-teal-600 dark:text-teal-400')
+                            ? 'text-purple-600 dark:text-purple-400'
                             : 'text-emerald-600 dark:text-emerald-400'
                         }`}>
                           {formatMoney(myShareAmount, trip.currency)}

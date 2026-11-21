@@ -562,9 +562,6 @@ export default function TripFinancePortal() {
               {trip.expenses.map((exp) => {
                 const isPersonal = Boolean(exp.isPersonal);
                 const payer = trip.members.find((m) => m.id === exp.paidBy) || { name: 'Friend', avatarColor: 'bg-slate-600' };
-                const beneficiaryId = exp.splits[0]?.memberId || exp.paidBy;
-                const beneficiary = trip.members.find((m) => m.id === beneficiaryId) || payer;
-                const isSelfPaid = exp.paidBy === beneficiaryId;
                 const myShare = exp.splits.find((s) => s.memberId === currentMember?.id);
                 const isMyPayment = exp.paidBy === currentMember?.id;
 
@@ -581,15 +578,9 @@ export default function TripFinancePortal() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">{exp.title}</h4>
                           {isPersonal && (
-                            isSelfPaid ? (
-                              <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-2 py-0.5 text-[10px] font-bold">
-                                👤 Personal (Self-Paid)
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 px-2 py-0.5 text-[10px] font-bold">
-                                🤝 1-on-1 Advance ({payer.name} → {beneficiary.name})
-                              </span>
-                            )
+                            <span className="rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-2 py-0.5 text-[10px] font-bold">
+                              👤 Personal Expense
+                            </span>
                           )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
@@ -598,13 +589,7 @@ export default function TripFinancePortal() {
                           </span>
                           <span>•</span>
                           {isPersonal ? (
-                            isSelfPaid ? (
-                              <span className="text-purple-600 dark:text-purple-400 font-medium">100% private solo spend</span>
-                            ) : (
-                              <span className="text-amber-700 dark:text-amber-400 font-medium">
-                                Direct 1-to-1 settlement ({beneficiary.name} owes {payer.name} {formatMoney(exp.amount, trip.currency)})
-                              </span>
-                            )
+                            <span className="text-purple-600 dark:text-purple-400 font-medium">100% private solo spend</span>
                           ) : (
                             <>
                               <span>{exp.splits.length} friends splitting</span>
