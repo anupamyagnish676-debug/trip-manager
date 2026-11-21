@@ -25,7 +25,7 @@ import { MemberView } from '@/components/MemberView';
 import { calculateMemberBalances } from '@/lib/calculations';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getSession, saveSession, clearSession } from '@/lib/session';
-import { downloadExpenseInvoice, downloadOverallTripReport } from '@/lib/pdfReceipt';
+import { downloadExpenseInvoice, downloadOverallTripReport, generateExpenseInvoicePdf } from '@/lib/pdfReceipt';
 import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
   upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
@@ -240,6 +240,20 @@ export default function TripFinancePortal() {
         amount: s.amount,
       }));
 
+      // Generate the official PDF Invoice & Split Voucher to attach with the email
+      let pdfBase64: string | undefined;
+      let pdfFileName: string | undefined;
+      try {
+        const doc = generateExpenseInvoicePdf(trip, exp, currentMember || undefined);
+        const dataUri = doc.output('datauristring');
+        pdfBase64 = dataUri.includes('base64,') ? dataUri.split('base64,')[1] : dataUri;
+        const invoiceNumber = `INV-${(trip.inviteCode || 'TRIP').toUpperCase()}-${exp.id.slice(-6).toUpperCase()}`;
+        const cleanTitle = exp.title.replace(/[^a-zA-Z0-9]/g, '_');
+        pdfFileName = `${invoiceNumber}_${cleanTitle}.pdf`;
+      } catch (pdfErr) {
+        console.warn('PDF invoice generation for email attachment error:', pdfErr);
+      }
+
       const res = await fetch('/api/send-bill-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -258,6 +272,8 @@ export default function TripFinancePortal() {
           splits: splitsWithNames,
           portalUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
           isResend,
+          pdfBase64,
+          pdfFileName,
         }),
       });
 

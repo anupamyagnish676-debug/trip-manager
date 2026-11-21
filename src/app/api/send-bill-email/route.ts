@@ -22,6 +22,8 @@ interface BillEmailPayload {
   splits: SplitRecipient[];
   portalUrl?: string;
   isResend?: boolean;
+  pdfBase64?: string;
+  pdfFileName?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -42,6 +44,8 @@ export async function POST(req: NextRequest) {
       splits,
       portalUrl,
       isResend = false,
+      pdfBase64,
+      pdfFileName,
     } = body;
 
     const gmailUser = process.env.GMAIL_USER;
@@ -150,6 +154,21 @@ export async function POST(req: NextRequest) {
               : ''
           }
 
+          ${
+            pdfBase64
+              ? `
+            <div style="margin-top: 20px; padding: 12px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; text-align: center;">
+              <span style="font-size: 13px; font-weight: 700; color: #065f46;">
+                📎 Official PDF Invoice & Split Voucher Attached (${pdfFileName || 'Invoice.pdf'})
+              </span>
+              <p style="margin: 4px 0 0 0; font-size: 11px; color: #047857;">
+                Download the attached PDF directly from this email for legal & accounts records.
+              </p>
+            </div>
+          `
+              : ''
+          }
+
           <!-- Call to Action -->
           <div style="margin-top: 28px; text-align: center;">
             <a href="${portalUrl || 'https://trip-manager.vercel.app'}" style="display: inline-block; background: #059669; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 12px; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);">
@@ -172,11 +191,23 @@ export async function POST(req: NextRequest) {
 
     const subjectPrefix = isResend ? `[Resent - ${tripName}] 🧾 Bill:` : `[${tripName}] 🧾 New Bill:`;
 
+    // Process PDF attachment if supplied
+    const attachments: Array<{ filename: string; content: Buffer; contentType: string }> = [];
+    if (pdfBase64 && typeof pdfBase64 === 'string' && pdfBase64.trim().length > 0) {
+      const cleanBase64 = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
+      attachments.push({
+        filename: pdfFileName || `Bill_Invoice_${billTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`,
+        content: Buffer.from(cleanBase64, 'base64'),
+        contentType: 'application/pdf',
+      });
+    }
+
     const info = await transporter.sendMail({
       from: `"Trip Manager - ${tripName}" <${gmailUser}>`,
       to: validRecipients.join(', '),
       subject: `${subjectPrefix} ${billTitle} (${formattedAmount})`,
       html: htmlContent,
+      attachments,
     });
 
     return NextResponse.json({
