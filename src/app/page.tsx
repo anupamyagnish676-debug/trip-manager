@@ -6,7 +6,7 @@ import {
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
-  TrendingUp, FileText, KeyRound,
+  TrendingUp, FileText, KeyRound, Folder, ExternalLink,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -195,6 +195,47 @@ export default function TripFinancePortal() {
     const updated = { ...trip, expenses: [newExp, ...trip.expenses] };
     saveTripState(updated);
     if (hasSupabase) await insertExpenseToSupabase(newExp);
+
+    // Auto-dispatch email notification to all members with an email address
+    try {
+      const paidByName =
+        newExp.paidBy === 'POT'
+          ? 'Trip Pot (Common Pool)'
+          : trip.members.find((m) => m.id === newExp.paidBy)?.name || 'Trip Member';
+
+      const recipientEmails = trip.members
+        .map((m) => m.email)
+        .filter((em): em is string => Boolean(em && em.includes('@')));
+
+      if (recipientEmails.length > 0) {
+        const splitsWithNames = (newExp.splits || []).map((s) => ({
+          name: trip.members.find((m) => m.id === s.memberId)?.name || 'Member',
+          amount: s.amount,
+        }));
+
+        fetch('/api/send-bill-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripName: trip.name,
+            destination: trip.destination,
+            billTitle: newExp.title,
+            category: newExp.category,
+            amount: newExp.amount,
+            currency: trip.currency || 'INR',
+            paidByName,
+            paidAt: newExp.paidAt,
+            notes: newExp.notes,
+            isPersonal: newExp.isPersonal,
+            recipients: recipientEmails,
+            splits: splitsWithNames,
+            portalUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+          }),
+        }).catch((err) => console.warn('Email dispatch notice:', err));
+      }
+    } catch (e) {
+      console.warn('Bill email notification caught error:', e);
+    }
   };
 
   const handleUpdateExpense = async (updatedExp: Expense) => {
@@ -283,6 +324,18 @@ export default function TripFinancePortal() {
     }
   };
 
+  const handleOpenDrive = () => {
+    if (trip.driveFolderUrl && trip.driveFolderUrl.trim().length > 0) {
+      window.open(trip.driveFolderUrl.trim(), '_blank', 'noopener,noreferrer');
+    } else {
+      if (isTripManager) {
+        setIsSettingsOpen(true);
+      } else {
+        alert('The Trip Manager has not added a Google Drive shared album link yet.');
+      }
+    }
+  };
+
   // ── Universal Tabs (Identical for ALL members) ──
   const allTabs: { key: TabKey; label: string; mobileLabel: string; icon: React.ReactNode; count?: number }[] = [
     { key: 'my_view', label: 'Overview', mobileLabel: 'Overview', icon: <User className="h-4 w-4" /> },
@@ -363,6 +416,17 @@ export default function TripFinancePortal() {
 
           {/* Right Action Bar: Ultra-clean & Professional */}
           <div className="flex items-center gap-2 relative flex-shrink-0">
+            {/* Google Drive Shared Memories Album Button */}
+            <button
+              type="button"
+              onClick={handleOpenDrive}
+              className="flex items-center gap-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/60 px-2.5 sm:px-3 py-1.5 shadow-sm text-sky-700 dark:text-sky-300 font-bold text-xs transition-all touch-manipulation active:scale-95"
+              title={trip.driveFolderUrl ? 'Open Google Drive Shared Album' : 'Configure Google Drive Folder'}
+            >
+              <Folder className="h-3.5 w-3.5 text-sky-500" />
+              <span className="hidden sm:inline">Drive Album</span>
+            </button>
+
             {/* User Identity & Menu Dropdown */}
             <div className="relative">
               <button
@@ -448,6 +512,18 @@ export default function TripFinancePortal() {
                       >
                         <Settings className="h-4 w-4 text-slate-400" />
                         <span>Trip Settings</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          handleOpenDrive();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors text-left"
+                      >
+                        <Folder className="h-4 w-4 text-sky-500" />
+                        <span>📸 Drive Memories</span>
                       </button>
                     </div>
 

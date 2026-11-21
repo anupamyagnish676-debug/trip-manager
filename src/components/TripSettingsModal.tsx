@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Check, Trash2, Plus, Upload, QrCode as QrIcon, Globe, CreditCard } from 'lucide-react';
+import { X, Check, Trash2, Plus, Upload, QrCode as QrIcon, Globe, CreditCard, Folder, ExternalLink } from 'lucide-react';
 import { Trip, Member } from '@/types';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 
@@ -37,6 +37,7 @@ export function TripSettingsModal({
   const [customQrImage, setCustomQrImage] = useState<string>(
     trip.financeLeadCustomQrImage || trip.paymentMethods?.customQrImage || ''
   );
+  const [driveFolderUrl, setDriveFolderUrl] = useState<string>(trip.driveFolderUrl || '');
 
   if (!isOpen) return null;
 
@@ -103,6 +104,7 @@ export function TripSettingsModal({
       name: tripName.trim() || 'Our Trip Group',
       destination: destination.trim() || 'Worldwide',
       currency,
+      driveFolderUrl: driveFolderUrl.trim() || undefined,
       financeLeadCustomQrImage: customQrImage || undefined,
       paymentMethods: {
         upiId: upiId.trim() || undefined,
@@ -284,6 +286,42 @@ export function TripSettingsModal({
                   ✓ Custom QR Active (Members can scan this in app)
                 </span>
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* 2.5 Google Drive Shared Photos & Memories Folder */}
+        <div className="mt-4 rounded-2xl border-2 border-sky-500/30 bg-sky-50/40 dark:bg-sky-950/20 p-3.5 sm:p-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-sky-800 dark:text-sky-300 flex items-center gap-1.5 uppercase tracking-wide">
+              <Folder className="h-4 w-4 text-sky-500" /> Google Drive Shared Memories Album
+            </h4>
+            <span className="text-[10px] font-bold text-sky-600 bg-sky-100 dark:bg-sky-900/60 px-2 py-0.5 rounded-full">
+              Full-Res Media
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-600 dark:text-slate-300">
+            Paste your shared Google Drive folder URL. All 7 friends will see 1-click buttons to upload photos/videos and browse the album.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              value={driveFolderUrl}
+              onChange={(e) => setDriveFolderUrl(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/..."
+              className="flex-1 rounded-xl border border-sky-300 dark:border-sky-800 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-medium text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            />
+            {driveFolderUrl && (
+              <a
+                href={driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all shadow-sm flex-shrink-0"
+                title="Test Open Folder"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Test Link</span>
+              </a>
             )}
           </div>
         </div>

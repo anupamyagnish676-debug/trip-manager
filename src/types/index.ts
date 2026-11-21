@@ -134,6 +134,7 @@ export interface Trip {
   settlements: SettlementTransfer[];
   collectionRounds?: CollectionRound[];
   inviteCode?: string; // e.g. TOKYO26
+  driveFolderUrl?: string; // Google Drive shared memories folder URL
   createdAt?: string;
 }
 

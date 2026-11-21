@@ -16,6 +16,8 @@ import {
   Download,
   Edit3,
   KeyRound,
+  Folder,
+  ExternalLink,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Member, Trip, SettlementTransfer } from '@/types';
@@ -223,15 +225,29 @@ export function MemberView({
           </div>
         </div>
 
-        {onOpenAddExpense && (
-          <button
-            onClick={onOpenAddExpense}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-md transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Bill / Expense</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {trip.driveFolderUrl && (
+            <a
+              href={trip.driveFolderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
+              title="Open Google Drive Shared Memories Album"
+            >
+              <Folder className="h-4 w-4 text-sky-500" />
+              <span>Drive Album</span>
+            </a>
+          )}
+          {onOpenAddExpense && (
+            <button
+              onClick={onOpenAddExpense}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-md transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Bill / Expense</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── PERSONAL BALANCE HERO CARD ── */}

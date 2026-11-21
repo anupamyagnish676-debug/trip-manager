@@ -66,10 +66,11 @@ export function TripGroupMembersModal({
   const [editForm, setEditForm] = useState<{
     name: string;
     phone: string;
+    email: string;
     loginId: string;
     password: string;
     upiId: string;
-  }>({ name: '', phone: '', loginId: '', password: '', upiId: '' });
+  }>({ name: '', phone: '', email: '', loginId: '', password: '', upiId: '' });
   const [savedSuccessId, setSavedSuccessId] = useState<string | null>(null);
 
   // New member inputs
@@ -145,6 +146,7 @@ export function TripGroupMembersModal({
     setEditForm({
       name: m.name,
       phone: m.phone || '',
+      email: m.email || '',
       loginId: m.loginId,
       password: m.password,
       upiId: m.upiId || '',
@@ -164,6 +166,7 @@ export function TripGroupMembersModal({
             ...m,
             name: editForm.name.trim(),
             phone: editForm.phone.trim() || undefined,
+            email: editForm.email.trim() || undefined,
             loginId: editForm.loginId.trim().toLowerCase(),
             password: editForm.password.trim(),
             upiId: editForm.upiId.trim() || undefined,
@@ -471,6 +474,19 @@ export function TripGroupMembersModal({
                           value={editForm.phone}
                           onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                           placeholder="e.g. 7008995654"
+                          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Email Address (for instant bill & PDF receipts)
+                        </label>
+                        <input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          placeholder="e.g. laxman@gmail.com"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
