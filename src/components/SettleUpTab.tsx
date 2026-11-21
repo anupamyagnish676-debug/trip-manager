@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { ArrowRight, CheckCircle2, QrCode, Smartphone, Sparkles, Check } from 'lucide-react';
+import { ArrowRight, CheckCircle2, QrCode, Smartphone, Sparkles, Check, RotateCcw, Clock } from 'lucide-react';
 import { Trip, SettlementTransfer, Member } from '@/types';
 import { calculateMemberBalances, simplifyDebts } from '@/lib/calculations';
 import { formatMoney } from '@/lib/currency';
@@ -41,6 +41,13 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
     : balances.filter((b) => b.member.id === currentMember?.id);
 
   const handleMarkSettled = (transfer: SettlementTransfer) => {
+    // Only the entitled receiver can verify and mark as settled
+    if (currentMember?.id !== transfer.toMemberId) {
+      const receiver = trip.members.find((m) => m.id === transfer.toMemberId);
+      alert(`Only ${receiver?.name || 'the recipient'} can confirm receipt of this payment.`);
+      return;
+    }
+
     // Fire celebratory confetti!
     confetti({
       particleCount: 80,
@@ -56,6 +63,20 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
     });
 
     onUpdateSettlement(existing);
+  };
+
+  const handleUnmarkSettled = (fromId: string, toId: string) => {
+    if (currentMember?.id !== toId) {
+      alert('Only the recipient can undo this settlement.');
+      return;
+    }
+
+    if (confirm('Reopen this settlement as pending / unpaid?')) {
+      const existing = trip.settlements.filter(
+        (s) => !(s.fromMemberId === fromId && s.toMemberId === toId && s.status === 'settled')
+      );
+      onUpdateSettlement(existing);
+    }
   };
 
   const isTransferSettled = (fromId: string, toId: string) => {
@@ -176,35 +197,62 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                   {/* Actions Bar */}
                   <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                     {settled ? (
-                      <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                        <Check className="h-4 w-4" /> Settled & Verified
-                      </span>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          <Check className="h-4 w-4" /> Settled & Verified
+                        </span>
+                        {currentMember?.id === transfer.toMemberId && (
+                          <button
+                            type="button"
+                            onClick={() => handleUnmarkSettled(transfer.fromMemberId, transfer.toMemberId)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:underline"
+                            title="Undo this settlement if not actually received"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            <span>Undo / Mark Unpaid</span>
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelectedPayment({
-                              payeeUpi: toMember.upiId || 'friend@upi',
-                              payeeName: toMember.name,
-                              amount: transfer.amount,
-                              note: `TripSettlement_${fromMember.name.split(' ')[0]}`,
-                            })
-                          }
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
-                        >
-                          <QrCode className="h-3.5 w-3.5" />
-                          Pay via UPI QR
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedPayment({
+                                payeeUpi: toMember.upiId || 'friend@upi',
+                                payeeName: toMember.name,
+                                amount: transfer.amount,
+                                note: `TripSettlement_${fromMember.name.split(' ')[0]}`,
+                              })
+                            }
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                          >
+                            <QrCode className="h-3.5 w-3.5" />
+                            <span>Pay via UPI QR</span>
+                          </button>
+                        </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleMarkSettled(transfer)}
-                          className="flex-1 sm:flex-initial flex items-center justify-center gap-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-2 text-xs font-semibold transition-all min-h-[38px] touch-manipulation"
-                        >
-                          <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          Mark Settled
-                        </button>
+                        {currentMember?.id === transfer.toMemberId ? (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkSettled(transfer)}
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span>Confirm Received ({formatMoney(transfer.amount, trip.currency)})</span>
+                          </button>
+                        ) : currentMember?.id === transfer.fromMemberId ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl">
+                            <Clock className="h-3.5 w-3.5 text-amber-500" />
+                            <span>Awaiting {toMember.name.split(' ')[0]}&apos;s verification</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>Pending receipt by {toMember.name.split(' ')[0]}</span>
+                          </span>
+                        )}
                       </>
                     )}
                   </div>

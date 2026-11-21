@@ -279,6 +279,30 @@ export async function saveSettlementToSupabase(tripId: string, settlement: Settl
   return !error;
 }
 
+export async function syncAllSettlementsToSupabase(tripId: string, settlements: SettlementTransfer[]): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+  try {
+    await supabase.from('settlements').delete().eq('trip_id', tripId);
+    if (settlements.length > 0) {
+      const rows = settlements.map((s, idx) => ({
+        id: `set-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+        trip_id: tripId,
+        from_member_id: s.fromMemberId,
+        to_member_id: s.toMemberId,
+        amount: s.amount,
+        status: s.status,
+        settled_at: s.settledAt || new Date().toISOString(),
+        utr: s.utr || null,
+      }));
+      await supabase.from('settlements').insert(rows);
+    }
+    return true;
+  } catch (e) {
+    console.error('Failed to sync settlements:', e);
+    return false;
+  }
+}
+
 export async function upsertCollectionRoundToSupabase(round: CollectionRound): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
   const { error } = await supabase.from('collection_rounds').upsert({

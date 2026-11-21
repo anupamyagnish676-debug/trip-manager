@@ -27,6 +27,7 @@ import { downloadExpenseInvoice } from '@/lib/pdfReceipt';
 import {
   fetchTripFromSupabase, seedTripToSupabase, insertExpenseToSupabase,
   upsertExpenseToSupabase, deleteExpenseFromSupabase, insertPaymentToSupabase, saveSettlementToSupabase,
+  syncAllSettlementsToSupabase,
   subscribeToTripRealtime, updateTripInSupabase, clearTripExpensesAndPayments,
   fetchLatestTripFromSupabase, deleteTripFromSupabase, wipeAllDatabaseAndStorage,
   findTripByCodeOrId,
@@ -293,8 +294,7 @@ export default function TripFinancePortal() {
     const updated = { ...trip, settlements: updatedSettlements };
     saveTripState(updated);
     if (hasSupabase) {
-      const latest = updatedSettlements[updatedSettlements.length - 1];
-      if (latest) await saveSettlementToSupabase(trip.id, latest);
+      await syncAllSettlementsToSupabase(trip.id, updatedSettlements);
     }
   };
 

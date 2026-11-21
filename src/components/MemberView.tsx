@@ -18,6 +18,9 @@ import {
   KeyRound,
   Folder,
   ExternalLink,
+  Check,
+  Clock,
+  RotateCcw,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Member, Trip, SettlementTransfer } from '@/types';
@@ -60,6 +63,9 @@ export function MemberView({
   const owesMe = settlements.filter(
     (s) => s.toMemberId === currentMember.id && s.status !== 'settled'
   );
+  const settledToMe = trip.settlements.filter(
+    (s) => s.toMemberId === currentMember.id && s.status === 'settled'
+  );
 
   const getMember = (id: string) => trip.members.find((m) => m.id === id);
 
@@ -101,6 +107,12 @@ export function MemberView({
   const net = myBalance?.netBalance || 0;
 
   const handleMarkSettlementPaid = (transfer: SettlementTransfer) => {
+    // Only the entitled receiver can confirm payment
+    if (currentMember.id !== transfer.toMemberId) {
+      alert(`Only ${getMember(transfer.toMemberId)?.name || 'the recipient'} can confirm receipt of this payment.`);
+      return;
+    }
+
     confetti({
       particleCount: 80,
       spread: 70,
@@ -116,6 +128,21 @@ export function MemberView({
 
     if (onUpdateSettlement) {
       onUpdateSettlement(existing);
+    }
+  };
+
+  const handleUnmarkSettlement = (fromId: string, toId: string) => {
+    if (currentMember.id !== toId) {
+      alert('Only the recipient can undo this settlement.');
+      return;
+    }
+    if (confirm('Reopen this settlement as pending / unpaid?')) {
+      const updated = trip.settlements.filter(
+        (s) => !(s.fromMemberId === fromId && s.toMemberId === toId && s.status === 'settled')
+      );
+      if (onUpdateSettlement) {
+        onUpdateSettlement(updated);
+      }
     }
   };
 
@@ -378,13 +405,10 @@ export function MemberView({
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() => handleMarkSettlementPaid(s)}
-                        className="rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950 px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-all min-h-[36px] touch-manipulation"
-                      >
-                        Settled
-                      </button>
+                      <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-amber-500" />
+                        <span>Awaiting {to?.name?.split(' ')[0]}&apos;s verification</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -434,14 +458,60 @@ export function MemberView({
                     </span>
                     <button
                       type="button"
+                      onClick={() => handleMarkSettlementPaid(s)}
+                      className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 touch-manipulation min-h-[34px]"
+                      title="Confirm this friend has paid you"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Confirm Received</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleRemindFriend(from?.name || 'Friend', s.amount)}
-                      className="inline-flex items-center gap-1 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 text-xs font-semibold transition-all"
+                      className="inline-flex items-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 text-xs font-semibold transition-all min-h-[34px]"
                       title="Send WhatsApp payment reminder"
                     >
                       <Share2 className="h-3 w-3" />
-                      Remind
+                      <span>Remind</span>
                     </button>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── RECEIVED REIMBURSEMENTS (HISTORY WITH UNDO) ── */}
+      {settledToMe.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-4 space-y-2.5">
+          <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Payments You Confirmed & Settled ({settledToMe.length})</span>
+          </h4>
+          <div className="space-y-1.5">
+            {settledToMe.map((s, idx) => {
+              const from = getMember(s.fromMemberId);
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-slate-800/80 p-2.5 border border-slate-200 dark:border-slate-700 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 dark:text-white">{from?.name || 'Friend'}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
+                      Received {formatMoney(s.amount, trip.currency)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleUnmarkSettlement(s.fromMemberId, s.toMemberId)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:underline"
+                    title="Undo this confirmation if money was not actually received"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Undo / Mark Unpaid</span>
+                  </button>
                 </div>
               );
             })}
