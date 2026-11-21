@@ -74,10 +74,25 @@ export function calculateMemberBalances(trip: Trip): MemberBalance[] {
     const isPersonal = Boolean(expense.isPersonal);
 
     if (isPersonal) {
-      // Personal expense: 100% private to the payer, does not affect group debts
-      const payerStats = balanceMap.get(expense.paidBy);
-      if (payerStats) {
-        payerStats.personalPaid += expense.amount;
+      const beneficiaryId = expense.splits[0]?.memberId || expense.paidBy;
+      const isSelfPaid = expense.paidBy === beneficiaryId;
+
+      // Track personal spend in beneficiary's personal budget
+      const beneficiaryStats = balanceMap.get(beneficiaryId);
+      if (beneficiaryStats) {
+        beneficiaryStats.personalPaid += expense.amount;
+      }
+
+      if (!isSelfPaid) {
+        // Case 2: A friend (expense.paidBy) fronted money for beneficiary (beneficiaryId)
+        // 1-on-1 settlement: beneficiary owes payer directly; rest of group has 0 debt
+        const payerStats = balanceMap.get(expense.paidBy);
+        if (payerStats) {
+          payerStats.directPaid += expense.amount;
+        }
+        if (beneficiaryStats) {
+          beneficiaryStats.directConsumption += expense.amount;
+        }
       }
       return;
     }
