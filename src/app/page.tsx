@@ -472,6 +472,7 @@ export default function TripFinancePortal() {
               setCustomQrModal({ payeeUpi, payeeName, amount, note })
             }
             onUpdateSettlement={handleUpdateSettlement}
+            onUpdateMemberUpi={(newUpi) => handleUpdateMemberUpi(currentMember.id, newUpi)}
             onOpenAddExpense={() => {
               setEditingExpense(null);
               setIsAddExpenseOpen(true);
@@ -663,13 +664,13 @@ export default function TripFinancePortal() {
                           <p className={`text-[11px] font-mono truncate ${member.upiId ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-slate-400'}`}>
                             {member.upiId || 'No UPI ID'}
                           </p>
-                          {isOrganizer && (
+                          {(isOrganizer || isMe) && (
                             <button
                               type="button"
                               onClick={() => setIsGroupMembersOpen(true)}
                               className="text-[10px] text-sky-500 hover:text-sky-400 font-semibold underline"
                             >
-                              {member.upiId ? 'Edit' : 'Set UPI'}
+                              {member.upiId ? (isMe ? 'Edit My UPI' : 'Edit') : (isMe ? 'Set My UPI' : 'Set UPI')}
                             </button>
                           )}
                         </div>

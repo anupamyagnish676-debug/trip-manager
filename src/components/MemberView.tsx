@@ -14,6 +14,7 @@ import {
   ChevronUp,
   FileText,
   Download,
+  Edit3,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Member, Trip, SettlementTransfer } from '@/types';
@@ -27,6 +28,7 @@ interface MemberViewProps {
   onOpenQR?: (payeeUpi: string, payeeName: string, amount: number, note: string) => void;
   onUpdateSettlement?: (settlements: SettlementTransfer[]) => void;
   onOpenAddExpense?: () => void;
+  onUpdateMemberUpi?: (newUpi: string) => void;
 }
 
 export function MemberView({
@@ -35,8 +37,12 @@ export function MemberView({
   onOpenQR,
   onUpdateSettlement,
   onOpenAddExpense,
+  onUpdateMemberUpi,
 }: MemberViewProps) {
   const [showHistory, setShowHistory] = useState(true);
+  const [isEditingMyUpi, setIsEditingMyUpi] = useState(false);
+  const [myUpiInput, setMyUpiInput] = useState(currentMember.upiId || '');
+  const [savedUpiSuccess, setSavedUpiSuccess] = useState(false);
 
   const balances = calculateMemberBalances(trip);
   const myBalance = balances.find((b) => b.member.id === currentMember.id);
@@ -113,9 +119,66 @@ export function MemberView({
                 Active Member
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-              Personal expense ledger, pending dues & settlement transfers
-            </p>
+            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+              <span>
+                Receiving UPI: <strong className={currentMember.upiId ? "text-emerald-600 dark:text-emerald-400 font-mono font-bold" : "text-amber-500 font-semibold italic"}>
+                  {currentMember.upiId || 'Not set'}
+                </strong>
+              </span>
+              {onUpdateMemberUpi && !isEditingMyUpi && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditingMyUpi(true);
+                    setMyUpiInput(currentMember.upiId || '');
+                  }}
+                  className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  <span>{currentMember.upiId ? 'Change UPI' : '+ Set UPI'}</span>
+                </button>
+              )}
+              {savedUpiSuccess && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold animate-in fade-in">
+                  ✓ Saved!
+                </span>
+              )}
+            </div>
+
+            {isEditingMyUpi && (
+              <div className="mt-2.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  type="text"
+                  value={myUpiInput}
+                  onChange={(e) => setMyUpiInput(e.target.value)}
+                  placeholder="e.g. yourname@okaxis or 9876543210@ybl"
+                  className="flex-1 rounded-xl border border-emerald-400 dark:border-emerald-600 bg-emerald-50/50 dark:bg-slate-800 px-3 py-1.5 text-base sm:text-xs font-mono font-bold text-emerald-700 dark:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <div className="flex items-center gap-1.5 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingMyUpi(false)}
+                    className="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onUpdateMemberUpi) {
+                        onUpdateMemberUpi(myUpiInput.trim());
+                      }
+                      setIsEditingMyUpi(false);
+                      setSavedUpiSuccess(true);
+                      setTimeout(() => setSavedUpiSuccess(false), 2500);
+                    }}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                  >
+                    Save UPI
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
