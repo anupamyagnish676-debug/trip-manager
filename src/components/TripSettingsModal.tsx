@@ -54,9 +54,6 @@ export function TripSettingsModal({
     trip.financeLeadCustomQrImage || trip.paymentMethods?.customQrImage || ''
   );
   const [driveFolderUrl, setDriveFolderUrl] = useState<string>(trip.driveFolderUrl || '');
-  const [driveUploadWebhookUrl, setDriveUploadWebhookUrl] = useState<string>(
-    trip.driveUploadWebhookUrl || trip.paymentMethods?.driveUploadWebhookUrl || ''
-  );
 
   if (!isOpen) return null;
 
@@ -130,7 +127,6 @@ export function TripSettingsModal({
       currency,
       financeLeadId: selectedFinanceLeadId,
       driveFolderUrl: driveFolderUrl.trim() || undefined,
-      driveUploadWebhookUrl: driveUploadWebhookUrl.trim() || undefined,
       financeLeadCustomQrImage: customQrImage || undefined,
       paymentMethods: {
         upiId: upiId.trim() || undefined,
@@ -138,7 +134,6 @@ export function TripSettingsModal({
         venmoHandle: venmoHandle.trim() || undefined,
         bankDetails: bankDetails.trim() || undefined,
         customQrImage: customQrImage || undefined,
-        driveUploadWebhookUrl: driveUploadWebhookUrl.trim() || undefined,
       },
       members: updatedMembers,
     };
@@ -390,23 +385,6 @@ export function TripSettingsModal({
                 <span className="hidden sm:inline">Test Link</span>
               </a>
             )}
-          </div>
-
-          {/* Optional Direct Apps Script Webhook URL */}
-          <div className="pt-2 border-t border-sky-100 dark:border-sky-900/40">
-            <label className="block text-[11px] font-bold text-sky-800 dark:text-sky-300 mb-1">
-              Google Apps Script Web App URL (Automated Direct Upload)
-            </label>
-            <input
-              type="url"
-              value={driveUploadWebhookUrl}
-              onChange={(e) => setDriveUploadWebhookUrl(e.target.value)}
-              placeholder="https://script.google.com/macros/s/.../exec"
-              className="w-full rounded-xl border border-sky-200 dark:border-sky-800 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-              Enables members to upload photos directly from the app into their subfolder via triphisab@gmail.com.
-            </p>
           </div>
         </div>
 

@@ -90,7 +90,6 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       paymentMethods: tripData.payment_methods || (tripData.finance_lead_custom_qr_image ? { customQrImage: tripData.finance_lead_custom_qr_image } : undefined),
       inviteCode: tripData.invite_code,
       driveFolderUrl: tripData.drive_folder_url || (tripData.payment_methods as any)?.driveFolderUrl || undefined,
-      driveUploadWebhookUrl: tripData.drive_upload_webhook_url || (tripData.payment_methods as any)?.driveUploadWebhookUrl || undefined,
       members,
       expenses,
       payments,
@@ -131,7 +130,6 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
     const paymentMethodsPayload = {
       ...(trip.paymentMethods || {}),
       ...(trip.driveFolderUrl ? { driveFolderUrl: trip.driveFolderUrl } : {}),
-      ...(trip.driveUploadWebhookUrl ? { driveUploadWebhookUrl: trip.driveUploadWebhookUrl } : {}),
     };
 
     await supabase.from('trips').upsert({
@@ -201,7 +199,6 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
     const paymentMethodsPayload = {
       ...(trip.paymentMethods || {}),
       ...(trip.driveFolderUrl ? { driveFolderUrl: trip.driveFolderUrl } : {}),
-      ...(trip.driveUploadWebhookUrl ? { driveUploadWebhookUrl: trip.driveUploadWebhookUrl } : {}),
     };
 
     await supabase.from('trips').upsert({

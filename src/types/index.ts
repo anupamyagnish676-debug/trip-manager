@@ -117,7 +117,6 @@ export interface TripPaymentMethods {
   bankDetails?: string; // IBAN, Swift, Account number & IFSC / Routing
   note?: string; // Payment instructions
   customQrImage?: string; // Uploaded QR image
-  driveUploadWebhookUrl?: string; // Google Apps Script web app URL for automated drive uploads
 }
 
 export interface Trip {
@@ -137,7 +136,6 @@ export interface Trip {
   collectionRounds?: CollectionRound[];
   inviteCode?: string; // e.g. TOKYO26
   driveFolderUrl?: string; // Google Drive shared memories folder URL
-  driveUploadWebhookUrl?: string; // Google Apps Script web app URL
   createdAt?: string;
 }
 

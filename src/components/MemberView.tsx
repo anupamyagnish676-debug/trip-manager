@@ -36,7 +36,6 @@ interface MemberViewProps {
   onOpenAddExpense?: () => void;
   onUpdateMemberUpi?: (newUpi: string) => void;
   onOpenChangePassword?: () => void;
-  onOpenUploadMemories?: () => void;
 }
 
 export function MemberView({
@@ -47,7 +46,6 @@ export function MemberView({
   onOpenAddExpense,
   onUpdateMemberUpi,
   onOpenChangePassword,
-  onOpenUploadMemories,
 }: MemberViewProps) {
   const [showHistory, setShowHistory] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'group' | 'personal'>('all');
@@ -255,16 +253,17 @@ export function MemberView({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {(trip.driveFolderUrl || onOpenUploadMemories) && (
-            <button
-              type="button"
-              onClick={onOpenUploadMemories || (() => trip.driveFolderUrl && window.open(trip.driveFolderUrl, '_blank'))}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
-              title="Upload Photos & Videos to Google Drive"
+          {trip.driveFolderUrl && (
+            <a
+              href={trip.driveFolderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-3.5 py-2 text-xs font-bold shadow-2xs transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
+              title="Open Google Drive Shared Memories Album"
             >
               <Folder className="h-4 w-4 text-sky-500" />
-              <span>📸 Upload Memories</span>
-            </button>
+              <span>Drive Album</span>
+            </a>
           )}
           {onOpenAddExpense && (
             <button

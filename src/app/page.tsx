@@ -19,7 +19,6 @@ import { WhatsAppExportModal } from '@/components/WhatsAppExportModal';
 import { TripSettingsModal } from '@/components/TripSettingsModal';
 import { TripGroupMembersModal } from '@/components/TripGroupMembersModal';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
-import { UploadMemoriesModal } from '@/components/UploadMemoriesModal';
 import { LoginScreen } from '@/components/LoginScreen';
 import { MemberView } from '@/components/MemberView';
 import { calculateMemberBalances } from '@/lib/calculations';
@@ -54,7 +53,6 @@ export default function TripFinancePortal() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isUploadMemoriesOpen, setIsUploadMemoriesOpen] = useState(false);
   const [sendingEmailExpenseId, setSendingEmailExpenseId] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -412,7 +410,15 @@ export default function TripFinancePortal() {
   };
 
   const handleOpenDrive = () => {
-    setIsUploadMemoriesOpen(true);
+    if (trip.driveFolderUrl && trip.driveFolderUrl.trim().length > 0) {
+      window.open(trip.driveFolderUrl.trim(), '_blank', 'noopener,noreferrer');
+    } else {
+      if (isTripManager) {
+        setIsSettingsOpen(true);
+      } else {
+        alert('The Trip Manager has not added a Google Drive shared album link yet.');
+      }
+    }
   };
 
   // ── Universal Tabs (Identical for ALL members) ──
@@ -683,7 +689,6 @@ export default function TripFinancePortal() {
             onUpdateSettlement={handleUpdateSettlement}
             onUpdateMemberUpi={(newUpi) => handleUpdateMemberUpi(currentMember.id, newUpi)}
             onOpenChangePassword={() => setIsChangePasswordOpen(true)}
-            onOpenUploadMemories={() => setIsUploadMemoriesOpen(true)}
             onOpenAddExpense={() => {
               setEditingExpense(null);
               setIsAddExpenseOpen(true);
@@ -1080,16 +1085,6 @@ export default function TripFinancePortal() {
           currentMember={currentMember}
           isFirstLogin={Boolean(session?.isFirstLogin && !currentMember.hasChangedPassword)}
           onSavePassword={handleSaveNewPassword}
-        />
-      )}
-
-      {currentMember && (
-        <UploadMemoriesModal
-          isOpen={isUploadMemoriesOpen}
-          onClose={() => setIsUploadMemoriesOpen(false)}
-          trip={trip}
-          currentMember={currentMember}
-          onUpdateTrip={saveTripState}
         />
       )}
 
