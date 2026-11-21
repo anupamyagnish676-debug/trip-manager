@@ -252,26 +252,26 @@ export function MemberView({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {trip.driveFolderUrl && (
             <a
               href={trip.driveFolderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-3.5 py-2 text-xs font-bold shadow-2xs transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
+              className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-3.5 py-2 text-xs font-bold shadow-2xs transition-all active:scale-95 touch-manipulation min-h-[38px] text-center"
               title="Open Google Drive Shared Memories Album"
             >
-              <Folder className="h-4 w-4 text-sky-500" />
-              <span>Drive Album</span>
+              <Folder className="h-4 w-4 text-sky-500 shrink-0" />
+              <span className="truncate">Drive Album</span>
             </a>
           )}
           {onOpenAddExpense && (
             <button
               onClick={onOpenAddExpense}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-md transition-all active:scale-95 flex-shrink-0 touch-manipulation min-h-[38px]"
+              className={`flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all active:scale-95 touch-manipulation min-h-[38px] text-center ${!trip.driveFolderUrl ? 'col-span-2 sm:col-span-1' : ''}`}
             >
-              <Plus className="h-4 w-4" />
-              <span>Add Bill / Expense</span>
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="truncate">Add Bill</span>
             </button>
           )}
         </div>
@@ -310,24 +310,24 @@ export function MemberView({
         </div>
 
         {/* 3-Column Breakdown Row */}
-        <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3.5 relative z-10">
-          <div className="rounded-2xl bg-black/15 backdrop-blur-md p-3 sm:p-3.5 text-center border border-white/10">
-            <p className="text-sm sm:text-lg font-black text-white leading-tight">
+        <div className="mt-5 sm:mt-6 grid grid-cols-3 gap-1.5 sm:gap-3.5 relative z-10">
+          <div className="rounded-2xl bg-black/15 backdrop-blur-md p-2.5 sm:p-3.5 text-center border border-white/10 overflow-hidden">
+            <p className="text-xs sm:text-lg font-black text-white leading-tight truncate">
               {formatMoney(groupShareConsumed, trip.currency)}
             </p>
-            <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold">Group Share</p>
+            <p className="text-[8.5px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold truncate">Group Share</p>
           </div>
-          <div className="rounded-2xl bg-black/15 backdrop-blur-md p-3 sm:p-3.5 text-center border border-white/10">
-            <p className="text-sm sm:text-lg font-black text-white leading-tight">
+          <div className="rounded-2xl bg-black/15 backdrop-blur-md p-2.5 sm:p-3.5 text-center border border-white/10 overflow-hidden">
+            <p className="text-xs sm:text-lg font-black text-white leading-tight truncate">
               {formatMoney(personalSpend, trip.currency)}
             </p>
-            <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold">Personal Spend</p>
+            <p className="text-[8.5px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold truncate">Personal Spend</p>
           </div>
-          <div className="rounded-2xl bg-white/20 backdrop-blur-md p-3 sm:p-3.5 text-center border border-white/25 shadow-inner">
-            <p className="text-sm sm:text-lg font-black text-white leading-tight">
+          <div className="rounded-2xl bg-white/20 backdrop-blur-md p-2.5 sm:p-3.5 text-center border border-white/25 shadow-inner overflow-hidden">
+            <p className="text-xs sm:text-lg font-black text-white leading-tight truncate">
               {formatMoney(grandTotalCost, trip.currency)}
             </p>
-            <p className="text-[9px] sm:text-[10px] text-white/95 mt-1 uppercase tracking-wider font-black">Grand Total</p>
+            <p className="text-[8.5px] sm:text-[10px] text-white/95 mt-1 uppercase tracking-wider font-black truncate">Grand Total</p>
           </div>
         </div>
       </div>
@@ -378,12 +378,12 @@ export function MemberView({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-rose-100/70 dark:border-rose-900/40">
-                    <span className="text-base font-black text-rose-600 dark:text-rose-400 mr-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-rose-100/70 dark:border-rose-900/40">
+                    <span className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400">
                       {formatMoney(s.amount, trip.currency)}
                     </span>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {upiUrl && (
                         <a
                           href={upiUrl}
@@ -405,9 +405,9 @@ export function MemberView({
                         </button>
                       )}
 
-                      <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 rounded-xl whitespace-nowrap flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-amber-500" />
-                        <span>Awaiting {to?.name?.split(' ')[0]}&apos;s verification</span>
+                      <span className="text-[10px] sm:text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-amber-500 shrink-0" />
+                        <span>Awaiting verification</span>
                       </span>
                     </div>
                   </div>
@@ -420,12 +420,13 @@ export function MemberView({
 
       {/* ── WHO OWES ME ── */}
       {owesMe.length > 0 && (
-        <div className="rounded-3xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 p-5 shadow-sm space-y-3">
+        <div className="rounded-3xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 p-4 sm:p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" /> Incoming Reimbursements (Friends Who Owe You)
+            <h4 className="text-xs sm:text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <span>Incoming Reimbursements</span>
             </h4>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full shrink-0">
               {owesMe.length} Expected
             </span>
           </div>
@@ -436,30 +437,35 @@ export function MemberView({
               return (
                 <div
                   key={idx}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 p-3.5 shadow-sm"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 p-3 sm:p-3.5 shadow-sm"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl text-white text-xs font-bold ${
-                        from?.avatarColor || 'bg-slate-500'
-                      }`}
-                    >
-                      {from?.name.slice(0, 2).toUpperCase() || '??'}
+                  <div className="flex items-center justify-between sm:justify-start gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl text-white text-xs font-bold shrink-0 ${
+                          from?.avatarColor || 'bg-slate-500'
+                        }`}
+                      >
+                        {from?.name.slice(0, 2).toUpperCase() || '??'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">{from?.name}</p>
+                        <p className="text-[10px] text-slate-400 font-mono truncate">{from?.upiId || 'Direct'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">{from?.name}</p>
-                      <p className="text-[10px] text-slate-400 font-mono">{from?.upiId || 'Direct'}</p>
-                    </div>
+                    <span className="sm:hidden text-sm font-black text-emerald-600 dark:text-emerald-400 shrink-0">
+                      +{formatMoney(s.amount, trip.currency)}
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 mr-1">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-emerald-100 dark:border-emerald-900/40">
+                    <span className="hidden sm:inline text-sm font-black text-emerald-600 dark:text-emerald-400 mr-1 shrink-0">
                       +{formatMoney(s.amount, trip.currency)}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleMarkSettlementPaid(s)}
-                      className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 touch-manipulation min-h-[34px]"
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 touch-manipulation min-h-[34px]"
                       title="Confirm this friend has paid you"
                     >
                       <Check className="h-3.5 w-3.5" />
@@ -468,7 +474,7 @@ export function MemberView({
                     <button
                       type="button"
                       onClick={() => handleRemindFriend(from?.name || 'Friend', s.amount)}
-                      className="inline-flex items-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 text-xs font-semibold transition-all min-h-[34px]"
+                      className="inline-flex items-center justify-center gap-1 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-2.5 py-1.5 text-xs font-semibold transition-all min-h-[34px] touch-manipulation"
                       title="Send WhatsApp payment reminder"
                     >
                       <Share2 className="h-3 w-3" />
@@ -535,14 +541,14 @@ export function MemberView({
       {/* ── MY EXPENSE FEED (Collapsible) ── */}
       <div className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between sm:justify-start gap-3 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={() => setShowHistory((v) => !v)}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left"
             >
               <Receipt className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-              <span className="text-sm font-bold text-slate-900 dark:text-white">
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                 My Trip Expenses ({myExpenses.length})
               </span>
               <span className="text-xs text-slate-400 ml-1 inline-flex items-center">
@@ -551,11 +557,11 @@ export function MemberView({
             </button>
 
             {/* Filter Pills */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[11px] font-bold">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[10px] sm:text-[11px] font-bold overflow-x-auto max-w-full">
               <button
                 type="button"
                 onClick={() => setFilterType('all')}
-                className={`px-2 py-0.5 rounded-lg transition-all ${
+                className={`px-2 py-0.5 rounded-lg transition-all shrink-0 ${
                   filterType === 'all'
                     ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -566,7 +572,7 @@ export function MemberView({
               <button
                 type="button"
                 onClick={() => setFilterType('group')}
-                className={`px-2 py-0.5 rounded-lg transition-all ${
+                className={`px-2 py-0.5 rounded-lg transition-all shrink-0 ${
                   filterType === 'group'
                     ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -577,7 +583,7 @@ export function MemberView({
               <button
                 type="button"
                 onClick={() => setFilterType('personal')}
-                className={`px-2 py-0.5 rounded-lg transition-all ${
+                className={`px-2 py-0.5 rounded-lg transition-all shrink-0 ${
                   filterType === 'personal'
                     ? 'bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -592,10 +598,10 @@ export function MemberView({
             <button
               type="button"
               onClick={() => downloadMemberStatement(trip, currentMember)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 text-xs font-bold transition-all border border-emerald-200 dark:border-emerald-800 shadow-sm active:scale-95"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 py-2 sm:py-1.5 text-xs font-bold transition-all border border-emerald-200 dark:border-emerald-800 shadow-sm active:scale-95 touch-manipulation min-h-[36px]"
               title="Download Full Personal Expense Statement (PDF)"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-3.5 w-3.5 shrink-0" />
               <span>Download Statement (PDF)</span>
             </button>
           )}
@@ -650,12 +656,12 @@ export function MemberView({
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
+                    <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
                       <div className="text-left sm:text-right">
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block">
                           {isPersonal ? 'Personal Cost' : 'My Share'}
                         </span>
-                        <span className={`font-black text-sm ${
+                        <span className={`font-black text-xs sm:text-sm ${
                           isPersonal
                             ? 'text-purple-600 dark:text-purple-400'
                             : 'text-emerald-600 dark:text-emerald-400'
@@ -667,11 +673,11 @@ export function MemberView({
                       <button
                         type="button"
                         onClick={() => downloadExpenseInvoice(trip, exp, currentMember)}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-semibold shadow-sm transition-all active:scale-95 flex-shrink-0"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-700 dark:text-slate-200 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold shadow-sm transition-all active:scale-95 shrink-0 min-h-[34px] touch-manipulation"
                         title="Download Official PDF Invoice Slip"
                       >
-                        <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>Download Invoice Slip</span>
+                        <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Invoice Slip</span>
                       </button>
                     </div>
                   </div>

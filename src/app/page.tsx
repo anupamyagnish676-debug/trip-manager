@@ -783,23 +783,26 @@ export default function TripFinancePortal() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                      <div className="text-right">
-                        <span className="text-base font-black text-slate-900 dark:text-white">
-                          {formatMoney(exp.amount, trip.currency)}
-                        </span>
-                        <p className="text-[10px] text-slate-400">{exp.paidAt}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between sm:justify-end gap-2.5 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center justify-between sm:justify-start sm:text-right">
+                        <span className="sm:hidden text-xs text-slate-400">{exp.paidAt}</span>
+                        <div className="text-right">
+                          <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                            {formatMoney(exp.amount, trip.currency)}
+                          </span>
+                          <p className="hidden sm:block text-[10px] text-slate-400">{exp.paidAt}</p>
+                        </div>
                       </div>
 
                       {/* Actions: Download PDF Invoice Slip, Edit and Delete */}
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
                         <button
                           type="button"
                           onClick={() => downloadExpenseInvoice(trip, exp, currentMember || undefined)}
                           title="Download Official PDF Invoice Slip"
-                          className="flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95"
+                          className="flex items-center gap-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 touch-manipulation min-h-[34px]"
                         >
-                          <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <FileText className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>Invoice Slip</span>
                         </button>
 
@@ -810,12 +813,12 @@ export default function TripFinancePortal() {
                               onClick={() => handleResendBillEmail(exp)}
                               disabled={sendingEmailExpenseId === exp.id}
                               title="Resend Bill Email Notification to All Friends (Manager / FM only)"
-                              className="flex items-center gap-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80 px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                              className="flex items-center gap-1 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80 px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 touch-manipulation min-h-[34px]"
                             >
                               {sendingEmailExpenseId === exp.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600 dark:text-sky-400" />
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600 dark:text-sky-400 shrink-0" />
                               ) : (
-                                <Mail className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                                <Mail className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
                               )}
                               <span>{sendingEmailExpenseId === exp.id ? 'Sending...' : 'Resend Email'}</span>
                             </button>
@@ -826,14 +829,14 @@ export default function TripFinancePortal() {
                                 setIsAddExpenseOpen(true);
                               }}
                               title="Edit Bill (Trip Manager only)"
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-all"
+                              className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-all touch-manipulation min-h-[34px] min-w-[34px] flex items-center justify-center"
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteExpense(exp.id)}
                               title="Delete Bill (Trip Manager only)"
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition-all"
+                              className="rounded-xl p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition-all touch-manipulation min-h-[34px] min-w-[34px] flex items-center justify-center"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>

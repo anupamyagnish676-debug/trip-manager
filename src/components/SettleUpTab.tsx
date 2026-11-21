@@ -215,7 +215,7 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                           <button
                             type="button"
                             onClick={() =>
@@ -226,7 +226,7 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                                 note: `TripSettlement_${fromMember.name.split(' ')[0]}`,
                               })
                             }
-                            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
                           >
                             <QrCode className="h-3.5 w-3.5" />
                             <span>Pay via UPI QR</span>
@@ -237,19 +237,19 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                           <button
                             type="button"
                             onClick={() => handleMarkSettled(transfer)}
-                            className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all active:scale-95 min-h-[38px] touch-manipulation"
                           >
                             <Check className="h-3.5 w-3.5" />
                             <span>Confirm Received ({formatMoney(transfer.amount, trip.currency)})</span>
                           </button>
                         ) : currentMember?.id === transfer.fromMemberId ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-xl">
-                            <Clock className="h-3.5 w-3.5 text-amber-500" />
+                          <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-xl text-center">
+                            <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                             <span>Awaiting {toMember.name.split(' ')[0]}&apos;s verification</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1.5 rounded-xl">
-                            <Clock className="h-3.5 w-3.5" />
+                          <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-2 rounded-xl text-center">
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
                             <span>Pending receipt by {toMember.name.split(' ')[0]}</span>
                           </span>
                         )}
