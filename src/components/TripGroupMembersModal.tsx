@@ -22,6 +22,7 @@ interface TripGroupMembersModalProps {
   isOpen: boolean;
   onClose: () => void;
   trip: Trip;
+  currentMember?: Member | null;
   onSaveMembers: (updatedMembers: Member[]) => void;
 }
 
@@ -44,12 +45,22 @@ export function TripGroupMembersModal({
   isOpen,
   onClose,
   trip,
+  currentMember,
   onSaveMembers,
 }: TripGroupMembersModalProps) {
   const [members, setMembers] = useState<Member[]>(trip.members);
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+
+  const isTripManager = Boolean(
+    !currentMember ||
+    currentMember.role === 'trip_manager' ||
+    currentMember.role === 'finance_manager' ||
+    currentMember.id === trip.financeLeadId ||
+    currentMember.isFinanceLead ||
+    trip.members[0]?.id === currentMember.id
+  );
   const [editForm, setEditForm] = useState<{
     name: string;
     phone: string;
@@ -84,7 +95,7 @@ export function TripGroupMembersModal({
 
   const handleAddNewMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!isTripManager || !name.trim()) return;
 
     const trimmedLogin = (loginId.trim() || name.trim().toLowerCase().replace(/\s+/g, ''));
     const trimmedPass = (password.trim() || `${trimmedLogin}123`);
@@ -120,12 +131,14 @@ export function TripGroupMembersModal({
   };
 
   const handleUpdateMember = (id: string, field: keyof Member, val: any) => {
+    if (!isTripManager) return;
     const updated = members.map((m) => (m.id === id ? { ...m, [field]: val } : m));
     setMembers(updated);
     onSaveMembers(updated);
   };
 
   const handleStartEdit = (m: Member) => {
+    if (!isTripManager) return;
     setEditingMemberId(m.id);
     setEditForm({
       name: m.name,
@@ -137,6 +150,7 @@ export function TripGroupMembersModal({
   };
 
   const handleSaveEdit = (id: string) => {
+    if (!isTripManager) return;
     if (!editForm.name.trim() || !editForm.loginId.trim() || !editForm.password.trim()) {
       alert('Name, Login ID, and Password cannot be empty.');
       return;
@@ -162,6 +176,7 @@ export function TripGroupMembersModal({
   };
 
   const handleDeleteMember = (id: string) => {
+    if (!isTripManager) return;
     if (members.length <= 1) {
       alert('A trip group requires at least 1 member!');
       return;
@@ -217,11 +232,24 @@ export function TripGroupMembersModal({
             <Users className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              Trip Friends & Sign-In Details
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Manage members, login credentials, and receiving UPI IDs for instant payouts.
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Trip Friends & Credentials
+              </h3>
+              {isTripManager ? (
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>🛡️</span> Trip Manager Access
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>🔒</span> View-Only (Manager Restricted)
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {isTripManager
+                ? 'Trip Manager has full access to update login IDs, passwords, phone numbers, and receiving UPI IDs.'
+                : 'Directory of trip friends and payment IDs. Only the Trip Manager can modify member details.'}
             </p>
           </div>
         </div>
@@ -245,14 +273,16 @@ export function TripGroupMembersModal({
               {copiedId === 'all' ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5 text-emerald-500" />}
               <span>{copiedId === 'all' ? 'All Invites Copied!' : 'Copy Group Invites'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all"
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-              {showAddForm ? 'Close Form' : '+ Add New Member'}
-            </button>
+            {isTripManager && (
+              <button
+                type="button"
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-1.5 text-xs font-bold shadow-sm transition-all"
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                {showAddForm ? 'Close Form' : '+ Add New Member'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -520,21 +550,27 @@ export function TripGroupMembersModal({
                         <div className="flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-1">
                           <span>ID: <strong className="text-slate-800 dark:text-slate-200">{member.loginId}</strong></span>
                           <span>•</span>
-                          <span>Pass: <strong className="text-slate-800 dark:text-slate-200">{member.password}</strong></span>
+                          <span>
+                            Pass: <strong className="text-slate-800 dark:text-slate-200">
+                              {isTripManager || member.id === currentMember?.id ? member.password : '••••••••'}
+                            </strong>
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 self-end sm:self-center flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleStartEdit(member)}
-                        className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
-                        title="Edit member details"
-                      >
-                        <Edit2 className="h-3.5 w-3.5 text-sky-500" />
-                        <span>Edit</span>
-                      </button>
+                      {isTripManager && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(member)}
+                          className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+                          title="Edit member details (Trip Manager only)"
+                        >
+                          <Edit2 className="h-3.5 w-3.5 text-sky-500" />
+                          <span>Edit</span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -550,12 +586,12 @@ export function TripGroupMembersModal({
                         <span>{isCopied ? 'Copied!' : 'WhatsApp'}</span>
                       </button>
 
-                      {members.length > 1 && (
+                      {isTripManager && members.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleDeleteMember(member.id)}
                           className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all"
-                          title="Remove member"
+                          title="Remove member (Trip Manager only)"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

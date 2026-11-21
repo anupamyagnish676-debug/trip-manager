@@ -66,6 +66,7 @@ export default function TripFinancePortal() {
     (currentMember.id === trip.financeLeadId ||
      currentMember.isFinanceLead ||
      currentMember.role === 'finance_manager' ||
+     currentMember.role === 'trip_manager' ||
      trip.members[0]?.id === currentMember.id)
   );
 
@@ -784,6 +785,7 @@ export default function TripFinancePortal() {
         isOpen={isGroupMembersOpen}
         onClose={() => setIsGroupMembersOpen(false)}
         trip={trip}
+        currentMember={currentMember}
         onSaveMembers={(updatedMembers) => {
           const updated = { ...trip, members: updatedMembers };
           saveTripState(updated);

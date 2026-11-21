@@ -28,6 +28,7 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
     currentMember.id === trip.financeLeadId ||
     currentMember.isFinanceLead ||
     currentMember.role === 'finance_manager' ||
+    currentMember.role === 'trip_manager' ||
     trip.members[0]?.id === currentMember.id
   );
 

@@ -359,6 +359,7 @@ const CATEGORY_NAMES: Record<string, string> = {
  */
 export function getTripManagerName(trip: Trip): string {
   const manager =
+    trip.members.find((m) => m.role === 'trip_manager') ||
     trip.members.find((m) => m.id === trip.financeLeadId) ||
     trip.members.find((m) => m.isFinanceLead) ||
     trip.members.find((m) => m.role === 'finance_manager') ||
