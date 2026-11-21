@@ -447,18 +447,18 @@ export default function TripFinancePortal() {
   const balances = calculateMemberBalances(trip);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen ambient-glow-bg text-slate-900 dark:text-slate-100 transition-colors flex flex-col font-sans">
       {/* ── TOP NAVBAR ── */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 shadow-sm">
+      <header className="sticky top-0 z-30 glass-panel border-b border-slate-200/70 dark:border-slate-800/70 shadow-xs">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
           {/* Brand & Trip Info */}
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-md font-black text-base sm:text-lg flex-shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-500 text-white shadow-md shadow-emerald-500/20 font-black text-base sm:text-lg flex-shrink-0 ring-1 ring-emerald-500/30">
               {currencySymbol}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h1 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[130px] sm:max-w-none">
+                <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate max-w-[140px] sm:max-w-none">
                   {trip.name}
                 </h1>
                 {trip.inviteCode && (
@@ -468,26 +468,26 @@ export default function TripFinancePortal() {
                       navigator.clipboard.writeText(appUrl || trip.inviteCode!);
                       alert(`Trip invite link copied:\n${appUrl || trip.inviteCode}`);
                     }}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-0.5 text-[10px] font-mono text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors flex-shrink-0"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 px-2.5 py-0.5 text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 transition-all shadow-2xs hover:scale-102 flex-shrink-0"
                     title="Click to copy trip invite link"
                   >
-                    <span>Code:</span>
+                    <span className="text-slate-400 font-normal">Code:</span>
                     <strong className="text-emerald-600 dark:text-emerald-400">{trip.inviteCode}</strong>
-                    <Share2 className="h-2.5 w-2.5" />
+                    <Share2 className="h-2.5 w-2.5 text-slate-400" />
                   </button>
                 )}
                 {hasSupabase ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                    <Cloud className="h-2 w-2" /> Live
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-extrabold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                    <Cloud className="h-2.5 w-2.5" /> Live
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                    <CloudOff className="h-2 w-2" /> Offline
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-extrabold text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                    <CloudOff className="h-2.5 w-2.5" /> Offline
                   </span>
                 )}
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 truncate">
-                <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-emerald-500 flex-shrink-0" />
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 truncate font-medium">
+                <MapPin className="h-3 w-3 text-emerald-500 flex-shrink-0" />
                 <span className="truncate">{trip.destination} • {trip.members.length} friends • Currency: {trip.currency || 'INR'} ({currencySymbol})</span>
               </p>
             </div>
@@ -499,7 +499,7 @@ export default function TripFinancePortal() {
             <button
               type="button"
               onClick={handleOpenDrive}
-              className="flex items-center gap-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/60 px-2.5 sm:px-3 py-1.5 shadow-sm text-sky-700 dark:text-sky-300 font-bold text-xs transition-all touch-manipulation active:scale-95"
+              className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-sky-500/10 to-teal-500/10 border border-sky-300/40 dark:border-sky-500/30 hover:border-sky-400/60 px-3 py-1.5 shadow-2xs text-sky-700 dark:text-sky-300 font-bold text-xs transition-all touch-manipulation active:scale-95"
               title={trip.driveFolderUrl ? 'Open Google Drive Shared Album' : 'Configure Google Drive Folder'}
             >
               <Folder className="h-3.5 w-3.5 text-sky-500" />
@@ -511,9 +511,9 @@ export default function TripFinancePortal() {
               <button
                 type="button"
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                className="flex items-center gap-1.5 sm:gap-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-1 sm:p-1.5 sm:pr-2.5 shadow-sm transition-all touch-manipulation"
+                className="flex items-center gap-2 rounded-2xl glass-card hover:border-slate-300 dark:hover:border-slate-600 p-1 sm:p-1.5 sm:pr-2.5 transition-all touch-manipulation shadow-2xs"
               >
-                <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white text-xs font-black shadow-sm flex-shrink-0 ${currentMember?.avatarColor || 'bg-slate-500'}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-white text-xs font-black shadow-xs flex-shrink-0 ${currentMember?.avatarColor || 'bg-slate-500'}`}>
                   {currentMember?.name.slice(0, 2).toUpperCase() || '??'}
                 </div>
                 <div className="text-left hidden sm:block">
@@ -524,7 +524,7 @@ export default function TripFinancePortal() {
                     @{currentMember?.loginId || 'member'}
                   </p>
                 </div>
-                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Modern User Dropdown Menu */}
@@ -627,30 +627,30 @@ export default function TripFinancePortal() {
         </div>
 
         {/* Integrated Desktop & Tablet Navigation Bar */}
-        <div className="hidden sm:block border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 backdrop-blur-md">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
-            <nav className="flex space-x-1 py-1.5 overflow-x-auto">
+        <div className="hidden sm:block border-t border-slate-200/60 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/40 backdrop-blur-md">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-2">
+            <nav className="flex space-x-1.5 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-slate-700/40">
               {allTabs.map((tab) => {
                 const isActive = activeTab === tab.key;
                 return (
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 rounded-xl px-4 py-1.5 text-xs font-bold transition-all whitespace-nowrap active:scale-98 ${
                       isActive
-                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
+                        ? 'bg-white text-slate-950 dark:bg-slate-950 dark:text-white shadow-xs font-black'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white/40 dark:hover:bg-slate-700/40'
                     }`}
                   >
-                    <span className={isActive ? 'text-emerald-400 dark:text-emerald-600' : 'text-slate-400'}>
+                    <span className={isActive ? 'text-emerald-500' : 'text-slate-400'}>
                       {tab.icon}
                     </span>
                     <span>{tab.label}</span>
                     {tab.count !== undefined && (
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
                         isActive
-                          ? 'bg-white/20 text-white dark:bg-black/20 dark:text-slate-900'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                          : 'bg-slate-300/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300'
                       }`}>
                         {tab.count}
                       </span>
@@ -660,8 +660,11 @@ export default function TripFinancePortal() {
               })}
             </nav>
 
-            <div className="hidden md:flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-              <span>Total Spend: <strong className="text-slate-900 dark:text-white font-bold">{formatMoney(totalTripSpend, trip.currency)}</strong></span>
+            <div className="hidden md:flex items-center gap-2.5">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-bold shadow-2xs">
+                <span>💎 Total Spend:</span>
+                <strong className="font-black text-slate-900 dark:text-white">{formatMoney(totalTripSpend, trip.currency)}</strong>
+              </div>
             </div>
           </div>
         </div>

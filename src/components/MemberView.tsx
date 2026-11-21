@@ -158,10 +158,10 @@ export function MemberView({
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* ── TOP MEMBER GREETING ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card rounded-3xl p-4 sm:p-5">
+        <div className="flex items-center gap-3.5">
           <div
-            className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl text-white font-black text-base sm:text-lg flex-shrink-0 shadow-md ${
+            className={`flex h-12 w-12 sm:h-13 sm:w-13 items-center justify-center rounded-2xl text-white font-black text-base sm:text-lg flex-shrink-0 shadow-md ring-2 ring-white/20 dark:ring-slate-700/50 ${
               currentMember.avatarColor || 'bg-emerald-600'
             }`}
           >
@@ -172,14 +172,14 @@ export function MemberView({
               <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
                 {currentMember.name}
               </h3>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 text-[10px] font-bold flex-shrink-0">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold flex-shrink-0">
                 Active Member
               </span>
               {onOpenChangePassword && (
                 <button
                   type="button"
                   onClick={onOpenChangePassword}
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border transition-colors flex-shrink-0 ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border transition-colors flex-shrink-0 shadow-2xs ${
                     currentMember.hasChangedPassword
                       ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
                       : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-200'
@@ -280,23 +280,23 @@ export function MemberView({
 
       {/* ── PERSONAL BALANCE HERO CARD ── */}
       <div
-        className={`rounded-3xl p-5 sm:p-6 shadow-xl transition-all ${
+        className={`rounded-3xl p-5 sm:p-7 shadow-2xl transition-all relative overflow-hidden ${
           net > 0
-            ? 'bg-gradient-to-br from-emerald-600 to-teal-700 text-white'
+            ? 'bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white shadow-emerald-600/20 ring-1 ring-white/20'
             : net < 0
-            ? 'bg-gradient-to-br from-rose-600 to-pink-700 text-white'
-            : 'bg-gradient-to-br from-slate-800 to-slate-900 text-white'
+            ? 'bg-gradient-to-br from-rose-600 via-rose-700 to-amber-700 text-white shadow-rose-600/20 ring-1 ring-white/20'
+            : 'bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 text-white shadow-slate-900/30 ring-1 ring-white/10'
         }`}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 relative z-10">
           <div className="min-w-0">
-            <p className="text-xs font-bold text-white/80 uppercase tracking-wider">
-              {net > 0 ? '🎉 You are owed by the group' : net < 0 ? '💸 You owe the group' : '✅ You are fully settled'}
+            <p className="text-xs font-black text-white/90 uppercase tracking-widest flex items-center gap-1.5">
+              <span>{net > 0 ? '🎉 You are owed by the group' : net < 0 ? '💸 You owe the group' : '✅ You are fully settled'}</span>
             </p>
-            <p className="text-3xl sm:text-5xl font-black text-white mt-1.5 leading-none break-all">
+            <p className="text-3xl sm:text-5xl font-black text-white mt-2 leading-none tracking-tight break-all">
               {formatMoney(Math.abs(net), trip.currency)}
             </p>
-            <p className="text-xs text-white/75 mt-2 max-w-md">
+            <p className="text-xs text-white/80 mt-2.5 max-w-md font-medium leading-relaxed">
               {net > 0
                 ? 'Your direct contributions exceed your share of expenses — other friends will reimburse you.'
                 : net < 0
@@ -305,30 +305,30 @@ export function MemberView({
             </p>
           </div>
 
-          <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-white/20 text-white text-lg sm:text-xl font-black border border-white/30 shadow-inner flex-shrink-0">
+          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-white text-lg sm:text-xl font-black border border-white/30 shadow-inner flex-shrink-0">
             {currentMember.name.slice(0, 2).toUpperCase()}
           </div>
         </div>
 
         {/* 3-Column Breakdown Row */}
-        <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="rounded-2xl bg-white/15 p-2.5 sm:p-3 text-center backdrop-blur-sm border border-white/10">
+        <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3.5 relative z-10">
+          <div className="rounded-2xl bg-black/15 backdrop-blur-md p-3 sm:p-3.5 text-center border border-white/10">
             <p className="text-sm sm:text-lg font-black text-white leading-tight">
               {formatMoney(groupShareConsumed, trip.currency)}
             </p>
             <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold">Group Share</p>
           </div>
-          <div className="rounded-2xl bg-white/15 p-2.5 sm:p-3 text-center backdrop-blur-sm border border-white/10">
+          <div className="rounded-2xl bg-black/15 backdrop-blur-md p-3 sm:p-3.5 text-center border border-white/10">
             <p className="text-sm sm:text-lg font-black text-white leading-tight">
               {formatMoney(personalSpend, trip.currency)}
             </p>
             <p className="text-[9px] sm:text-[10px] text-white/80 mt-1 uppercase tracking-wider font-semibold">Personal Spend</p>
           </div>
-          <div className="rounded-2xl bg-white/25 p-2.5 sm:p-3 text-center backdrop-blur-sm border border-white/20 shadow-inner">
+          <div className="rounded-2xl bg-white/20 backdrop-blur-md p-3 sm:p-3.5 text-center border border-white/25 shadow-inner">
             <p className="text-sm sm:text-lg font-black text-white leading-tight">
               {formatMoney(grandTotalCost, trip.currency)}
             </p>
-            <p className="text-[9px] sm:text-[10px] text-white/95 mt-1 uppercase tracking-wider font-extrabold">Grand Total</p>
+            <p className="text-[9px] sm:text-[10px] text-white/95 mt-1 uppercase tracking-wider font-black">Grand Total</p>
           </div>
         </div>
       </div>
