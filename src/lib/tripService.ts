@@ -27,6 +27,7 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       phone: m.phone,
       avatarColor: m.avatar_color,
       isFinanceLead: m.is_finance_lead,
+      email: m.email || undefined,
       pin: m.pin,
     }));
 
@@ -88,6 +89,7 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       financeLeadCustomQrImage: tripData.finance_lead_custom_qr_image,
       paymentMethods: tripData.payment_methods || (tripData.finance_lead_custom_qr_image ? { customQrImage: tripData.finance_lead_custom_qr_image } : undefined),
       inviteCode: tripData.invite_code,
+      driveFolderUrl: tripData.drive_folder_url || (tripData.payment_methods as any)?.driveFolderUrl || undefined,
       members,
       expenses,
       payments,
@@ -125,6 +127,11 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
 
   try {
+    const paymentMethodsPayload = {
+      ...(trip.paymentMethods || {}),
+      ...(trip.driveFolderUrl ? { driveFolderUrl: trip.driveFolderUrl } : {}),
+    };
+
     await supabase.from('trips').upsert({
       id: trip.id,
       name: trip.name,
@@ -134,7 +141,7 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
       end_date: trip.endDate,
       finance_lead_id: trip.financeLeadId,
       finance_lead_custom_qr_image: trip.financeLeadCustomQrImage || null,
-      payment_methods: trip.paymentMethods || null,
+      payment_methods: Object.keys(paymentMethodsPayload).length > 0 ? paymentMethodsPayload : null,
       invite_code: trip.inviteCode || null,
     });
 
@@ -189,6 +196,11 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured()) return false;
 
   try {
+    const paymentMethodsPayload = {
+      ...(trip.paymentMethods || {}),
+      ...(trip.driveFolderUrl ? { driveFolderUrl: trip.driveFolderUrl } : {}),
+    };
+
     await supabase.from('trips').upsert({
       id: trip.id,
       name: trip.name,
@@ -198,7 +210,7 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
       end_date: trip.endDate,
       finance_lead_id: trip.financeLeadId,
       finance_lead_custom_qr_image: trip.financeLeadCustomQrImage || null,
-      payment_methods: trip.paymentMethods || null,
+      payment_methods: Object.keys(paymentMethodsPayload).length > 0 ? paymentMethodsPayload : null,
       invite_code: trip.inviteCode || null,
     });
 

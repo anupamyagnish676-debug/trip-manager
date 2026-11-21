@@ -33,6 +33,7 @@ export interface Member {
   joinCode?: string;
   pin?: string;
   hasChangedPassword?: boolean;
+  driveFolderUrl?: string; // Direct link to member's personal subfolder in Google Drive
 }
 
 export type SplitType = 'equal' | 'exact' | 'shares';
