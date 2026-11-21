@@ -7,6 +7,7 @@ import {
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
   TrendingUp, FileText, KeyRound, Folder, ExternalLink, Download,
+  Mail, Loader2,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -54,6 +55,7 @@ export default function TripFinancePortal() {
   const [isGroupMembersOpen, setIsGroupMembersOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isUploadMemoriesOpen, setIsUploadMemoriesOpen] = useState(false);
+  const [sendingEmailExpenseId, setSendingEmailExpenseId] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [customQrModal, setCustomQrModal] = useState<{
@@ -218,52 +220,94 @@ export default function TripFinancePortal() {
   const totalGroupSpend = trip.expenses.filter((e) => !e.isPersonal).reduce((sum, e) => sum + e.amount, 0);
   const totalPersonalSpend = trip.expenses.filter((e) => e.isPersonal).reduce((sum, e) => sum + e.amount, 0);
 
+  // ── Email Dispatch Helper for Bills (Sent to all members) ──
+  const sendBillNotificationEmail = async (exp: Expense, isResend = false): Promise<boolean> => {
+    try {
+      const paidByName =
+        exp.paidBy === 'POT'
+          ? 'Trip Pot (Common Pool)'
+          : trip.members.find((m) => m.id === exp.paidBy)?.name || 'Trip Member';
+
+      // Collect all configured member emails
+      const memberEmails = trip.members
+        .map((m) => m.email?.trim())
+        .filter((em): em is string => Boolean(em && em.includes('@')));
+
+      const uniqueRecipients = Array.from(new Set(memberEmails));
+
+      const splitsWithNames = (exp.splits || []).map((s) => ({
+        name: trip.members.find((m) => m.id === s.memberId)?.name || 'Member',
+        amount: s.amount,
+      }));
+
+      const res = await fetch('/api/send-bill-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripName: trip.name,
+          destination: trip.destination,
+          billTitle: exp.title,
+          category: exp.category,
+          amount: exp.amount,
+          currency: trip.currency || 'INR',
+          paidByName,
+          paidAt: exp.paidAt,
+          notes: exp.notes,
+          isPersonal: exp.isPersonal,
+          recipients: uniqueRecipients,
+          splits: splitsWithNames,
+          portalUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
+          isResend,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        if (isResend) {
+          const list = data.sentTo && data.sentTo.length > 0 ? data.sentTo.join(', ') : 'All registered members';
+          alert(`✅ Bill email successfully resent to all friends:\n${list}`);
+        }
+        return true;
+      } else if (data.skipped) {
+        if (isResend) {
+          alert(`⚠️ Notice: ${data.message}`);
+        }
+        return false;
+      } else {
+        if (isResend) {
+          alert(`❌ Failed to send email: ${data.error || 'Server error'}`);
+        }
+        return false;
+      }
+    } catch (e: any) {
+      console.warn('Bill email notification caught error:', e);
+      if (isResend) {
+        alert(`❌ Email dispatch error: ${e?.message || e}`);
+      }
+      return false;
+    }
+  };
+
+  const handleResendBillEmail = async (exp: Expense) => {
+    if (!isTripManager) {
+      alert('Only the designated Trip Manager / Finance Manager can resend bill emails.');
+      return;
+    }
+    setSendingEmailExpenseId(exp.id);
+    await sendBillNotificationEmail(exp, true);
+    setSendingEmailExpenseId(null);
+  };
+
   // ── Handlers ──
   const handleAddExpense = async (newExp: Expense) => {
     const updated = { ...trip, expenses: [newExp, ...trip.expenses] };
     saveTripState(updated);
     if (hasSupabase) await insertExpenseToSupabase(newExp);
 
-    // Auto-dispatch email notification to all members with an email address
-    try {
-      const paidByName =
-        newExp.paidBy === 'POT'
-          ? 'Trip Pot (Common Pool)'
-          : trip.members.find((m) => m.id === newExp.paidBy)?.name || 'Trip Member';
-
-      const recipientEmails = trip.members
-        .map((m) => m.email)
-        .filter((em): em is string => Boolean(em && em.includes('@')));
-
-      if (recipientEmails.length > 0) {
-        const splitsWithNames = (newExp.splits || []).map((s) => ({
-          name: trip.members.find((m) => m.id === s.memberId)?.name || 'Member',
-          amount: s.amount,
-        }));
-
-        fetch('/api/send-bill-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tripName: trip.name,
-            destination: trip.destination,
-            billTitle: newExp.title,
-            category: newExp.category,
-            amount: newExp.amount,
-            currency: trip.currency || 'INR',
-            paidByName,
-            paidAt: newExp.paidAt,
-            notes: newExp.notes,
-            isPersonal: newExp.isPersonal,
-            recipients: recipientEmails,
-            splits: splitsWithNames,
-            portalUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
-          }),
-        }).catch((err) => console.warn('Email dispatch notice:', err));
-      }
-    } catch (e) {
-      console.warn('Bill email notification caught error:', e);
-    }
+    // Auto-dispatch email notification to all members when ANYONE enters a bill
+    sendBillNotificationEmail(newExp, false).catch((err) =>
+      console.warn('Auto bill email dispatch error:', err)
+    );
   };
 
   const handleUpdateExpense = async (updatedExp: Expense) => {
@@ -737,6 +781,21 @@ export default function TripFinancePortal() {
 
                         {isTripManager && (
                           <>
+                            <button
+                              type="button"
+                              onClick={() => handleResendBillEmail(exp)}
+                              disabled={sendingEmailExpenseId === exp.id}
+                              title="Resend Bill Email Notification to All Friends (Manager / FM only)"
+                              className="flex items-center gap-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/50 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800/80 px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                            >
+                              {sendingEmailExpenseId === exp.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600 dark:text-sky-400" />
+                              ) : (
+                                <Mail className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+                              )}
+                              <span>{sendingEmailExpenseId === exp.id ? 'Sending...' : 'Resend Email'}</span>
+                            </button>
+
                             <button
                               onClick={() => {
                                 setEditingExpense(exp);

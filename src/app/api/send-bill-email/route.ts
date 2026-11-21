@@ -21,6 +21,7 @@ interface BillEmailPayload {
   recipients: string[];
   splits: SplitRecipient[];
   portalUrl?: string;
+  isResend?: boolean;
 }
 
 export async function POST(req: NextRequest) {
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
       recipients,
       splits,
       portalUrl,
+      isResend = false,
     } = body;
 
     const gmailUser = process.env.GMAIL_USER;
@@ -54,7 +56,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const validRecipients = (recipients || []).filter(
+    const rawRecipients = Array.isArray(recipients) ? [...recipients] : [];
+    // Ensure the manager treasury gmail also receives a copy if not already in list
+    if (gmailUser && !rawRecipients.includes(gmailUser)) {
+      rawRecipients.push(gmailUser);
+    }
+
+    const validRecipients = rawRecipients.filter(
       (email) => typeof email === 'string' && email.includes('@') && email.trim().length > 3
     );
 
@@ -113,8 +121,8 @@ export async function POST(req: NextRequest) {
         <!-- Bill Details Card -->
         <div style="padding: 24px 28px;">
           <div style="text-align: center; padding-bottom: 20px; border-bottom: 1px dashed #cbd5e1;">
-            <span style="display: inline-block; padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: #ecfdf5; color: #047857; border-radius: 999px; margin-bottom: 8px;">
-              ${isPersonal ? '👤 Personal Bill' : '🍽️ Group Bill Added'}
+            <span style="display: inline-block; padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: ${isResend ? '#eff6ff' : '#ecfdf5'}; color: ${isResend ? '#1d4ed8' : '#047857'}; border-radius: 999px; margin-bottom: 8px;">
+              ${isResend ? '🔄 Resent Bill Statement' : isPersonal ? '👤 Personal Bill' : '🍽️ Group Bill Added'}
             </span>
             <h2 style="margin: 0; font-size: 26px; font-weight: 900; color: #0f172a;">${billTitle}</h2>
             <div style="font-size: 32px; font-weight: 900; color: #059669; margin-top: 8px;">
@@ -162,10 +170,12 @@ export async function POST(req: NextRequest) {
     </html>
     `;
 
+    const subjectPrefix = isResend ? `[Resent - ${tripName}] 🧾 Bill:` : `[${tripName}] 🧾 New Bill:`;
+
     const info = await transporter.sendMail({
       from: `"Trip Manager - ${tripName}" <${gmailUser}>`,
       to: validRecipients.join(', '),
-      subject: `[${tripName}] 🧾 New Bill: ${billTitle} (${formattedAmount})`,
+      subject: `${subjectPrefix} ${billTitle} (${formattedAmount})`,
       html: htmlContent,
     });
 
