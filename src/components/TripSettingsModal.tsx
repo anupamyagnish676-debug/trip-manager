@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Check, Trash2, Plus, Upload, QrCode as QrIcon, Globe, CreditCard, Folder, ExternalLink } from 'lucide-react';
+import { X, Check, Trash2, Plus, Upload, QrCode as QrIcon, Globe, CreditCard, Folder, ExternalLink, RotateCcw } from 'lucide-react';
 import { Trip, Member } from '@/types';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
 
@@ -238,6 +238,24 @@ export function TripSettingsModal({
                 </option>
               ))}
             </select>
+            {defaultLead && selectedFinanceLeadId !== defaultLead.id && (
+              <div className="flex items-center justify-between p-2 mt-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs">
+                <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                  Alternate FM selected. Revoke/Restore {defaultLead.name}?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFinanceLeadId(defaultLead.id);
+                    if (defaultLead.upiId) setUpiId(defaultLead.upiId);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 active:scale-95 transition-all"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Restore {defaultLead.name.split(' ')[0]} as FM</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

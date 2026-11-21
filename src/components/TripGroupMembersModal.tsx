@@ -15,6 +15,7 @@ import {
   UserPlus,
   Edit2,
   Save,
+  RotateCcw,
 } from 'lucide-react';
 import { Trip, Member, MemberRole, TripSpecialty } from '@/types';
 
@@ -194,11 +195,56 @@ export function TripGroupMembersModal({
 
   const handleMakeFinanceLead = (id: string) => {
     if (!isTripManager) return;
+    const target = members.find((m) => m.id === id);
+    if (!target) return;
+    if (!confirm(`Are you sure you want to appoint "${target.name}" as Finance Manager (FM)?`)) return;
+
     const updated = members.map((m) => ({
       ...m,
       isFinanceLead: m.id === id,
       role: m.id === id ? ('finance_manager' as const) : m.role === 'finance_manager' ? ('member' as const) : m.role,
     }));
+    setMembers(updated);
+    onSaveMembers(updated);
+    setSavedSuccessId(id);
+    setTimeout(() => setSavedSuccessId(null), 2500);
+  };
+
+  const handleRevokeFinanceLead = (id: string) => {
+    if (!isTripManager) return;
+    const target = members.find((m) => m.id === id);
+    if (!target) return;
+
+    const isYagnish = target.name.toLowerCase().includes('yagnish');
+    const confirmMsg = isYagnish
+      ? `Revoke Finance Manager (FM) role from ${target.name}?`
+      : `Revoke Finance Manager (FM) role from ${target.name} and restore Yagnish Anupam as designated FM?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    // Designated lead to restore
+    const designatedLead =
+      members.find((m) => m.name.toLowerCase().includes('yagnish')) ||
+      members[0];
+
+    const updated = members.map((m) => {
+      if (m.id === id) {
+        return {
+          ...m,
+          isFinanceLead: false,
+          role: 'member' as const,
+        };
+      }
+      if (!isYagnish && designatedLead && m.id === designatedLead.id) {
+        return {
+          ...m,
+          isFinanceLead: true,
+          role: 'finance_manager' as const,
+        };
+      }
+      return m;
+    });
+
     setMembers(updated);
     onSaveMembers(updated);
     setSavedSuccessId(id);
@@ -661,20 +707,31 @@ export function TripGroupMembersModal({
                     </div>
 
                     <div className="flex items-center gap-1.5 self-end sm:self-center flex-shrink-0">
-                      {isTripManager && !Boolean(
-                        member.name.toLowerCase().includes('yagnish') ||
-                        member.isFinanceLead ||
-                        member.id === trip.financeLeadId ||
-                        member.role === 'finance_manager'
-                      ) && (
-                        <button
-                          type="button"
-                          onClick={() => handleMakeFinanceLead(member.id)}
-                          className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-all shadow-sm active:scale-95"
-                          title="Assign as Finance Manager"
-                        >
-                          <span>👑 Make FM</span>
-                        </button>
+                      {isTripManager && (
+                        Boolean(
+                          member.isFinanceLead ||
+                          member.id === trip.financeLeadId ||
+                          member.role === 'finance_manager'
+                        ) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeFinanceLead(member.id)}
+                            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all shadow-sm active:scale-95"
+                            title="Revoke Finance Manager (FM) role"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            <span>Revoke FM</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleMakeFinanceLead(member.id)}
+                            className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-all shadow-sm active:scale-95"
+                            title="Assign as Finance Manager"
+                          >
+                            <span>👑 Make FM</span>
+                          </button>
+                        )
                       )}
 
                       {isTripManager ? (

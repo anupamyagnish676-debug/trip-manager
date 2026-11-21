@@ -974,7 +974,16 @@ export default function TripFinancePortal() {
         trip={trip}
         currentMember={currentMember}
         onSaveMembers={(updatedMembers) => {
-          const updated = { ...trip, members: updatedMembers };
+          const lead =
+            updatedMembers.find((m) => m.isFinanceLead) ||
+            updatedMembers.find((m) => m.role === 'finance_manager') ||
+            updatedMembers.find((m) => m.name.toLowerCase().includes('yagnish')) ||
+            updatedMembers[0];
+          const updated = {
+            ...trip,
+            financeLeadId: lead?.id || trip.financeLeadId,
+            members: updatedMembers,
+          };
           saveTripState(updated);
         }}
       />
