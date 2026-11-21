@@ -62,8 +62,8 @@ export default function TripFinancePortal() {
   // Active member (every member is equal)
   const currentMember = session ? trip.members.find((m) => m.id === session.memberId) : null;
 
-  // Check if current user is the trip creator / organizer
-  const isOrganizer = Boolean(
+  // Check if current user is the trip creator / organizer / Trip Manager
+  const isTripManager = Boolean(
     currentMember &&
     (currentMember.id === trip.financeLeadId ||
      currentMember.isFinanceLead ||
@@ -71,6 +71,7 @@ export default function TripFinancePortal() {
      currentMember.role === 'trip_manager' ||
      trip.members[0]?.id === currentMember.id)
   );
+  const isOrganizer = isTripManager;
 
   // ── Load session on mount ──
   useEffect(() => {
@@ -197,6 +198,10 @@ export default function TripFinancePortal() {
   };
 
   const handleUpdateExpense = async (updatedExp: Expense) => {
+    if (!isTripManager) {
+      alert('Only the designated Trip Manager can modify expenses.');
+      return;
+    }
     const updated = {
       ...trip,
       expenses: trip.expenses.map((e) => (e.id === updatedExp.id ? updatedExp : e)),
@@ -207,9 +212,15 @@ export default function TripFinancePortal() {
   };
 
   const handleDeleteExpense = async (id: string) => {
-    const updated = { ...trip, expenses: trip.expenses.filter((e) => e.id !== id) };
-    saveTripState(updated);
-    if (hasSupabase) await deleteExpenseFromSupabase(id);
+    if (!isTripManager) {
+      alert('Only the designated Trip Manager can delete expenses.');
+      return;
+    }
+    if (confirm('Delete this bill? Settlements and balances will automatically recalculate.')) {
+      const updated = { ...trip, expenses: trip.expenses.filter((e) => e.id !== id) };
+      saveTripState(updated);
+      if (hasSupabase) await deleteExpenseFromSupabase(id);
+    }
   };
 
   const handleUpdateSettlement = async (updatedSettlements: SettlementTransfer[]) => {
@@ -614,23 +625,27 @@ export default function TripFinancePortal() {
                           <span>Invoice Slip</span>
                         </button>
 
-                        <button
-                          onClick={() => {
-                            setEditingExpense(exp);
-                            setIsAddExpenseOpen(true);
-                          }}
-                          title="Edit Bill"
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-all"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteExpense(exp.id)}
-                          title="Delete Bill"
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition-all"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {isTripManager && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingExpense(exp);
+                                setIsAddExpenseOpen(true);
+                              }}
+                              title="Edit Bill (Trip Manager only)"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-all"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteExpense(exp.id)}
+                              title="Delete Bill (Trip Manager only)"
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 transition-all"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
