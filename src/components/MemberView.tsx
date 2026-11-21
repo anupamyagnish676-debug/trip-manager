@@ -16,7 +16,6 @@ import {
   Download,
   Edit3,
   KeyRound,
-  Folder,
   ExternalLink,
   Check,
   Clock,
@@ -252,29 +251,15 @@ export function MemberView({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
-          {trip.driveFolderUrl && (
-            <a
-              href={trip.driveFolderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1.5 rounded-2xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 px-3.5 py-2 text-xs font-bold shadow-2xs transition-all active:scale-95 touch-manipulation min-h-[38px] text-center"
-              title="Open Google Drive Shared Memories Album"
-            >
-              <Folder className="h-4 w-4 text-sky-500 shrink-0" />
-              <span className="truncate">Drive Album</span>
-            </a>
-          )}
-          {onOpenAddExpense && (
-            <button
-              onClick={onOpenAddExpense}
-              className={`flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all active:scale-95 touch-manipulation min-h-[38px] text-center ${!trip.driveFolderUrl ? 'col-span-2 sm:col-span-1' : ''}`}
-            >
-              <Plus className="h-4 w-4 shrink-0" />
-              <span className="truncate">Add Bill</span>
-            </button>
-          )}
-        </div>
+        {onOpenAddExpense && (
+          <button
+            onClick={onOpenAddExpense}
+            className="flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-md transition-all active:scale-95 touch-manipulation min-h-[38px] w-full sm:w-auto"
+          >
+            <Plus className="h-4 w-4 shrink-0" />
+            <span>Add Bill / Expense</span>
+          </button>
+        )}
       </div>
 
       {/* ── PERSONAL BALANCE HERO CARD ── */}

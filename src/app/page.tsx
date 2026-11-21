@@ -501,17 +501,6 @@ export default function TripFinancePortal() {
 
           {/* Right Action Bar: Ultra-clean & Professional */}
           <div className="flex items-center gap-2 relative flex-shrink-0">
-            {/* Google Drive Shared Memories Album Button */}
-            <button
-              type="button"
-              onClick={handleOpenDrive}
-              className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-sky-500/10 to-teal-500/10 border border-sky-300/40 dark:border-sky-500/30 hover:border-sky-400/60 px-3 py-1.5 shadow-2xs text-sky-700 dark:text-sky-300 font-bold text-xs transition-all touch-manipulation active:scale-95"
-              title={trip.driveFolderUrl ? 'Open Google Drive Shared Album' : 'Configure Google Drive Folder'}
-            >
-              <Folder className="h-3.5 w-3.5 text-sky-500" />
-              <span className="hidden sm:inline">Drive Album</span>
-            </button>
-
             {/* User Identity & Menu Dropdown */}
             <div className="relative">
               <button
