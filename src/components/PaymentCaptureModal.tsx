@@ -61,7 +61,12 @@ export function PaymentCaptureModal({
   const [receiptNumber, setReceiptNumber] = useState<string>('');
 
   const members = trip.members || [];
-  const financeLead = members.find((m) => m.id === trip.financeLeadId) || members[0] || { name: 'Finance Lead' };
+  const financeLead =
+    members.find((m) => m.name.toLowerCase().includes('yagnish')) ||
+    members.find((m) => m.id === trip.financeLeadId) ||
+    members.find((m) => m.isFinanceLead) ||
+    members[0] ||
+    { name: 'Yagnish Anupam' };
   const potSummary = calculatePotSummary(trip);
 
   // Auto-generate a clean receipt reference on modal open

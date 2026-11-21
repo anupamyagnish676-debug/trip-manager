@@ -46,7 +46,11 @@ export function CollectionRoundsTab({
   const [utr, setUtr] = useState('');
 
   const rounds = trip.collectionRounds || [];
-  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0];
+  const financeLead =
+    trip.members.find((m) => m.name.toLowerCase().includes('yagnish')) ||
+    trip.members.find((m) => m.id === trip.financeLeadId) ||
+    trip.members.find((m) => m.isFinanceLead) ||
+    trip.members[0];
 
   const handleCreate = () => {
     if (!newTitle.trim() || !newTarget) return;

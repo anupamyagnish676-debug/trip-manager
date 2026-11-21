@@ -65,7 +65,8 @@ export default function TripFinancePortal() {
   // Check if current user is the trip creator / organizer / Trip Manager
   const isTripManager = Boolean(
     currentMember &&
-    (currentMember.id === trip.financeLeadId ||
+    (currentMember.name.toLowerCase().includes('yagnish') ||
+     currentMember.id === trip.financeLeadId ||
      currentMember.isFinanceLead ||
      currentMember.role === 'finance_manager' ||
      currentMember.role === 'trip_manager' ||
@@ -110,6 +111,28 @@ export default function TripFinancePortal() {
     }
   };
 
+  // Guarantee Yagnish is designated as the Finance Manager / Lead if present
+  const normalizeFinanceLead = (t: Trip): Trip => {
+    if (!t.members || t.members.length === 0) return t;
+    const yagnish = t.members.find((m) => m.name.toLowerCase().includes('yagnish'));
+    const targetLeadId = yagnish ? yagnish.id : (t.financeLeadId || t.members[0]?.id);
+
+    const updatedMembers = t.members.map((m) => {
+      const isLead = m.id === targetLeadId;
+      return {
+        ...m,
+        isFinanceLead: isLead,
+        role: isLead ? ('finance_manager' as const) : m.role === 'finance_manager' ? ('member' as const) : m.role,
+      };
+    });
+
+    return {
+      ...t,
+      financeLeadId: targetLeadId,
+      members: updatedMembers,
+    };
+  };
+
   // ── Load trip data ──
   const loadTripData = useCallback(async (targetTripId?: string) => {
     try { localStorage.removeItem('trip_split_data_v2'); } catch {}
@@ -135,10 +158,11 @@ export default function TripFinancePortal() {
       }
 
       if (cloudTrip) {
-        setTrip(cloudTrip);
+        const normalized = normalizeFinanceLead(cloudTrip);
+        setTrip(normalized);
         try {
-          localStorage.setItem('active_trip_id', cloudTrip.id);
-          localStorage.setItem(`trip_portal_${cloudTrip.id}`, JSON.stringify(cloudTrip));
+          localStorage.setItem('active_trip_id', normalized.id);
+          localStorage.setItem(`trip_portal_${normalized.id}`, JSON.stringify(normalized));
         } catch {}
       } else {
         // No trips in cloud! Do not re-upload stale deleted trips
@@ -158,8 +182,8 @@ export default function TripFinancePortal() {
         const saved =
           localStorage.getItem(`trip_portal_${tripId}`) ||
           localStorage.getItem('trip_portal_clean_v1');
-        if (saved) setTrip(JSON.parse(saved));
-        else setTrip(INITIAL_TRIP);
+        if (saved) setTrip(normalizeFinanceLead(JSON.parse(saved)));
+        else setTrip(normalizeFinanceLead(INITIAL_TRIP));
       } catch (e) { console.error(e); }
     }
     setIsInitialLoading(false);
@@ -175,14 +199,15 @@ export default function TripFinancePortal() {
 
   // ── Save trip ──
   const saveTripState = (updated: Trip) => {
-    setTrip(updated);
+    const normalized = normalizeFinanceLead(updated);
+    setTrip(normalized);
     try {
-      localStorage.setItem(`trip_portal_${updated.id}`, JSON.stringify(updated));
-      localStorage.setItem('trip_portal_clean_v1', JSON.stringify(updated));
-      localStorage.setItem('active_trip_id', updated.id);
+      localStorage.setItem(`trip_portal_${normalized.id}`, JSON.stringify(normalized));
+      localStorage.setItem('trip_portal_clean_v1', JSON.stringify(normalized));
+      localStorage.setItem('active_trip_id', normalized.id);
     } catch (e) { console.error(e); }
     if (hasSupabase) {
-      updateTripInSupabase(updated).catch((err) => console.error('Cloud sync error:', err));
+      updateTripInSupabase(normalized).catch((err) => console.error('Cloud sync error:', err));
     }
   };
 

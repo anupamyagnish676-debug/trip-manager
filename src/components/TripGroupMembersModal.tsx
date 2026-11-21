@@ -192,6 +192,19 @@ export function TripGroupMembersModal({
     setTimeout(() => setSavedSuccessId(null), 2500);
   };
 
+  const handleMakeFinanceLead = (id: string) => {
+    if (!isTripManager) return;
+    const updated = members.map((m) => ({
+      ...m,
+      isFinanceLead: m.id === id,
+      role: m.id === id ? ('finance_manager' as const) : m.role === 'finance_manager' ? ('member' as const) : m.role,
+    }));
+    setMembers(updated);
+    onSaveMembers(updated);
+    setSavedSuccessId(id);
+    setTimeout(() => setSavedSuccessId(null), 2500);
+  };
+
   const handleDeleteMember = (id: string) => {
     if (!isTripManager) return;
     if (members.length <= 1) {
@@ -460,7 +473,7 @@ export function TripGroupMembersModal({
                           required
                           value={editForm.name}
                           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                          placeholder="e.g. Laxman Sahoo"
+                          placeholder="e.g. Yagnish Anupam"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -473,7 +486,7 @@ export function TripGroupMembersModal({
                           type="text"
                           value={editForm.phone}
                           onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                          placeholder="e.g. 7008995654"
+                          placeholder="e.g. 9876543210"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -486,7 +499,7 @@ export function TripGroupMembersModal({
                           type="email"
                           value={editForm.email}
                           onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                          placeholder="e.g. laxman@gmail.com"
+                          placeholder="e.g. yagnish@gmail.com"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -500,7 +513,7 @@ export function TripGroupMembersModal({
                           required
                           value={editForm.loginId}
                           onChange={(e) => setEditForm({ ...editForm, loginId: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                          placeholder="e.g. laxmansahoo"
+                          placeholder="e.g. yagnish"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -514,7 +527,7 @@ export function TripGroupMembersModal({
                           required
                           value={editForm.password}
                           onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
-                          placeholder="e.g. laxman123"
+                          placeholder="e.g. yagnish123"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -527,7 +540,7 @@ export function TripGroupMembersModal({
                           type="text"
                           value={editForm.upiId}
                           onChange={(e) => setEditForm({ ...editForm, upiId: e.target.value })}
-                          placeholder="e.g. laxman@okaxis or 7008995654@ybl"
+                          placeholder="e.g. yagnish@okaxis or 9876543210@ybl"
                           className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 sm:py-1.5 text-base sm:text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                         />
                       </div>
@@ -608,6 +621,20 @@ export function TripGroupMembersModal({
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                             {member.name}
                           </h4>
+                          {Boolean(
+                            member.name.toLowerCase().includes('yagnish') ||
+                            member.isFinanceLead ||
+                            member.id === trip.financeLeadId ||
+                            member.role === 'finance_manager'
+                          ) ? (
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300 dark:border-emerald-800">
+                              <span>👑</span> Finance Manager (FM)
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full">
+                              Member
+                            </span>
+                          )}
                           {savedSuccessId === member.id && (
                             <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-in fade-in">
                               <Check className="h-3 w-3" /> Updated!
@@ -634,6 +661,22 @@ export function TripGroupMembersModal({
                     </div>
 
                     <div className="flex items-center gap-1.5 self-end sm:self-center flex-shrink-0">
+                      {isTripManager && !Boolean(
+                        member.name.toLowerCase().includes('yagnish') ||
+                        member.isFinanceLead ||
+                        member.id === trip.financeLeadId ||
+                        member.role === 'finance_manager'
+                      ) && (
+                        <button
+                          type="button"
+                          onClick={() => handleMakeFinanceLead(member.id)}
+                          className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-all shadow-sm active:scale-95"
+                          title="Assign as Finance Manager"
+                        >
+                          <span>👑 Make FM</span>
+                        </button>
+                      )}
+
                       {isTripManager ? (
                         <button
                           type="button"

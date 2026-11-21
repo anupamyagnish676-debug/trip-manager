@@ -29,8 +29,24 @@ export function TripSettingsModal({
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberUpi, setNewMemberUpi] = useState('');
   
+  const defaultLead =
+    trip.members.find((m) => m.name.toLowerCase().includes('yagnish')) ||
+    trip.members.find((m) => m.id === trip.financeLeadId) ||
+    trip.members.find((m) => m.isFinanceLead) ||
+    trip.members[0] ||
+    { id: 'm_lead', name: 'Yagnish Anupam', upiId: '' };
+
+  const [selectedFinanceLeadId, setSelectedFinanceLeadId] = useState<string>(
+    defaultLead?.id || trip.members[0]?.id || ''
+  );
+
   // Payment methods
-  const [upiId, setUpiId] = useState(trip.paymentMethods?.upiId || (trip.members.find(m => m.isFinanceLead)?.upiId) || '');
+  const [upiId, setUpiId] = useState(
+    trip.paymentMethods?.upiId ||
+    defaultLead?.upiId ||
+    (trip.members.find((m) => m.name.toLowerCase().includes('yagnish'))?.upiId) ||
+    ''
+  );
   const [paypalUrl, setPaypalUrl] = useState(trip.paymentMethods?.paypalUrl || '');
   const [venmoHandle, setVenmoHandle] = useState(trip.paymentMethods?.venmoHandle || '');
   const [bankDetails, setBankDetails] = useState(trip.paymentMethods?.bankDetails || '');
@@ -94,16 +110,22 @@ export function TripSettingsModal({
   };
 
   const handleSave = () => {
-    // If upiId was changed, update finance lead member as well
-    const updatedMembers = members.map((m) =>
-      m.id === financeLead.id ? { ...m, upiId: upiId.trim() || undefined } : m
-    );
+    const updatedMembers = members.map((m) => {
+      const isLead = m.id === selectedFinanceLeadId;
+      return {
+        ...m,
+        isFinanceLead: isLead,
+        role: isLead ? ('finance_manager' as const) : m.role === 'finance_manager' ? ('member' as const) : m.role,
+        upiId: isLead ? (upiId.trim() || m.upiId) : m.upiId,
+      };
+    });
 
     const updated: Trip = {
       ...trip,
       name: tripName.trim() || 'Our Trip Group',
       destination: destination.trim() || 'Worldwide',
       currency,
+      financeLeadId: selectedFinanceLeadId,
       driveFolderUrl: driveFolderUrl.trim() || undefined,
       financeLeadCustomQrImage: customQrImage || undefined,
       paymentMethods: {
@@ -189,6 +211,28 @@ export function TripSettingsModal({
             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
               Global Support
             </span>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Designated Finance Manager (FM / Trip Lead) *
+            </label>
+            <select
+              value={selectedFinanceLeadId}
+              onChange={(e) => {
+                const newId = e.target.value;
+                setSelectedFinanceLeadId(newId);
+                const lead = members.find((m) => m.id === newId);
+                if (lead?.upiId) setUpiId(lead.upiId);
+              }}
+              className="w-full rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 px-3 py-2 text-base sm:text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} (@{m.loginId}) {m.name.toLowerCase().includes('yagnish') ? '⭐ [Official FM]' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
