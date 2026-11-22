@@ -7,7 +7,7 @@ import {
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
   TrendingUp, FileText, KeyRound, ExternalLink, Download,
-  Mail, Loader2, Sun, Moon,
+  Mail, Loader2,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -63,43 +63,22 @@ export default function TripFinancePortal() {
 
   const hasSupabase = isSupabaseConfigured();
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
+  // Automatically sync theme with device/system preferences (Light / Dark / Night mode)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isDark = document.documentElement.classList.contains('dark');
-      setIsDarkMode(isDark);
-
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleThemeChange = (e: MediaQueryListEvent) => {
-        if (!localStorage.getItem('theme')) {
-          if (e.matches) {
-            document.documentElement.classList.add('dark');
-            setIsDarkMode(true);
-          } else {
-            document.documentElement.classList.remove('dark');
-            setIsDarkMode(false);
-          }
-        }
-      };
-      mq.addEventListener('change', handleThemeChange);
-      return () => mq.removeEventListener('change', handleThemeChange);
-    }
-  }, []);
-
-  const toggleTheme = () => {
     if (typeof window === 'undefined') return;
-    const willBeDark = !document.documentElement.classList.contains('dark');
-    if (willBeDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDarkMode(true);
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDarkMode(false);
-    }
-  };
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = (matches: boolean) => {
+      if (matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+    applyTheme(mq.matches);
+    const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Active member (every member is equal)
   const currentMember = session ? trip.members.find((m) => m.id === session.memberId) : null;
@@ -537,22 +516,7 @@ export default function TripFinancePortal() {
           </div>
 
           {/* Right Action Bar: Ultra-clean & Professional */}
-          <div className="flex items-center gap-1.5 sm:gap-2 relative flex-shrink-0">
-            {/* Theme Toggle Button (Light / Dark) */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              aria-label="Toggle theme"
-              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl sm:rounded-2xl glass-card hover:border-slate-300 dark:hover:border-slate-600 transition-all text-slate-700 dark:text-amber-400 shadow-2xs"
-            >
-              {isDarkMode ? (
-                <Sun className="h-4 w-4 text-amber-400" />
-              ) : (
-                <Moon className="h-4 w-4 text-slate-700" />
-              )}
-            </button>
-
+          <div className="flex items-center gap-2 relative flex-shrink-0">
             {/* User Identity & Menu Dropdown */}
             <div className="relative">
               <button
