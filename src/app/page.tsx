@@ -6,7 +6,7 @@ import {
   Trash2, Calendar, MapPin, CheckCircle2, ArrowRight, TrendingDown,
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
-  TrendingUp, FileText, KeyRound, Folder, ExternalLink, Download,
+  TrendingUp, FileText, KeyRound, ExternalLink, Download,
   Mail, Loader2,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
@@ -409,18 +409,6 @@ export default function TripFinancePortal() {
     }
   };
 
-  const handleOpenDrive = () => {
-    if (trip.driveFolderUrl && trip.driveFolderUrl.trim().length > 0) {
-      window.open(trip.driveFolderUrl.trim(), '_blank', 'noopener,noreferrer');
-    } else {
-      if (isTripManager) {
-        setIsSettingsOpen(true);
-      } else {
-        alert('The Trip Manager has not added a Google Drive shared album link yet.');
-      }
-    }
-  };
-
   // ── Universal Tabs (Identical for ALL members) ──
   const allTabs: { key: TabKey; label: string; mobileLabel: string; icon: React.ReactNode; count?: number }[] = [
     { key: 'my_view', label: 'Overview', mobileLabel: 'Overview', icon: <User className="h-4 w-4" /> },
@@ -586,18 +574,6 @@ export default function TripFinancePortal() {
                       >
                         <Settings className="h-4 w-4 text-slate-400" />
                         <span>Trip Settings</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          handleOpenDrive();
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-xl transition-colors text-left"
-                      >
-                        <Folder className="h-4 w-4 text-sky-500" />
-                        <span>📸 Drive Memories</span>
                       </button>
                     </div>
 

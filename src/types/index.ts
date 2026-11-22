@@ -33,7 +33,6 @@ export interface Member {
   joinCode?: string;
   pin?: string;
   hasChangedPassword?: boolean;
-  driveFolderUrl?: string; // Direct link to member's personal subfolder in Google Drive
 }
 
 export type SplitType = 'equal' | 'exact' | 'shares';
@@ -135,7 +134,6 @@ export interface Trip {
   settlements: SettlementTransfer[];
   collectionRounds?: CollectionRound[];
   inviteCode?: string; // e.g. TOKYO26
-  driveFolderUrl?: string; // Google Drive shared memories folder URL
   createdAt?: string;
 }
 
