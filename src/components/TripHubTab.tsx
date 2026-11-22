@@ -32,6 +32,8 @@ import {
   Award,
   X,
   RotateCcw,
+  FileText,
+  Upload,
 } from 'lucide-react';
 
 interface TripHubTabProps {
@@ -39,6 +41,37 @@ interface TripHubTabProps {
   currentMember: Member;
   isTripManager: boolean;
   onUpdateTrip: (updated: Trip) => void;
+}
+
+/**
+ * Smart helper to extract clean location text and valid navigation URL
+ * even if the user pasted a raw Google Search or Maps URL.
+ */
+function formatLocationDisplay(loc: string): { display: string; url: string } {
+  if (!loc) return { display: 'Location not specified', url: '' };
+  const trimmed = loc.trim();
+  const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+
+  if (isUrl) {
+    try {
+      const urlObj = new URL(trimmed);
+      const q =
+        urlObj.searchParams.get('q') ||
+        urlObj.searchParams.get('query') ||
+        urlObj.searchParams.get('destination');
+      if (q) {
+        return { display: decodeURIComponent(q), url: trimmed };
+      }
+      return { display: 'Saved Map Link ↗', url: trimmed };
+    } catch {
+      return { display: 'Saved Map Link ↗', url: trimmed };
+    }
+  }
+
+  return {
+    display: trimmed,
+    url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`,
+  };
 }
 
 export function TripHubTab({
@@ -51,9 +84,14 @@ export function TripHubTab({
   const [activeSubTab, setActiveSubTab] = useState<'itinerary' | 'transport' | 'awards'>('itinerary');
 
   // Filter out any dummy preseeded info so the user starts with clean data
+  const DUMMY_IDS = new Set([
+    'act-1-1', 'act-1-2', 'act-1-3', 'act-1-4',
+    'act-2-1', 'act-2-2', 'act-2-3',
+    'act-3-1', 'act-3-2', 'act-3-3',
+  ]);
   const rawDays = trip.itineraryDays || [];
   const hasDummyPreseedDays = rawDays.some((d) =>
-    d.activities?.some((a) => a.id.startsWith('act-1-') || a.id.startsWith('act-2-') || a.id.startsWith('act-3-'))
+    d.activities?.some((a) => DUMMY_IDS.has(a.id))
   );
   const itineraryDays: ItineraryDay[] = hasDummyPreseedDays ? [] : rawDays;
 
@@ -94,23 +132,41 @@ export function TripHubTab({
     message?: string;
   }>({ loading: false });
 
-  // Modals state
+  // ── Modals State ──
   const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   const [isAddDayOpen, setIsAddDayOpen] = useState(false);
+  const [isEditDayOpen, setIsEditDayOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<{ dayNumber: number; activity: ItineraryActivity } | null>(null);
+
   const [isAddTicketOpen, setIsAddTicketOpen] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<TransportTicket | null>(null);
+
   const [isEditCabOpen, setIsEditCabOpen] = useState(false);
   const [isAddAwardOpen, setIsAddAwardOpen] = useState(false);
 
-  // Form states
+  // ── Form States: Activity ──
   const [newActivityTime, setNewActivityTime] = useState('09:00 AM');
   const [newActivityTitle, setNewActivityTitle] = useState('');
   const [newActivityLocation, setNewActivityLocation] = useState('');
   const [newActivityNotes, setNewActivityNotes] = useState('');
   const [newActivityLead, setNewActivityLead] = useState(currentMember.id);
 
+  // Edit Activity form
+  const [editActTime, setEditActTime] = useState('');
+  const [editActTitle, setEditActTitle] = useState('');
+  const [editActLocation, setEditActLocation] = useState('');
+  const [editActNotes, setEditActNotes] = useState('');
+  const [editActLead, setEditActLead] = useState('');
+  const [editActStatus, setEditActStatus] = useState<'upcoming' | 'in_progress' | 'completed'>('upcoming');
+
+  // ── Form States: Day ──
   const [newDayTitle, setNewDayTitle] = useState('');
   const [newDayDate, setNewDayDate] = useState('');
 
+  const [editDayTitle, setEditDayTitle] = useState('');
+  const [editDayDate, setEditDayDate] = useState('');
+
+  // ── Form States: Ticket ──
   const [newTicketMode, setNewTicketMode] = useState<'train' | 'flight' | 'bus' | 'cab'>('train');
   const [newTicketTitle, setNewTicketTitle] = useState('');
   const [newTicketPnr, setNewTicketPnr] = useState('');
@@ -120,7 +176,23 @@ export function TripHubTab({
   const [newTicketArrTime, setNewTicketArrTime] = useState('');
   const [newTicketSeats, setNewTicketSeats] = useState('');
   const [newTicketLiveUrl, setNewTicketLiveUrl] = useState('');
+  const [newTicketPdfUrl, setNewTicketPdfUrl] = useState<string | undefined>(undefined);
+  const [newTicketPdfName, setNewTicketPdfName] = useState<string | undefined>(undefined);
 
+  // Edit Ticket form
+  const [editTicketMode, setEditTicketMode] = useState<'train' | 'flight' | 'bus' | 'cab'>('train');
+  const [editTicketTitle, setEditTicketTitle] = useState('');
+  const [editTicketPnr, setEditTicketPnr] = useState('');
+  const [editTicketDepStation, setEditTicketDepStation] = useState('');
+  const [editTicketArrStation, setEditTicketArrStation] = useState('');
+  const [editTicketDepTime, setEditTicketDepTime] = useState('');
+  const [editTicketArrTime, setEditTicketArrTime] = useState('');
+  const [editTicketSeats, setEditTicketSeats] = useState('');
+  const [editTicketLiveUrl, setEditTicketLiveUrl] = useState('');
+  const [editTicketPdfUrl, setEditTicketPdfUrl] = useState<string | undefined>(undefined);
+  const [editTicketPdfName, setEditTicketPdfName] = useState<string | undefined>(undefined);
+
+  // ── Form States: Cab ──
   const [cabForm, setCabForm] = useState<CabRentalLogistics>(
     cabLogistics || {
       vehicleModel: '',
@@ -133,6 +205,7 @@ export function TripHubTab({
     }
   );
 
+  // ── Form States: Awards ──
   const [newAwardTitle, setNewAwardTitle] = useState('');
   const [newAwardIcon, setNewAwardIcon] = useState('🌟');
   const [newAwardDesc, setNewAwardDesc] = useState('');
@@ -162,6 +235,26 @@ export function TripHubTab({
       awards: updates.awards !== undefined ? updates.awards : awards,
     };
     onUpdateTrip(updatedTrip);
+  };
+
+  // ── Helper to handle Ticket PDF file upload ──
+  const handlePdfUpload = (file: File, isEdit: boolean) => {
+    if (file.size > 6 * 1024 * 1024) {
+      alert('Ticket document must be smaller than 6MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      if (isEdit) {
+        setEditTicketPdfUrl(dataUrl);
+        setEditTicketPdfName(file.name);
+      } else {
+        setNewTicketPdfUrl(dataUrl);
+        setNewTicketPdfName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // ── Activity Status Toggle ──
@@ -210,6 +303,46 @@ export function TripHubTab({
       };
     });
     updateHubData({ itineraryDays: updatedDays });
+  };
+
+  // ── Open Edit Activity Modal ──
+  const handleOpenEditActivity = (dayNum: number, act: ItineraryActivity) => {
+    setEditingActivity({ dayNumber: dayNum, activity: act });
+    setEditActTime(act.time);
+    setEditActTitle(act.title);
+    setEditActLocation(act.location);
+    setEditActNotes(act.notes || '');
+    setEditActLead(act.leadMemberId || '');
+    setEditActStatus(act.status);
+  };
+
+  // ── Save Edited Activity ──
+  const handleSaveEditActivity = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingActivity) return;
+    if (!editActTitle.trim() || !editActLocation.trim()) return;
+
+    const updatedDays = itineraryDays.map((d) => {
+      if (d.dayNumber !== editingActivity.dayNumber) return d;
+      return {
+        ...d,
+        activities: d.activities.map((act) => {
+          if (act.id !== editingActivity.activity.id) return act;
+          return {
+            ...act,
+            time: editActTime.trim() || '10:00 AM',
+            title: editActTitle.trim(),
+            location: editActLocation.trim(),
+            notes: editActNotes.trim() || undefined,
+            leadMemberId: editActLead || undefined,
+            status: editActStatus,
+          };
+        }),
+      };
+    });
+
+    updateHubData({ itineraryDays: updatedDays });
+    setEditingActivity(null);
   };
 
   // ── Add Activity ──
@@ -264,11 +397,37 @@ export function TripHubTab({
     setIsAddDayOpen(false);
   };
 
+  // ── Open Edit Day Modal ──
+  const handleOpenEditDay = () => {
+    if (!currentDay) return;
+    setEditDayTitle(currentDay.title);
+    setEditDayDate(currentDay.date || '');
+    setIsEditDayOpen(true);
+  };
+
+  // ── Save Edited Day ──
+  const handleSaveEditDay = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentDay) return;
+    if (!editDayTitle.trim()) return;
+
+    const updatedDays = itineraryDays.map((d) => {
+      if (d.dayNumber !== currentDay.dayNumber) return d;
+      return {
+        ...d,
+        title: editDayTitle.trim(),
+        date: editDayDate.trim() || d.date,
+      };
+    });
+
+    updateHubData({ itineraryDays: updatedDays });
+    setIsEditDayOpen(false);
+  };
+
   // ── Delete Entire Day ──
   const handleDeleteDay = (dayNum: number) => {
     if (!confirm(`Delete Day ${dayNum} and all its activities?`)) return;
     const remaining = itineraryDays.filter((d) => d.dayNumber !== dayNum);
-    // Renumber days sequentially
     const renumbered = remaining.map((d, index) => ({
       ...d,
       dayNumber: index + 1,
@@ -279,7 +438,7 @@ export function TripHubTab({
 
   // ── Clear All Itinerary (Reset) ──
   const handleClearAllItinerary = () => {
-    if (!confirm('Are you sure you want to clear the entire itinerary? All days and activities will be deleted.')) return;
+    if (!confirm('Are you sure you want to clear all itinerary days and activities? You can enter everything fresh.')) return;
     updateHubData({ itineraryDays: [] });
     setSelectedDayNumber(1);
   };
@@ -300,6 +459,8 @@ export function TripHubTab({
       arrivalTime: newTicketArrTime.trim() || undefined,
       seatsOrBerths: newTicketSeats.trim() || 'General',
       liveStatusUrl: newTicketLiveUrl.trim() || undefined,
+      ticketPdfUrl: newTicketPdfUrl,
+      ticketPdfName: newTicketPdfName,
     };
 
     const updated = [...transportTickets, newTicket];
@@ -312,7 +473,53 @@ export function TripHubTab({
     setNewTicketArrTime('');
     setNewTicketSeats('');
     setNewTicketLiveUrl('');
+    setNewTicketPdfUrl(undefined);
+    setNewTicketPdfName(undefined);
     setIsAddTicketOpen(false);
+  };
+
+  // ── Open Edit Ticket Modal ──
+  const handleOpenEditTicket = (t: TransportTicket) => {
+    setEditingTicket(t);
+    setEditTicketMode(t.mode);
+    setEditTicketTitle(t.title);
+    setEditTicketPnr(t.pnr || '');
+    setEditTicketDepStation(t.departureStation);
+    setEditTicketArrStation(t.arrivalStation);
+    setEditTicketDepTime(t.departureTime);
+    setEditTicketArrTime(t.arrivalTime || '');
+    setEditTicketSeats(t.seatsOrBerths);
+    setEditTicketLiveUrl(t.liveStatusUrl || '');
+    setEditTicketPdfUrl(t.ticketPdfUrl);
+    setEditTicketPdfName(t.ticketPdfName);
+  };
+
+  // ── Save Edited Ticket ──
+  const handleSaveEditTicket = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTicket) return;
+    if (!editTicketTitle.trim() || !editTicketDepStation.trim()) return;
+
+    const updated = transportTickets.map((t) => {
+      if (t.id !== editingTicket.id) return t;
+      return {
+        ...t,
+        mode: editTicketMode,
+        title: editTicketTitle.trim(),
+        pnr: editTicketPnr.trim() || undefined,
+        departureStation: editTicketDepStation.trim(),
+        arrivalStation: editTicketArrStation.trim(),
+        departureTime: editTicketDepTime.trim() || '08:00 AM',
+        arrivalTime: editTicketArrTime.trim() || undefined,
+        seatsOrBerths: editTicketSeats.trim() || 'General',
+        liveStatusUrl: editTicketLiveUrl.trim() || undefined,
+        ticketPdfUrl: editTicketPdfUrl,
+        ticketPdfName: editTicketPdfName,
+      };
+    });
+
+    updateHubData({ transportTickets: updated });
+    setEditingTicket(null);
   };
 
   // ── Delete Ticket ──
@@ -473,7 +680,7 @@ export function TripHubTab({
 
   return (
     <div className="space-y-4 pb-12 sm:pb-6">
-      {/* ── TOP SEGMENTED SUB-NAVIGATION (MOBILE-FIRST) ── */}
+      {/* ── TOP SEGMENTED SUB-NAVIGATION ── */}
       <div className="glass-card p-1 sm:p-1.5 rounded-2xl flex items-center justify-between gap-1 shadow-xs border border-slate-200/80 dark:border-slate-800">
         <button
           type="button"
@@ -555,7 +762,7 @@ export function TripHubTab({
                       key={d.dayNumber}
                       type="button"
                       onClick={() => setSelectedDayNumber(d.dayNumber)}
-                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[38px] ${
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[38px] ${
                         isSelected
                           ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
                           : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -563,13 +770,13 @@ export function TripHubTab({
                     >
                       <span className="font-extrabold tracking-tight">Day {d.dayNumber}</span>
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
                           isSelected
                             ? 'bg-emerald-700/90 text-emerald-100'
                             : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
                         }`}
                       >
-                        {completedCount}/{d.activities.length}
+                        {completedCount} / {d.activities.length}
                       </span>
                     </button>
                   );
@@ -578,7 +785,7 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsAddDayOpen(true)}
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-300 dark:border-emerald-700 shrink-0 touch-manipulation min-h-[38px]"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-300 dark:border-emerald-700 shrink-0 touch-manipulation min-h-[38px]"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Add Day</span>
@@ -620,12 +827,12 @@ export function TripHubTab({
             </div>
           )}
 
-          {/* Current Day Header Card */}
+          {/* Current Day Header Card with Edit & Delete Day Buttons */}
           {currentDay && (
             <div className="glass-card p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
               <div className="flex items-center justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                       Day {currentDay.dayNumber} Timeline
                     </span>
@@ -635,15 +842,22 @@ export function TripHubTab({
                       </span>
                     )}
                   </div>
-                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-0.5">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-0.5 truncate">
                     {currentDay.title}
                   </h2>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 block">
-                    {currentDay.activities.length} spot{currentDay.activities.length === 1 ? '' : 's'}
-                  </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Edit Day Button */}
+                  <button
+                    type="button"
+                    onClick={handleOpenEditDay}
+                    title="Edit day title and date"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition-colors"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    <span>Edit</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -691,10 +905,10 @@ export function TripHubTab({
               </button>
             </div>
           ) : currentDay ? (
-            /* Activities Cards List (Mobile-Optimized Architecture) */
+            /* Activities Cards List (Mobile-Optimized Architecture with Edit Option) */
             <div className="space-y-3">
               {currentDay.activities.map((act) => {
-                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location)}`;
+                const locInfo = formatLocationDisplay(act.location);
 
                 return (
                   <div
@@ -707,7 +921,7 @@ export function TripHubTab({
                         : 'border-slate-200/80 dark:border-slate-800'
                     }`}
                   >
-                    {/* Top Row: Time, Status Toggle & Delete Button */}
+                    {/* Top Row: Time, Status Toggle & Action Buttons (Edit + Delete) */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Time Badge */}
@@ -742,15 +956,28 @@ export function TripHubTab({
                         </button>
                       </div>
 
-                      {/* Delete Activity Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteActivity(currentDay.dayNumber, act.id)}
-                        title="Delete this activity"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors touch-manipulation"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {/* Action Buttons: Edit and Delete */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Edit Activity Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditActivity(currentDay.dayNumber, act)}
+                          title="Edit activity details"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors touch-manipulation"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+
+                        {/* Delete Activity Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteActivity(currentDay.dayNumber, act.id)}
+                          title="Delete this activity"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors touch-manipulation"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Middle: Title & Location */}
@@ -767,7 +994,7 @@ export function TripHubTab({
 
                       <p className="text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1 mt-0.5">
                         <span className="shrink-0 text-emerald-500">📍</span>
-                        <span className="truncate">{act.location}</span>
+                        <span className="truncate">{locInfo.display}</span>
                       </p>
                     </div>
 
@@ -782,7 +1009,7 @@ export function TripHubTab({
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {/* 1-Click Google Maps Navigation Button */}
                       <a
-                        href={mapsUrl}
+                        href={locInfo.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors min-h-[38px] touch-manipulation"
@@ -824,7 +1051,7 @@ export function TripHubTab({
               <button
                 type="button"
                 onClick={handleClearAllItinerary}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors py-1 px-3"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors py-1.5 px-3 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/20"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Clear All Days & Start Fresh</span>
@@ -846,7 +1073,7 @@ export function TripHubTab({
                 Transport & Commute Hub
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Keep all train/flight tickets, berths, and driver contacts in one tap
+                Keep all train/flight tickets, berths, driver contacts & ticket PDFs in one tap
               </p>
             </div>
 
@@ -863,7 +1090,11 @@ export function TripHubTab({
 
               <button
                 type="button"
-                onClick={() => setIsAddTicketOpen(true)}
+                onClick={() => {
+                  setNewTicketPdfUrl(undefined);
+                  setNewTicketPdfName(undefined);
+                  setIsAddTicketOpen(true);
+                }}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-sky-600 text-white hover:bg-sky-700 min-h-[38px] touch-manipulation shadow-xs"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -879,11 +1110,15 @@ export function TripHubTab({
                 No tickets or PNR reservations added yet
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Add your group flight, train, or bus tickets so everyone has coach/berth numbers handy.
+                Add your group flight, train, or bus tickets so everyone has coach/berth numbers and official ticket PDFs ready.
               </p>
               <button
                 type="button"
-                onClick={() => setIsAddTicketOpen(true)}
+                onClick={() => {
+                  setNewTicketPdfUrl(undefined);
+                  setNewTicketPdfName(undefined);
+                  setIsAddTicketOpen(true);
+                }}
                 className="inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold bg-sky-600 text-white min-h-[38px] touch-manipulation"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -927,14 +1162,25 @@ export function TripHubTab({
                         </span>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTicket(t.id)}
-                        title="Delete ticket"
-                        className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {/* Edit and Delete Buttons */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditTicket(t)}
+                          title="Edit ticket details"
+                          className="p-1.5 text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-950/30 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTicket(t.id)}
+                          title="Delete ticket"
+                          className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {t.pnr && (
@@ -983,6 +1229,20 @@ export function TripHubTab({
                       <span>🪑</span>
                       <span className="truncate">{t.seatsOrBerths}</span>
                     </div>
+
+                    {/* View / Download Ticket PDF Option */}
+                    {t.ticketPdfUrl && (
+                      <a
+                        href={t.ticketPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={t.ticketPdfName || 'Ticket.pdf'}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-colors min-h-[38px] touch-manipulation shadow-xs"
+                      >
+                        <FileText className="h-4 w-4" />
+                        <span>View / Download Ticket PDF ({t.ticketPdfName || 'PDF'})</span>
+                      </a>
+                    )}
 
                     {t.liveStatusUrl && (
                       <a
@@ -1044,7 +1304,7 @@ export function TripHubTab({
                   onClick={() => setIsEditCabOpen(true)}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-2xs"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3.5 w-3.5" />
                   <span>Add Cab</span>
                 </button>
               )}
@@ -1303,7 +1563,7 @@ export function TripHubTab({
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── MODALS ── */}
+      {/* ── MODALS (ADD/EDIT ACTIVITY, ADD/EDIT DAY, ADD/EDIT TICKET, CAB, AWARD) ── */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
 
       {/* Modal: Add Activity */}
@@ -1327,14 +1587,14 @@ export function TripHubTab({
             <form onSubmit={handleAddActivity} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Time (e.g. 07:00 AM, 02:30 PM) *
+                  Time (e.g. 10:30 AM, 02:30 PM) *
                 </label>
                 <input
                   type="text"
                   required
                   value={newActivityTime}
                   onChange={(e) => setNewActivityTime(e.target.value)}
-                  placeholder="07:00 AM"
+                  placeholder="10:30 AM"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1348,21 +1608,21 @@ export function TripHubTab({
                   required
                   value={newActivityTitle}
                   onChange={(e) => setNewActivityTitle(e.target.value)}
-                  placeholder="e.g. Sunrise Walk / Temple Darshan / Dinner"
+                  placeholder="e.g. Train Boarding / Temple Darshan / Dinner"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Location (for 1-Click Google Maps Navigation) *
+                  Location (Name or Google Maps Link) *
                 </label>
                 <input
                   type="text"
                   required
                   value={newActivityLocation}
                   onChange={(e) => setNewActivityLocation(e.target.value)}
-                  placeholder="e.g. Golden Beach, Puri / Konark Sun Temple"
+                  placeholder="e.g. Talcher Road Station / Puri Golden Beach"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1392,7 +1652,7 @@ export function TripHubTab({
                   type="text"
                   value={newActivityNotes}
                   onChange={(e) => setNewActivityNotes(e.target.value)}
-                  placeholder="Traditional dress code, buy entry tickets online, etc."
+                  placeholder="e.g. Arrive Early in Time, dress code, tickets, etc."
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1410,6 +1670,134 @@ export function TripHubTab({
                   className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 min-h-[38px]"
                 >
                   Save Activity
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Activity */}
+      {editingActivity && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit2 className="h-4 w-4 text-emerald-500" />
+                <span>Edit Activity Details</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingActivity(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditActivity} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Time *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editActTime}
+                    onChange={(e) => setEditActTime(e.target.value)}
+                    placeholder="10:30 AM"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editActStatus}
+                    onChange={(e: any) => setEditActStatus(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="upcoming">Upcoming</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Activity Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editActTitle}
+                  onChange={(e) => setEditActTitle(e.target.value)}
+                  placeholder="e.g. Train Boarding"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Location (Name or Google Maps Link) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editActLocation}
+                  onChange={(e) => setEditActLocation(e.target.value)}
+                  placeholder="e.g. Talcher Road Station"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Lead Friend In Charge
+                </label>
+                <select
+                  value={editActLead}
+                  onChange={(e) => setEditActLead(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">No lead assigned</option>
+                  {trip.members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      👤 {m.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Notes / Reminders (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={editActNotes}
+                  onChange={(e) => setEditActNotes(e.target.value)}
+                  placeholder="e.g. Arrive Early in Time"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingActivity(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white min-h-[38px]"
+                >
+                  Update Activity
                 </button>
               </div>
             </form>
@@ -1437,14 +1825,14 @@ export function TripHubTab({
             <form onSubmit={handleAddDay} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Day Title / Focus *
+                  Day Focus / Title *
                 </label>
                 <input
                   type="text"
                   required
                   value={newDayTitle}
                   onChange={(e) => setNewDayTitle(e.target.value)}
-                  placeholder="e.g. Arrival & Temple Darshan"
+                  placeholder="e.g. Boarding from Talcher Road"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1474,6 +1862,71 @@ export function TripHubTab({
                   className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white min-h-[38px]"
                 >
                   Create Day
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Day */}
+      {isEditDayOpen && currentDay && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Edit2 className="h-4 w-4 text-emerald-500" />
+                <span>Edit Day {currentDay.dayNumber} Focus</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditDayOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditDay} className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Day Focus / Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editDayTitle}
+                  onChange={(e) => setEditDayTitle(e.target.value)}
+                  placeholder="e.g. Boarding from Talcher Road"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={editDayDate}
+                  onChange={(e) => setEditDayDate(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditDayOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white min-h-[38px]"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -1533,14 +1986,14 @@ export function TripHubTab({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Carrier / Train Name *
+                  Carrier / Train / Flight Name *
                 </label>
                 <input
                   type="text"
                   required
                   value={newTicketTitle}
                   onChange={(e) => setNewTicketTitle(e.target.value)}
-                  placeholder="e.g. Purushottam Express / IndiGo 6E-5212"
+                  placeholder="e.g. Purushottam Express / IndiGo 6E"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                 />
               </div>
@@ -1555,7 +2008,7 @@ export function TripHubTab({
                     required
                     value={newTicketDepStation}
                     onChange={(e) => setNewTicketDepStation(e.target.value)}
-                    placeholder="e.g. KGP / NDLS"
+                    placeholder="e.g. Talcher Road / KGP"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1569,7 +2022,7 @@ export function TripHubTab({
                     required
                     value={newTicketArrStation}
                     onChange={(e) => setNewTicketArrStation(e.target.value)}
-                    placeholder="e.g. PURI / DEL"
+                    placeholder="e.g. Puri / Bhubaneswar"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1585,7 +2038,7 @@ export function TripHubTab({
                     required
                     value={newTicketDepTime}
                     onChange={(e) => setNewTicketDepTime(e.target.value)}
-                    placeholder="06:15 AM"
+                    placeholder="10:30 AM"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1598,7 +2051,7 @@ export function TripHubTab({
                     type="text"
                     value={newTicketArrTime}
                     onChange={(e) => setNewTicketArrTime(e.target.value)}
-                    placeholder="01:45 PM"
+                    placeholder="02:30 PM"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1616,6 +2069,40 @@ export function TripHubTab({
                   placeholder="e.g. Coach B3, Berths 21, 22, 23"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Upload Actual Ticket PDF / Document (Optional)
+                </label>
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-500 bg-slate-50 dark:bg-slate-800/60 cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300">
+                    <Upload className="h-4 w-4 text-sky-500" />
+                    <span className="truncate">{newTicketPdfName || 'Choose PDF / Ticket Image (<6MB)'}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePdfUpload(file, false);
+                      }}
+                    />
+                  </label>
+                  {newTicketPdfUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewTicketPdfUrl(undefined);
+                        setNewTicketPdfName(undefined);
+                      }}
+                      className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl"
+                      title="Remove PDF"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1644,6 +2131,210 @@ export function TripHubTab({
                   className="px-5 py-2 rounded-xl text-xs font-black bg-sky-600 hover:bg-sky-700 text-white min-h-[38px]"
                 >
                   Save Ticket
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Transport Ticket */}
+      {editingTicket && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit2 className="h-4 w-4 text-sky-500" />
+                <span>Edit Ticket Reservation</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingTicket(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditTicket} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Mode of Travel *
+                  </label>
+                  <select
+                    value={editTicketMode}
+                    onChange={(e: any) => setEditTicketMode(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                  >
+                    <option value="train">🚆 Train</option>
+                    <option value="flight">✈️ Flight</option>
+                    <option value="bus">🚌 Bus</option>
+                    <option value="cab">🚕 Cab</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    PNR / Ref #
+                  </label>
+                  <input
+                    type="text"
+                    value={editTicketPnr}
+                    onChange={(e) => setEditTicketPnr(e.target.value)}
+                    placeholder="e.g. 245-8971203"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Carrier / Train / Flight Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTicketTitle}
+                  onChange={(e) => setEditTicketTitle(e.target.value)}
+                  placeholder="e.g. Purushottam Express"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Departure Station *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editTicketDepStation}
+                    onChange={(e) => setEditTicketDepStation(e.target.value)}
+                    placeholder="e.g. Talcher Road"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Arrival Station *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editTicketArrStation}
+                    onChange={(e) => setEditTicketArrStation(e.target.value)}
+                    placeholder="e.g. Puri"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Departure Time *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editTicketDepTime}
+                    onChange={(e) => setEditTicketDepTime(e.target.value)}
+                    placeholder="10:30 AM"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Arrival Time
+                  </label>
+                  <input
+                    type="text"
+                    value={editTicketArrTime}
+                    onChange={(e) => setEditTicketArrTime(e.target.value)}
+                    placeholder="02:30 PM"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Seats / Berths *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editTicketSeats}
+                  onChange={(e) => setEditTicketSeats(e.target.value)}
+                  placeholder="e.g. Coach B3, Berths 21, 22, 23"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Ticket PDF Document
+                </label>
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-500 bg-slate-50 dark:bg-slate-800/60 cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300">
+                    <Upload className="h-4 w-4 text-sky-500" />
+                    <span className="truncate">{editTicketPdfName || 'Choose PDF / Image (<6MB)'}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePdfUpload(file, true);
+                      }}
+                    />
+                  </label>
+                  {editTicketPdfUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditTicketPdfUrl(undefined);
+                        setEditTicketPdfName(undefined);
+                      }}
+                      className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl"
+                      title="Remove PDF"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Live Tracking URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={editTicketLiveUrl}
+                  onChange={(e) => setEditTicketLiveUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTicket(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-sky-600 hover:bg-sky-700 text-white min-h-[38px]"
+                >
+                  Update Ticket
                 </button>
               </div>
             </form>

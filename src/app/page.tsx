@@ -156,9 +156,14 @@ export default function TripFinancePortal() {
       };
     });
 
-    // Clean out any stale preseeded dummy info so user always has clean data
+    // Clean out only the original dummy preseeded entries so user data is never lost
+    const DUMMY_IDS = new Set([
+      'act-1-1', 'act-1-2', 'act-1-3', 'act-1-4',
+      'act-2-1', 'act-2-2', 'act-2-3',
+      'act-3-1', 'act-3-2', 'act-3-3',
+    ]);
     const cleanItinerary = (t.itineraryDays || []).filter(
-      (d) => !d.activities?.some((a) => a.id.startsWith('act-1-') || a.id.startsWith('act-2-') || a.id.startsWith('act-3-'))
+      (d) => !d.activities?.some((a) => DUMMY_IDS.has(a.id))
     );
     const cleanTickets = (t.transportTickets || []).filter(
       (tk) => tk.id !== 'ticket-1' && tk.id !== 'ticket-2'

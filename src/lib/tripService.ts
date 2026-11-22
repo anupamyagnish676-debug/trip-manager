@@ -91,8 +91,13 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
     const rawPaymentMethods = tripData.payment_methods || {};
     const hubData = rawPaymentMethods.hubData;
 
+    const DUMMY_IDS = new Set([
+      'act-1-1', 'act-1-2', 'act-1-3', 'act-1-4',
+      'act-2-1', 'act-2-2', 'act-2-3',
+      'act-3-1', 'act-3-2', 'act-3-3',
+    ]);
     const cleanItinerary = (hubData?.itineraryDays || []).filter(
-      (d: any) => !d.activities?.some((a: any) => a.id?.startsWith('act-1-') || a.id?.startsWith('act-2-') || a.id?.startsWith('act-3-'))
+      (d: any) => !d.activities?.some((a: any) => DUMMY_IDS.has(a.id))
     );
     const cleanTickets = (hubData?.transportTickets || []).filter(
       (t: any) => t.id !== 'ticket-1' && t.id !== 'ticket-2'

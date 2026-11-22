@@ -173,6 +173,8 @@ export interface TransportTicket {
   arrivalTime?: string;
   seatsOrBerths: string; // e.g. "Coach B3, Berths 21, 22, 23"
   liveStatusUrl?: string;
+  ticketPdfUrl?: string; // Base64 data URL or external link for ticket PDF
+  ticketPdfName?: string; // e.g. "Train_Ticket_Talcher.pdf"
 }
 
 export interface CabRentalLogistics {
