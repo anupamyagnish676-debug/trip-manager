@@ -49,7 +49,7 @@ export function QRCodeModal({
   });
 
   useEffect(() => {
-    if (isOpen && canvasRef.current && !customQrImage) {
+    if (isOpen && canvasRef.current && !customQrImage && !isPlaceholderUpi) {
       QRCode.toCanvas(canvasRef.current, upiUrl, {
         width: 240,
         margin: 2,
@@ -59,7 +59,7 @@ export function QRCodeModal({
         },
       });
     }
-  }, [isOpen, upiUrl, customQrImage]);
+  }, [isOpen, upiUrl, customQrImage, isPlaceholderUpi]);
 
   if (!isOpen) return null;
 
@@ -96,17 +96,27 @@ export function QRCodeModal({
           {isPlaceholderUpi && !isEditingUpi && (
             <div className="my-2 rounded-xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs text-amber-800 dark:text-amber-200 text-left">
               <p className="font-bold flex items-center gap-1.5">
-                <span>⚠️</span> No real UPI ID set for {payeeName}
+                <span>⚠️</span> Receiving UPI is not set by {payeeName}
               </p>
               <p className="text-[11px] text-amber-700/90 dark:text-amber-300 mt-0.5">
-                Currently showing placeholder ({effectiveUpi}). Click <strong className="underline cursor-pointer" onClick={() => setIsEditingUpi(true)}>Change UPI</strong> below to enter their PhonePe, Google Pay, or BHIM ID.
+                No dummy UPI ID allowed. Click <strong className="underline cursor-pointer font-bold text-amber-900 dark:text-amber-100" onClick={() => setIsEditingUpi(true)}>Enter UPI ID</strong> below if you know their PhonePe, Google Pay, or Paytm handle.
               </p>
             </div>
           )}
 
           {/* QR Display Area */}
           <div className="my-4 flex justify-center">
-            {customQrImage ? (
+            {isPlaceholderUpi ? (
+              <div className="rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-800 p-6 bg-amber-50/50 dark:bg-amber-950/20 text-center max-w-[260px]">
+                <p className="text-3xl mb-2">⚠️</p>
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-200">
+                  Receiving UPI ID Not Set
+                </p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-1">
+                  No dummy QR code can be generated. Please enter {payeeName}&apos;s real UPI ID below to pay.
+                </p>
+              </div>
+            ) : customQrImage ? (
               <div className="rounded-2xl border-4 border-slate-100 dark:border-slate-800 p-2 bg-white shadow-inner max-w-[250px] max-h-[250px] flex items-center justify-center overflow-hidden">
                 <img
                   src={customQrImage}
@@ -163,28 +173,30 @@ export function QRCodeModal({
             <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 border border-slate-200 dark:bg-slate-800/60 dark:border-slate-700">
               <div className="text-left text-xs">
                 <p className="text-slate-400">Receiving UPI ID</p>
-                <p className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                  {effectiveUpi}
+                <p className={`font-mono font-bold ${isPlaceholderUpi ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                  {isPlaceholderUpi ? 'Not Set (No dummy ID)' : effectiveUpi}
                 </p>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setIsEditingUpi(true)}
-                  className="flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 px-2 py-1 rounded-lg transition-all"
-                  title="Change this UPI ID to a real Google Pay / PhonePe account"
+                  className="flex items-center gap-1 text-xs font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 px-2.5 py-1 rounded-lg transition-all"
+                  title="Enter real Google Pay / PhonePe / Paytm account"
                 >
                   <Edit3 className="h-3 w-3" />
-                  <span>Change UPI</span>
+                  <span>{isPlaceholderUpi ? 'Enter UPI' : 'Change UPI'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={copyUpi}
-                  className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-2 py-1"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
+                {!isPlaceholderUpi && (
+                  <button
+                    type="button"
+                    onClick={copyUpi}
+                    className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 px-2 py-1"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                )}
               </div>
             </div>
           )}

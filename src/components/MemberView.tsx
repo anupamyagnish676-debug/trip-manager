@@ -26,6 +26,7 @@ import { Member, Trip, SettlementTransfer } from '@/types';
 import { calculateMemberBalances, simplifyDebts, generateUpiUrl } from '@/lib/calculations';
 import { formatMoney } from '@/lib/currency';
 import { downloadExpenseInvoice, downloadMemberStatement } from '@/lib/pdfReceipt';
+import { RequestUpiModal } from '@/components/RequestUpiModal';
 
 interface MemberViewProps {
   trip: Trip;
@@ -48,6 +49,11 @@ export function MemberView({
 }: MemberViewProps) {
   const [showHistory, setShowHistory] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'group' | 'personal'>('all');
+  const [requestUpiTarget, setRequestUpiTarget] = useState<{
+    toMember: Member;
+    fromMember: Member;
+    amount: number;
+  } | null>(null);
   const [isEditingMyUpi, setIsEditingMyUpi] = useState(false);
   const [myUpiInput, setMyUpiInput] = useState(currentMember.upiId || '');
   const [savedUpiSuccess, setSavedUpiSuccess] = useState(false);
@@ -382,9 +388,23 @@ export function MemberView({
                       {onOpenQR && (
                         <button
                           type="button"
-                          onClick={() => onOpenQR(to?.upiId || 'friend@upi', to?.name || 'Friend', s.amount, noteText)}
+                          onClick={() => {
+                            if (!to?.upiId?.trim()) {
+                              if (to) {
+                                setRequestUpiTarget({
+                                  toMember: to,
+                                  fromMember: currentMember,
+                                  amount: s.amount,
+                                });
+                              } else {
+                                alert('Receiving UPI ID is not set.');
+                              }
+                              return;
+                            }
+                            onOpenQR(to.upiId.trim(), to.name, s.amount, noteText);
+                          }}
                           className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all min-h-[36px] min-w-[36px] flex items-center justify-center touch-manipulation"
-                          title="Show UPI QR Code"
+                          title={to?.upiId ? 'Show UPI QR Code' : 'Receiving UPI not set — Request UPI'}
                         >
                           <QrCode className="h-4 w-4 text-teal-500" />
                         </button>
@@ -672,6 +692,25 @@ export function MemberView({
           </div>
         )}
       </div>
+
+      {/* Request UPI Modal when payee has not set receiving UPI */}
+      {requestUpiTarget && currentMember && (
+        <RequestUpiModal
+          isOpen={true}
+          onClose={() => setRequestUpiTarget(null)}
+          toMember={requestUpiTarget.toMember}
+          fromMember={requestUpiTarget.fromMember}
+          amount={requestUpiTarget.amount}
+          trip={trip}
+          onSaveUpi={onUpdateMemberUpi}
+          onUpiSaved={(savedUpi) => {
+            if (onOpenQR) {
+              const noteText = `${trip.name}_Settlement_${currentMember.name}`;
+              onOpenQR(savedUpi, requestUpiTarget.toMember.name, requestUpiTarget.amount, noteText);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

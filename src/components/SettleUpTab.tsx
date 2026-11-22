@@ -7,6 +7,7 @@ import { Trip, SettlementTransfer, Member } from '@/types';
 import { calculateMemberBalances, simplifyDebts } from '@/lib/calculations';
 import { formatMoney } from '@/lib/currency';
 import { QRCodeModal } from '@/components/QRCodeModal';
+import { RequestUpiModal } from '@/components/RequestUpiModal';
 
 interface SettleUpTabProps {
   trip: Trip;
@@ -21,6 +22,12 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
     payeeName: string;
     amount: number;
     note: string;
+  } | null>(null);
+
+  const [requestUpiTarget, setRequestUpiTarget] = useState<{
+    toMember: Member;
+    fromMember: Member;
+    amount: number;
   } | null>(null);
 
   const isOrganizer = Boolean(
@@ -83,6 +90,26 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
     return trip.settlements.some(
       (s) => s.fromMemberId === fromId && s.toMemberId === toId && s.status === 'settled'
     );
+  };
+
+  const handleInitiatePayment = (transfer: SettlementTransfer, fromMember: Member, toMember: Member) => {
+    const upi = toMember.upiId?.trim();
+    if (!upi) {
+      // Receiving UPI is not set! Do NOT show dummy UPI ID. Open Request UPI prompt!
+      setRequestUpiTarget({
+        toMember,
+        fromMember,
+        amount: transfer.amount,
+      });
+      return;
+    }
+
+    setSelectedPayment({
+      payeeUpi: upi,
+      payeeName: toMember.name,
+      amount: transfer.amount,
+      note: `TripSettlement_${fromMember.name.split(' ')[0]}`,
+    });
   };
 
   return (
@@ -215,25 +242,8 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedPayment({
-                                payeeUpi: toMember.upiId || 'friend@upi',
-                                payeeName: toMember.name,
-                                amount: transfer.amount,
-                                note: `TripSettlement_${fromMember.name.split(' ')[0]}`,
-                              })
-                            }
-                            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
-                          >
-                            <QrCode className="h-3.5 w-3.5" />
-                            <span>Pay via UPI QR</span>
-                          </button>
-                        </div>
-
                         {currentMember?.id === transfer.toMemberId ? (
+                          /* 1. Receiver view: Only receiver can confirm receipt */
                           <button
                             type="button"
                             onClick={() => handleMarkSettled(transfer)}
@@ -243,15 +253,30 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                             <span>Confirm Received ({formatMoney(transfer.amount, trip.currency)})</span>
                           </button>
                         ) : currentMember?.id === transfer.fromMemberId ? (
-                          <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-xl text-center">
-                            <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                            <span>Awaiting {toMember.name.split(' ')[0]}&apos;s verification</span>
-                          </span>
+                          /* 2. Debtor view: ONLY the person who has to pay sees the ACTIVE Pay via UPI QR button! */
+                          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                            <button
+                              type="button"
+                              onClick={() => handleInitiatePayment(transfer, fromMember, toMember)}
+                              className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                            >
+                              <QrCode className="h-3.5 w-3.5" />
+                              <span>Pay via UPI QR</span>
+                            </button>
+
+                            <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-xl text-center">
+                              <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                              <span>Awaiting {toMember.name.split(' ')[0]}&apos;s verification</span>
+                            </span>
+                          </div>
                         ) : (
-                          <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-2 rounded-xl text-center">
-                            <Clock className="h-3.5 w-3.5 shrink-0" />
-                            <span>Pending receipt by {toMember.name.split(' ')[0]}</span>
-                          </span>
+                          /* 3. Observer view: All direct payments remain visible to everyone, but Pay button is NOT activated */
+                          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                            <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 px-3 py-2 rounded-xl text-center">
+                              <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              <span>Pending transfer: {fromMember.name.split(' ')[0]} → {toMember.name.split(' ')[0]}</span>
+                            </span>
+                          </div>
                         )}
                       </>
                     )}
@@ -379,6 +404,27 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
               onUpdateMemberUpi(selectedPayment.payeeName, newUpi);
             }
             setSelectedPayment({ ...selectedPayment, payeeUpi: newUpi });
+          }}
+        />
+      )}
+
+      {/* Request UPI Modal when receiving UPI is not set */}
+      {requestUpiTarget && currentMember && (
+        <RequestUpiModal
+          isOpen={true}
+          onClose={() => setRequestUpiTarget(null)}
+          toMember={requestUpiTarget.toMember}
+          fromMember={requestUpiTarget.fromMember}
+          amount={requestUpiTarget.amount}
+          trip={trip}
+          onSaveUpi={onUpdateMemberUpi}
+          onUpiSaved={(savedUpi) => {
+            setSelectedPayment({
+              payeeUpi: savedUpi,
+              payeeName: requestUpiTarget.toMember.name,
+              amount: requestUpiTarget.amount,
+              note: `TripSettlement_${requestUpiTarget.fromMember.name.split(' ')[0]}`,
+            });
           }}
         />
       )}
