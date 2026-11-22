@@ -125,6 +125,7 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       transportTickets: cleanTickets,
       cabLogistics: cleanCab,
       awards: hubData?.awards || [],
+      awardCategories: hubData?.awardCategories || [],
     };
   } catch (err) {
     console.error('Error fetching from Supabase:', err);
@@ -164,6 +165,7 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
         transportTickets: trip.transportTickets || [],
         cabLogistics: trip.cabLogistics || null,
         awards: trip.awards || [],
+        awardCategories: trip.awardCategories || [],
       },
     };
 
@@ -238,6 +240,7 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
         transportTickets: trip.transportTickets || [],
         cabLogistics: trip.cabLogistics || null,
         awards: trip.awards || [],
+        awardCategories: trip.awardCategories || [],
       },
     };
 

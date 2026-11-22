@@ -1479,3 +1479,43 @@ export function downloadTripAwardCertificate(
   doc.save(`Trip_Award_${cleanAward}_${cleanWinner}.pdf`);
 }
 
+/**
+ * Generate Base64 string of a single trip award certificate for email attachments
+ */
+export function getTripAwardCertificateBase64(
+  trip: Trip,
+  awardTitle: string,
+  awardIcon: string,
+  winnerName: string,
+  awardDescription: string,
+  voteCount: number,
+  totalVoters: number = 0
+): { base64: string; fileName: string } {
+  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0];
+  const doc = generateTripAwardCertificatePdf({
+    tripName: trip.name,
+    destination: trip.destination,
+    awardTitle,
+    awardIcon,
+    winnerName,
+    awardDescription,
+    voteCount,
+    totalVoters,
+    financeLeadName: financeLead?.name || 'Yagnish Anupam',
+    date: new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }),
+  });
+
+  const cleanAward = awardTitle.replace(/[^a-zA-Z0-9]/g, '_');
+  const cleanWinner = winnerName.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileName = `Certificate_${cleanAward}_${cleanWinner}.pdf`;
+
+  const dataUri = doc.output('datauristring');
+  const base64 = dataUri.split(',')[1] || '';
+
+  return { base64, fileName };
+}
+

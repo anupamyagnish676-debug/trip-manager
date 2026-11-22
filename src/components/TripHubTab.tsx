@@ -12,7 +12,7 @@ import {
   TripAward,
 } from '@/types';
 import { getDefaultAwards } from '@/lib/defaultHubData';
-import { downloadTripAwardCertificate } from '@/lib/pdfReceipt';
+import { downloadTripAwardCertificate, getTripAwardCertificateBase64 } from '@/lib/pdfReceipt';
 import {
   Calendar,
   Car,
@@ -104,9 +104,14 @@ export function TripHubTab({
   const cabLogistics: CabRentalLogistics | null = hasDummyCab ? null : (rawCab || null);
 
   const awards: TripAward[] =
-    trip.awards && trip.awards.length > 0
+    trip.awards !== undefined
       ? trip.awards
       : getDefaultAwards();
+
+  const awardCategories: string[] =
+    trip.awardCategories !== undefined
+      ? trip.awardCategories
+      : ['Trip Superlatives', 'Beach Games', 'Night Games'];
 
   // Active selected day in itinerary
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
@@ -205,10 +210,15 @@ export function TripHubTab({
     }
   );
 
-  // ── Form States: Awards ──
+  // ── Form States: Awards & Categories ──
   const [newAwardTitle, setNewAwardTitle] = useState('');
   const [newAwardIcon, setNewAwardIcon] = useState('🌟');
   const [newAwardDesc, setNewAwardDesc] = useState('');
+  const [selectedAwardCategory, setSelectedAwardCategory] = useState<string>('All');
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newAwardCategory, setNewAwardCategory] = useState('Trip Superlatives');
+  const [customNewCatInput, setCustomNewCatInput] = useState('');
 
   // Copy feedback state
   const [copiedPnrId, setCopiedPnrId] = useState<string | null>(null);
@@ -226,6 +236,7 @@ export function TripHubTab({
     transportTickets?: TransportTicket[];
     cabLogistics?: CabRentalLogistics | null;
     awards?: TripAward[];
+    awardCategories?: string[];
   }) => {
     const updatedTrip: Trip = {
       ...trip,
@@ -233,6 +244,7 @@ export function TripHubTab({
       transportTickets: updates.transportTickets !== undefined ? updates.transportTickets : transportTickets,
       cabLogistics: updates.cabLogistics !== undefined ? (updates.cabLogistics || undefined) : (cabLogistics || undefined),
       awards: updates.awards !== undefined ? updates.awards : awards,
+      awardCategories: updates.awardCategories !== undefined ? updates.awardCategories : awardCategories,
     };
     onUpdateTrip(updatedTrip);
   };
@@ -553,10 +565,57 @@ export function TripHubTab({
     updateHubData({ awards: updatedAwards });
   };
 
+  // ── Category Management ──
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) return;
+    if (awardCategories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setSelectedAwardCategory(trimmed);
+      setIsAddCategoryOpen(false);
+      setNewCategoryName('');
+      return;
+    }
+    const updatedCats = [...awardCategories, trimmed];
+    updateHubData({ awardCategories: updatedCats });
+    setSelectedAwardCategory(trimmed);
+    setIsAddCategoryOpen(false);
+    setNewCategoryName('');
+  };
+
+  const handleRemoveCategory = (catName: string) => {
+    const awardsInCat = awards.filter(
+      (aw) => (aw.category || 'Trip Superlatives').toLowerCase() === catName.toLowerCase()
+    );
+    const confirmMsg =
+      awardsInCat.length > 0
+        ? `Are you sure you want to delete the category "${catName}" and its ${awardsInCat.length} award(s)?`
+        : `Are you sure you want to remove the category "${catName}"?`;
+    if (!confirm(confirmMsg)) return;
+
+    const updatedCats = awardCategories.filter(
+      (c) => c.toLowerCase() !== catName.toLowerCase()
+    );
+    const updatedAwards = awards.filter(
+      (aw) => (aw.category || 'Trip Superlatives').toLowerCase() !== catName.toLowerCase()
+    );
+
+    updateHubData({
+      awardCategories: updatedCats,
+      awards: updatedAwards,
+    });
+    setSelectedAwardCategory('All');
+  };
+
   // ── Add Custom Award ──
   const handleAddAward = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAwardTitle.trim()) return;
+
+    let finalCategory = newAwardCategory.trim() || 'Trip Superlatives';
+    if (newAwardCategory === '__NEW__') {
+      finalCategory = customNewCatInput.trim() || 'Custom Events';
+    }
 
     const newAw: TripAward = {
       id: `award-${Date.now()}`,
@@ -564,20 +623,101 @@ export function TripHubTab({
       icon: newAwardIcon.trim() || '🏆',
       description: newAwardDesc.trim() || 'Voted by fellow travelers.',
       votes: {},
+      category: finalCategory,
     };
 
-    const updated = [...awards, newAw];
-    updateHubData({ awards: updated });
+    const updatedAwards = [...awards, newAw];
+    let updatedCats = awardCategories;
+    if (!awardCategories.some((c) => c.toLowerCase() === finalCategory.toLowerCase())) {
+      updatedCats = [...awardCategories, finalCategory];
+    }
+
+    updateHubData({ awards: updatedAwards, awardCategories: updatedCats });
     setNewAwardTitle('');
     setNewAwardDesc('');
+    setCustomNewCatInput('');
     setIsAddAwardOpen(false);
   };
 
   // ── Delete Award ──
   const handleDeleteAward = (awardId: string) => {
-    if (!confirm('Are you sure you want to delete this award category?')) return;
+    if (!confirm('Are you sure you want to delete this award?')) return;
     const updated = awards.filter((aw) => aw.id !== awardId);
     updateHubData({ awards: updated });
+  };
+
+  // ── Email Single Award Certificate PDF ──
+  const handleEmailAwardCertificate = async (
+    aw: TripAward,
+    leaderMember: Member | undefined,
+    maxVotes: number,
+    totalVotes: number
+  ) => {
+    setEmailStatus({ loading: true, message: `Preparing certificate PDF for "${aw.title}"...` });
+
+    const recipients = trip.members
+      .map((m) => m.email)
+      .filter((e): e is string => Boolean(e && e.includes('@')));
+
+    if (recipients.length === 0) {
+      setEmailStatus({
+        loading: false,
+        success: false,
+        message: 'No friend email addresses found. Please add emails in the Friends tab to send PDFs.',
+      });
+      return;
+    }
+
+    try {
+      const winnerToHonor = leaderMember || trip.members[0];
+      const pdfBase64 = getTripAwardCertificateBase64(
+        trip,
+        aw.title,
+        aw.icon,
+        winnerToHonor.name,
+        aw.description,
+        maxVotes || 1,
+        totalVotes || 1
+      );
+
+      const cleanTitle = aw.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const cleanWinner = winnerToHonor.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const pdfFileName = `Certificate-${cleanTitle}-${cleanWinner}.pdf`;
+
+      const response = await fetch('/api/send-hub-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hubType: 'awards',
+          tripName: trip.name,
+          destination: trip.destination,
+          recipients,
+          singleAwardTitle: aw.title,
+          singleAwardIcon: aw.icon,
+          singleWinnerName: winnerToHonor.name,
+          singleAwardDesc: aw.description,
+          pdfBase64,
+          pdfFileName,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to email award certificate PDF.');
+      }
+
+      setEmailStatus({
+        loading: false,
+        success: true,
+        message: `🏆 Certificate for "${aw.title}" (${winnerToHonor.name}) emailed successfully to ${recipients.length} friends!`,
+      });
+    } catch (err: any) {
+      setEmailStatus({
+        loading: false,
+        success: false,
+        message: err.message || 'Failed to email award certificate.',
+      });
+    }
   };
 
   // ── Email Dispatch Handlers ──
@@ -1377,190 +1517,330 @@ export function TripHubTab({
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {/* ── SUB-MODULE 3: TRIP AWARDS & SUPERLATIVES ── */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeSubTab === 'awards' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                  Trip Awards & Superlatives
-                </h2>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                  Live Voting
-                </span>
+      {activeSubTab === 'awards' && (() => {
+        const displayedAwards = awards.filter((aw) => {
+          if (selectedAwardCategory === 'All') return true;
+          const cat = aw.category || 'Trip Superlatives';
+          return cat.toLowerCase() === selectedAwardCategory.toLowerCase();
+        });
+
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                    Trip Awards & Superlatives
+                  </h2>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                    Live Voting
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Vote for funny titles, see live leaderboards, and download official certificates
+                </p>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Vote for funny titles, see live leaderboards, and download official certificates
-              </p>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={emailStatus.loading}
+                  onClick={() => handleSendEmail('awards')}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[38px] touch-manipulation"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Email Awards</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewAwardCategory(
+                      selectedAwardCategory === 'All'
+                        ? (awardCategories[0] || 'Trip Superlatives')
+                        : selectedAwardCategory
+                    );
+                    setIsAddAwardOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation shadow-xs"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Award</span>
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Category Filter & Management Bar */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
               <button
                 type="button"
-                disabled={emailStatus.loading}
-                onClick={() => handleSendEmail('awards')}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[38px] touch-manipulation"
+                onClick={() => setSelectedAwardCategory('All')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all touch-manipulation min-h-[34px] ${
+                  selectedAwardCategory === 'All'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
               >
-                <Mail className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Email Awards</span>
+                All Awards ({awards.length})
               </button>
+
+              {awardCategories.map((cat) => {
+                const count = awards.filter(
+                  (aw) => (aw.category || 'Trip Superlatives').toLowerCase() === cat.toLowerCase()
+                ).length;
+                const isSelected = selectedAwardCategory.toLowerCase() === cat.toLowerCase();
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedAwardCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all touch-manipulation min-h-[34px] flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-amber-500 text-white shadow-xs font-black'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>{cat}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                        isSelected
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
 
               <button
                 type="button"
-                onClick={() => setIsAddAwardOpen(true)}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation shadow-xs"
+                onClick={() => setIsAddCategoryOpen(true)}
+                className="px-3 py-1.5 rounded-xl text-xs font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 whitespace-nowrap min-h-[34px] flex items-center gap-1 touch-manipulation"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>Add Award</span>
+                <span>Add Category</span>
               </button>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {awards.map((aw) => {
-              const voteCounts: Record<string, number> = {};
-              const totalVotes = Object.keys(aw.votes || {}).length;
-
-              Object.values(aw.votes || {}).forEach((candId) => {
-                voteCounts[candId] = (voteCounts[candId] || 0) + 1;
-              });
-
-              let leaderId = '';
-              let maxVotes = 0;
-              Object.entries(voteCounts).forEach(([candId, count]) => {
-                if (count > maxVotes) {
-                  maxVotes = count;
-                  leaderId = candId;
-                }
-              });
-
-              const leaderMember = trip.members.find((m) => m.id === leaderId);
-              const myVoteCandidateId = aw.votes?.[currentMember.id];
-
-              return (
-                <div
-                  key={aw.id}
-                  className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="text-2xl p-2 rounded-2xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center shrink-0">
-                        {aw.icon}
-                      </div>
-                      <div>
-                        <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                          {aw.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                          &quot;{aw.description}&quot;
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      {leaderMember ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-amber-950 shadow-2xs">
-                          👑 {leaderMember.name}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                          Awaiting votes
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAward(aw.id)}
-                        title="Delete award"
-                        className="p-1 text-slate-400 hover:text-rose-500 ml-1"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {totalVotes > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        Live Standings ({totalVotes} votes)
-                      </span>
-                      {Object.entries(voteCounts)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 3)
-                        .map(([candId, count]) => {
-                          const candMember = trip.members.find((m) => m.id === candId);
-                          const pct = Math.round((count / totalVotes) * 100);
-                          return (
-                            <div key={candId} className="space-y-0.5">
-                              <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                <span>
-                                  {candMember?.name || 'Friend'}
-                                  {candId === myVoteCandidateId && (
-                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold ml-1">
-                                      (Your vote)
-                                    </span>
-                                  )}
-                                </span>
-                                <span className="text-slate-500 font-mono text-[11px]">
-                                  {count} ({pct}%)
-                                </span>
-                              </div>
-                              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                                <div
-                                  className="bg-gradient-to-r from-amber-400 to-orange-500 h-1.5 rounded-full"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
-
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                        Vote:
-                      </span>
-                      <select
-                        value={myVoteCandidateId || ''}
-                        onChange={(e) => handleVote(aw.id, e.target.value)}
-                        className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full sm:w-auto"
-                      >
-                        <option value="">Select a friend...</option>
-                        {trip.members.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const winnerToHonor = leaderMember || trip.members[0];
-                        downloadTripAwardCertificate(
-                          trip,
-                          aw.title,
-                          aw.icon,
-                          winnerToHonor.name,
-                          aw.description,
-                          maxVotes || 1,
-                          totalVotes || 1
-                        );
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[36px] touch-manipulation"
-                    >
-                      <Award className="h-3.5 w-3.5" />
-                      <span>Download Certificate (PDF)</span>
-                    </button>
-                  </div>
+            {/* Active Category Header (with Remove Category option) */}
+            {selectedAwardCategory !== 'All' && (
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-amber-900 dark:text-amber-200">
+                    Category: {selectedAwardCategory}
+                  </span>
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
+                    ({displayedAwards.length} {displayedAwards.length === 1 ? 'award' : 'awards'})
+                  </span>
                 </div>
-              );
-            })}
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCategory(selectedAwardCategory)}
+                  className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 transition-colors touch-manipulation min-h-[30px]"
+                  title={`Delete "${selectedAwardCategory}" category and all its awards`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span>Remove Category</span>
+                </button>
+              </div>
+            )}
+
+            {displayedAwards.length === 0 && (
+              <div className="glass-card p-8 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-3">
+                <div className="text-3xl">🏆</div>
+                <h3 className="text-sm font-black text-slate-800 dark:text-white">
+                  No awards in this category yet
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  Tap &quot;Add Award&quot; to create funny titles or game competitions for{' '}
+                  {selectedAwardCategory === 'All' ? 'your trip' : `"${selectedAwardCategory}"`}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewAwardCategory(
+                      selectedAwardCategory === 'All'
+                        ? (awardCategories[0] || 'Trip Superlatives')
+                        : selectedAwardCategory
+                    );
+                    setIsAddAwardOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add First Award</span>
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {displayedAwards.map((aw) => {
+                const voteCounts: Record<string, number> = {};
+                const totalVotes = Object.keys(aw.votes || {}).length;
+
+                Object.values(aw.votes || {}).forEach((candId) => {
+                  voteCounts[candId] = (voteCounts[candId] || 0) + 1;
+                });
+
+                let leaderId = '';
+                let maxVotes = 0;
+                Object.entries(voteCounts).forEach(([candId, count]) => {
+                  if (count > maxVotes) {
+                    maxVotes = count;
+                    leaderId = candId;
+                  }
+                });
+
+                const leaderMember = trip.members.find((m) => m.id === leaderId);
+                const myVoteCandidateId = aw.votes?.[currentMember.id];
+
+                return (
+                  <div
+                    key={aw.id}
+                    className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="text-2xl p-2 rounded-2xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center shrink-0">
+                          {aw.icon}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                              {aw.title}
+                            </h3>
+                            {selectedAwardCategory === 'All' && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                {aw.category || 'Trip Superlatives'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                            &quot;{aw.description}&quot;
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {leaderMember ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-amber-950 shadow-2xs">
+                            👑 {leaderMember.name}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                            Awaiting votes
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAward(aw.id)}
+                          title="Delete award"
+                          className="p-1 text-slate-400 hover:text-rose-500 ml-1"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {totalVotes > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                          Live Standings ({totalVotes} votes)
+                        </span>
+                        {Object.entries(voteCounts)
+                          .sort((a, b) => b[1] - a[1])
+                          .slice(0, 3)
+                          .map(([candId, count]) => {
+                            const candMember = trip.members.find((m) => m.id === candId);
+                            const pct = Math.round((count / totalVotes) * 100);
+                            return (
+                              <div key={candId} className="space-y-0.5">
+                                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                  <span>
+                                    {candMember?.name || 'Friend'}
+                                    {candId === myVoteCandidateId && (
+                                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold ml-1">
+                                        (Your vote)
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-slate-500 font-mono text-[11px]">
+                                    {count} ({pct}%)
+                                  </span>
+                                </div>
+                                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-gradient-to-r from-amber-400 to-orange-500 h-1.5 rounded-full"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                          Vote:
+                        </span>
+                        <select
+                          value={myVoteCandidateId || ''}
+                          onChange={(e) => handleVote(aw.id, e.target.value)}
+                          className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full sm:w-auto"
+                        >
+                          <option value="">Select a friend...</option>
+                          {trip.members.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const winnerToHonor = leaderMember || trip.members[0];
+                            downloadTripAwardCertificate(
+                              trip,
+                              aw.title,
+                              aw.icon,
+                              winnerToHonor.name,
+                              aw.description,
+                              maxVotes || 1,
+                              totalVotes || 1
+                            );
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[36px] touch-manipulation shadow-xs"
+                        >
+                          <Award className="h-3.5 w-3.5" />
+                          <span>Download PDF</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleEmailAwardCertificate(aw, leaderMember, maxVotes, totalVotes)}
+                          disabled={emailStatus.loading}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 min-h-[36px] touch-manipulation"
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                          <span>Email PDF</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {/* ── MODALS (ADD/EDIT ACTIVITY, ADD/EDIT DAY, ADD/EDIT TICKET, CAB, AWARD) ── */}
@@ -2529,6 +2809,35 @@ export function TripHubTab({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Category *
+                </label>
+                <select
+                  value={newAwardCategory}
+                  onChange={(e) => setNewAwardCategory(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                >
+                  {awardCategories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                  <option value="__NEW__">+ Create New Category...</option>
+                </select>
+
+                {newAwardCategory === '__NEW__' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter category name (e.g. Beach Games, Uno Master)..."
+                    value={customNewCatInput}
+                    onChange={(e) => setCustomNewCatInput(e.target.value)}
+                    className="mt-2 w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                   Description / Funny Citation *
                 </label>
                 <textarea
@@ -2554,6 +2863,62 @@ export function TripHubTab({
                   className="px-5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[38px]"
                 >
                   Add Award
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add Category */}
+      {isAddCategoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-amber-500" />
+                <span>Add Award Category</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddCategoryOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCategory} className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="e.g. Beach Volleyball, Uno Championship, Antakshari"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Create categories for specific games, sports, challenges, or trip events.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCategoryOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[38px]"
+                >
+                  Create Category
                 </button>
               </div>
             </form>

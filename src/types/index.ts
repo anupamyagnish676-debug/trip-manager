@@ -141,6 +141,7 @@ export interface Trip {
   transportTickets?: TransportTicket[];
   cabLogistics?: CabRentalLogistics;
   awards?: TripAward[];
+  awardCategories?: string[];
 }
 
 // ── Trip Hub Module 1: Day-by-Day Itinerary ──
@@ -193,6 +194,7 @@ export interface TripAward {
   title: string;
   icon: string;
   description: string;
+  category?: string; // e.g. "Trip Superlatives", "Beach Games", "Card Games", etc.
   votes: Record<string, string>; // key: voterMemberId, value: candidateMemberId
 }
 

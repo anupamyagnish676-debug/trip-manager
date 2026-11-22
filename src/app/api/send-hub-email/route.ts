@@ -23,6 +23,10 @@ interface HubEmailPayload {
     voteCount: number;
     description: string;
   }>;
+  singleAwardTitle?: string;
+  singleAwardIcon?: string;
+  singleWinnerName?: string;
+  singleAwardDesc?: string;
   pdfBase64?: string;
   pdfFileName?: string;
 }
@@ -203,39 +207,67 @@ export async function POST(req: NextRequest) {
 
     // ── 3. AWARDS & SUPERLATIVES EMAIL ──
     else if (hubType === 'awards') {
-      subject = `🏆 Official Trip Awards & Superlatives Winners • ${tripName}`;
-
-      const awardRows = awardsSummary
-        .map((aw) => `
-          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="font-size: 16px; font-weight: 800; color: #d97706; margin-bottom: 4px;">
-              ${aw.icon} ${aw.title}
+      if (body.singleAwardTitle && body.singleWinnerName) {
+        subject = `🏆 Official Certificate: ${body.singleWinnerName} awarded "${body.singleAwardTitle}" • ${tripName}`;
+        htmlContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #f8fafc; padding: 24px 20px; border-radius: 14px; border: 1px solid #e2e8f0;">
+            <div style="text-align: center; margin-bottom: 22px;">
+              <div style="display: inline-block; background: #d97706; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+                ${tripName} • Official Certificate of Distinction
+              </div>
+              <h1 style="margin: 4px 0 2px; font-size: 22px; color: #0f172a; font-weight: 800;">Congratulations ${body.singleWinnerName}! 🏆</h1>
+              <p style="margin: 0; font-size: 14px; color: #059669; font-weight: 700;">Awarded Title: ${body.singleAwardTitle}</p>
             </div>
-            <div style="font-size: 14px; color: #0f172a; margin-bottom: 4px;">
-              👑 Winner: <strong style="color: #059669; font-size: 15px;">${aw.winnerName}</strong> (${aw.voteCount} vote${aw.voteCount === 1 ? '' : 's'})
+
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; text-align: center;">
+              <div style="font-size: 38px; margin-bottom: 8px;">${body.singleAwardIcon || '🏆'}</div>
+              <h3 style="margin: 0 0 6px; font-size: 17px; color: #0f172a; font-weight: 800;">${body.singleAwardTitle}</h3>
+              <p style="margin: 0 0 12px; font-size: 13px; color: #475569; font-style: italic;">"${body.singleAwardDesc || ''}"</p>
+              <div style="display: inline-block; background: #ecfdf5; color: #065f46; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 8px; border: 1px solid #a7f3d0;">
+                📎 Official Landscape Certificate PDF is attached to this email.
+              </div>
             </div>
-            <p style="margin: 0; font-size: 12px; color: #64748b; font-style: italic;">"${aw.description}"</p>
-          </div>
-        `)
-        .join('');
 
-      htmlContent = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #f8fafc; padding: 24px 20px; border-radius: 14px; border: 1px solid #e2e8f0;">
-          <div style="text-align: center; margin-bottom: 22px;">
-            <div style="display: inline-block; background: #d97706; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
-              ${tripName} • Post-Trip Awards
+            <div style="text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+              Awarded by popular democratic mandate • Certified by Trip Manager & Delegation
             </div>
-            <h1 style="margin: 4px 0 2px; font-size: 22px; color: #0f172a; font-weight: 800;">Official Trip Superlatives</h1>
-            <p style="margin: 0; font-size: 13px; color: #64748b;">The results are in! Here are the honorary titles voted by the group.</p>
           </div>
+        `;
+      } else {
+        subject = `🏆 Official Trip Awards & Superlatives Winners • ${tripName}`;
 
-          ${awardRows}
+        const awardRows = awardsSummary
+          .map((aw) => `
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+              <div style="font-size: 16px; font-weight: 800; color: #d97706; margin-bottom: 4px;">
+                ${aw.icon} ${aw.title}
+              </div>
+              <div style="font-size: 14px; color: #0f172a; margin-bottom: 4px;">
+                👑 Winner: <strong style="color: #059669; font-size: 15px;">${aw.winnerName}</strong> (${aw.voteCount} vote${aw.voteCount === 1 ? '' : 's'})
+              </div>
+              <p style="margin: 0; font-size: 12px; color: #64748b; font-style: italic;">"${aw.description}"</p>
+            </div>
+          `)
+          .join('');
 
-          <div style="text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 14px;">
-            TripSplit UPI • Celebrating unforgettable moments and great friendships!
+        htmlContent = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #f8fafc; padding: 24px 20px; border-radius: 14px; border: 1px solid #e2e8f0;">
+            <div style="text-align: center; margin-bottom: 22px;">
+              <div style="display: inline-block; background: #d97706; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
+                ${tripName} • Post-Trip Awards
+              </div>
+              <h1 style="margin: 4px 0 2px; font-size: 22px; color: #0f172a; font-weight: 800;">Official Trip Superlatives</h1>
+              <p style="margin: 0; font-size: 13px; color: #64748b;">The results are in! Here are the honorary titles voted by the group.</p>
+            </div>
+
+            ${awardRows}
+
+            <div style="text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+              TripSplit UPI • Celebrating unforgettable moments and great friendships!
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
     }
 
     const mailOptions: any = {
