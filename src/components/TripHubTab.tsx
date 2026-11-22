@@ -1,7 +1,7 @@
 'use strict';
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Trip,
   Member,
@@ -11,12 +11,7 @@ import {
   CabRentalLogistics,
   TripAward,
 } from '@/types';
-import {
-  getDefaultItineraryDays,
-  getDefaultTransportTickets,
-  getDefaultCabLogistics,
-  getDefaultAwards,
-} from '@/lib/defaultHubData';
+import { getDefaultAwards } from '@/lib/defaultHubData';
 import { downloadTripAwardCertificate } from '@/lib/pdfReceipt';
 import {
   Calendar,
@@ -35,9 +30,8 @@ import {
   Edit2,
   Trash2,
   Award,
-  UserCheck,
   X,
-  Share2,
+  RotateCcw,
 } from 'lucide-react';
 
 interface TripHubTabProps {
@@ -56,19 +50,20 @@ export function TripHubTab({
   // Active sub-tab inside Trip Hub
   const [activeSubTab, setActiveSubTab] = useState<'itinerary' | 'transport' | 'awards'>('itinerary');
 
-  // Initialize data if not yet present
-  const itineraryDays: ItineraryDay[] =
-    trip.itineraryDays && trip.itineraryDays.length > 0
-      ? trip.itineraryDays
-      : getDefaultItineraryDays(trip.members);
+  // Filter out any dummy preseeded info so the user starts with clean data
+  const rawDays = trip.itineraryDays || [];
+  const hasDummyPreseedDays = rawDays.some((d) =>
+    d.activities?.some((a) => a.id.startsWith('act-1-') || a.id.startsWith('act-2-') || a.id.startsWith('act-3-'))
+  );
+  const itineraryDays: ItineraryDay[] = hasDummyPreseedDays ? [] : rawDays;
 
-  const transportTickets: TransportTicket[] =
-    trip.transportTickets && trip.transportTickets.length > 0
-      ? trip.transportTickets
-      : getDefaultTransportTickets();
+  const rawTickets = trip.transportTickets || [];
+  const hasDummyTickets = rawTickets.some((t) => t.id === 'ticket-1' || t.id === 'ticket-2');
+  const transportTickets: TransportTicket[] = hasDummyTickets ? [] : rawTickets;
 
-  const cabLogistics: CabRentalLogistics =
-    trip.cabLogistics || getDefaultCabLogistics();
+  const rawCab = trip.cabLogistics;
+  const hasDummyCab = rawCab?.plateNumber === 'OD 02 AB 1234' && rawCab?.driverName === 'Ramesh Pradhan';
+  const cabLogistics: CabRentalLogistics | null = hasDummyCab ? null : (rawCab || null);
 
   const awards: TripAward[] =
     trip.awards && trip.awards.length > 0
@@ -77,7 +72,20 @@ export function TripHubTab({
 
   // Active selected day in itinerary
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
-  const currentDay = itineraryDays.find((d) => d.dayNumber === selectedDayNumber) || itineraryDays[0];
+  const currentDay = itineraryDays.find((d) => d.dayNumber === selectedDayNumber) || itineraryDays[0] || null;
+
+  // Automatically sync cleaned data if dummy was detected
+  useEffect(() => {
+    if (hasDummyPreseedDays || hasDummyTickets || hasDummyCab) {
+      const cleanedTrip: Trip = {
+        ...trip,
+        itineraryDays: hasDummyPreseedDays ? [] : trip.itineraryDays,
+        transportTickets: hasDummyTickets ? [] : trip.transportTickets,
+        cabLogistics: hasDummyCab ? undefined : trip.cabLogistics,
+      };
+      onUpdateTrip(cleanedTrip);
+    }
+  }, [hasDummyPreseedDays, hasDummyTickets, hasDummyCab]);
 
   // Email dispatch status
   const [emailStatus, setEmailStatus] = useState<{
@@ -95,7 +103,6 @@ export function TripHubTab({
 
   // Form states
   const [newActivityTime, setNewActivityTime] = useState('09:00 AM');
-  const setNewActivityTimeWrapper = (val: string) => setNewActivityTime(val);
   const [newActivityTitle, setNewActivityTitle] = useState('');
   const [newActivityLocation, setNewActivityLocation] = useState('');
   const [newActivityNotes, setNewActivityNotes] = useState('');
@@ -114,7 +121,17 @@ export function TripHubTab({
   const [newTicketSeats, setNewTicketSeats] = useState('');
   const [newTicketLiveUrl, setNewTicketLiveUrl] = useState('');
 
-  const [cabForm, setCabForm] = useState<CabRentalLogistics>(cabLogistics);
+  const [cabForm, setCabForm] = useState<CabRentalLogistics>(
+    cabLogistics || {
+      vehicleModel: '',
+      plateNumber: '',
+      driverName: '',
+      driverPhone: '',
+      pickupLocation: '',
+      pickupTime: '',
+      notes: '',
+    }
+  );
 
   const [newAwardTitle, setNewAwardTitle] = useState('');
   const [newAwardIcon, setNewAwardIcon] = useState('🌟');
@@ -130,24 +147,24 @@ export function TripHubTab({
     setTimeout(() => setCopiedPnrId(null), 2000);
   };
 
-  // ── Helper to save Hub updates ──
+  // Helper to save Hub updates
   const updateHubData = (updates: {
     itineraryDays?: ItineraryDay[];
     transportTickets?: TransportTicket[];
-    cabLogistics?: CabRentalLogistics;
+    cabLogistics?: CabRentalLogistics | null;
     awards?: TripAward[];
   }) => {
     const updatedTrip: Trip = {
       ...trip,
       itineraryDays: updates.itineraryDays !== undefined ? updates.itineraryDays : itineraryDays,
       transportTickets: updates.transportTickets !== undefined ? updates.transportTickets : transportTickets,
-      cabLogistics: updates.cabLogistics !== undefined ? updates.cabLogistics : cabLogistics,
+      cabLogistics: updates.cabLogistics !== undefined ? (updates.cabLogistics || undefined) : (cabLogistics || undefined),
       awards: updates.awards !== undefined ? updates.awards : awards,
     };
     onUpdateTrip(updatedTrip);
   };
 
-  // ── Activity Status Toggle (upcoming -> in_progress -> completed -> upcoming) ──
+  // ── Activity Status Toggle ──
   const handleToggleActivityStatus = (dayNum: number, actId: string) => {
     const updatedDays = itineraryDays.map((d) => {
       if (d.dayNumber !== dayNum) return d;
@@ -184,6 +201,7 @@ export function TripHubTab({
 
   // ── Delete Activity ──
   const handleDeleteActivity = (dayNum: number, actId: string) => {
+    if (!confirm('Are you sure you want to delete this activity?')) return;
     const updatedDays = itineraryDays.map((d) => {
       if (d.dayNumber !== dayNum) return d;
       return {
@@ -197,6 +215,7 @@ export function TripHubTab({
   // ── Add Activity ──
   const handleAddActivity = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentDay) return;
     if (!newActivityTitle.trim() || !newActivityLocation.trim()) return;
 
     const newAct: ItineraryActivity = {
@@ -229,7 +248,7 @@ export function TripHubTab({
     e.preventDefault();
     if (!newDayTitle.trim()) return;
 
-    const nextDayNum = itineraryDays.length + 1;
+    const nextDayNum = itineraryDays.length > 0 ? Math.max(...itineraryDays.map((d) => d.dayNumber)) + 1 : 1;
     const newDay: ItineraryDay = {
       dayNumber: nextDayNum,
       date: newDayDate.trim() || new Date().toISOString().split('T')[0],
@@ -243,6 +262,26 @@ export function TripHubTab({
     setNewDayTitle('');
     setNewDayDate('');
     setIsAddDayOpen(false);
+  };
+
+  // ── Delete Entire Day ──
+  const handleDeleteDay = (dayNum: number) => {
+    if (!confirm(`Delete Day ${dayNum} and all its activities?`)) return;
+    const remaining = itineraryDays.filter((d) => d.dayNumber !== dayNum);
+    // Renumber days sequentially
+    const renumbered = remaining.map((d, index) => ({
+      ...d,
+      dayNumber: index + 1,
+    }));
+    updateHubData({ itineraryDays: renumbered });
+    setSelectedDayNumber(1);
+  };
+
+  // ── Clear All Itinerary (Reset) ──
+  const handleClearAllItinerary = () => {
+    if (!confirm('Are you sure you want to clear the entire itinerary? All days and activities will be deleted.')) return;
+    updateHubData({ itineraryDays: [] });
+    setSelectedDayNumber(1);
   };
 
   // ── Add Ticket ──
@@ -259,7 +298,7 @@ export function TripHubTab({
       arrivalStation: newTicketArrStation.trim(),
       departureTime: newTicketDepTime.trim() || '08:00 AM',
       arrivalTime: newTicketArrTime.trim() || undefined,
-      seatsOrBerths: newTicketSeats.trim() || 'General / Unreserved',
+      seatsOrBerths: newTicketSeats.trim() || 'General',
       liveStatusUrl: newTicketLiveUrl.trim() || undefined,
     };
 
@@ -278,6 +317,7 @@ export function TripHubTab({
 
   // ── Delete Ticket ──
   const handleDeleteTicket = (ticketId: string) => {
+    if (!confirm('Are you sure you want to delete this travel ticket?')) return;
     const updated = transportTickets.filter((t) => t.id !== ticketId);
     updateHubData({ transportTickets: updated });
   };
@@ -287,6 +327,12 @@ export function TripHubTab({
     e.preventDefault();
     updateHubData({ cabLogistics: cabForm });
     setIsEditCabOpen(false);
+  };
+
+  // ── Delete Cab Logistics ──
+  const handleDeleteCabLogistics = () => {
+    if (!confirm('Delete cab and rental driver details?')) return;
+    updateHubData({ cabLogistics: null });
   };
 
   // ── Voting on Awards ──
@@ -320,11 +366,17 @@ export function TripHubTab({
     setIsAddAwardOpen(false);
   };
 
+  // ── Delete Award ──
+  const handleDeleteAward = (awardId: string) => {
+    if (!confirm('Are you sure you want to delete this award category?')) return;
+    const updated = awards.filter((aw) => aw.id !== awardId);
+    updateHubData({ awards: updated });
+  };
+
   // ── Email Dispatch Handlers ──
   const handleSendEmail = async (type: 'itinerary' | 'transport' | 'awards') => {
     setEmailStatus({ loading: true });
 
-    // Collect all recipient emails from trip members
     const recipients = trip.members
       .map((m) => m.email)
       .filter((e): e is string => Boolean(e && e.includes('@')));
@@ -338,6 +390,10 @@ export function TripHubTab({
       };
 
       if (type === 'itinerary') {
+        if (!currentDay) {
+          setEmailStatus({ loading: false, success: false, message: 'No day selected to email.' });
+          return;
+        }
         payload = {
           ...payload,
           dayNumber: currentDay.dayNumber,
@@ -349,7 +405,7 @@ export function TripHubTab({
         payload = {
           ...payload,
           tickets: transportTickets,
-          cabLogistics,
+          cabLogistics: cabLogistics || undefined,
         };
       } else if (type === 'awards') {
         const awardsSummary = awards.map((aw) => {
@@ -416,50 +472,53 @@ export function TripHubTab({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* ── SUB-NAVIGATION PILLS (OPTIMIZED FOR MOBILE & DESKTOP) ── */}
-      <div className="glass-card p-1.5 sm:p-2 rounded-2xl flex items-center justify-between gap-1 shadow-sm border border-slate-200/80 dark:border-slate-800">
+    <div className="space-y-4 pb-12 sm:pb-6">
+      {/* ── TOP SEGMENTED SUB-NAVIGATION (MOBILE-FIRST) ── */}
+      <div className="glass-card p-1 sm:p-1.5 rounded-2xl flex items-center justify-between gap-1 shadow-xs border border-slate-200/80 dark:border-slate-800">
         <button
+          type="button"
           onClick={() => setActiveSubTab('itinerary')}
-          className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[42px] ${
             activeSubTab === 'itinerary'
               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Calendar className="h-4 w-4 shrink-0" />
-          <span className="truncate">📅 Day Itinerary</span>
+          <span>📅 Itinerary</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveSubTab('transport')}
-          className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[42px] ${
             activeSubTab === 'transport'
               ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-md shadow-sky-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Car className="h-4 w-4 shrink-0" />
-          <span className="truncate">🚗 Transport & Logistics</span>
+          <span>🚗 Commute</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveSubTab('awards')}
-          className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[42px] ${
             activeSubTab === 'awards'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/50 dark:hover:bg-slate-800/50'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Trophy className="h-4 w-4 shrink-0" />
-          <span className="truncate">🏆 Trip Awards</span>
+          <span>🏆 Awards</span>
         </button>
       </div>
 
       {/* ── EMAIL FEEDBACK BANNER ── */}
       {emailStatus.message && (
         <div
-          className={`p-3 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between animate-fadeIn ${
+          className={`p-3 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between animate-fadeIn ${
             emailStatus.success
               ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
               : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
@@ -471,7 +530,7 @@ export function TripHubTab({
           </div>
           <button
             onClick={() => setEmailStatus({ loading: false })}
-            className="text-xs opacity-75 hover:opacity-100 ml-2"
+            className="text-xs opacity-75 hover:opacity-100 ml-2 p-1"
           >
             ✕
           </button>
@@ -482,233 +541,294 @@ export function TripHubTab({
       {/* ── SUB-MODULE 1: DAY-BY-DAY INTERACTIVE ITINERARY ── */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeSubTab === 'itinerary' && (
-        <div className="space-y-4">
-          {/* Day Selector Pills & Top Action Row */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Horizontal Swipeable Day Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {itineraryDays.map((d) => {
-                const isSelected = d.dayNumber === currentDay.dayNumber;
-                const completedCount = d.activities.filter((a) => a.status === 'completed').length;
-                return (
-                  <button
-                    key={d.dayNumber}
-                    onClick={() => setSelectedDayNumber(d.dayNumber)}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/40'
-                        : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-400'
-                    }`}
-                  >
-                    <span>Day {d.dayNumber}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+        <div className="space-y-3.5">
+          {/* Day Selector Pills Bar */}
+          {itineraryDays.length > 0 && (
+            <div className="space-y-2">
+              {/* Swipeable Day Tabs */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none px-0.5">
+                {itineraryDays.map((d) => {
+                  const isSelected = currentDay && d.dayNumber === currentDay.dayNumber;
+                  const completedCount = d.activities.filter((a) => a.status === 'completed').length;
+                  return (
+                    <button
+                      key={d.dayNumber}
+                      type="button"
+                      onClick={() => setSelectedDayNumber(d.dayNumber)}
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[38px] ${
                         isSelected
-                          ? 'bg-emerald-700/80 text-emerald-100'
-                          : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
+                          : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
-                      {completedCount}/{d.activities.length}
-                    </span>
+                      <span className="font-extrabold tracking-tight">Day {d.dayNumber}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-0.5 ${
+                          isSelected
+                            ? 'bg-emerald-700/90 text-emerald-100'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {completedCount}/{d.activities.length}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddDayOpen(true)}
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-300 dark:border-emerald-700 shrink-0 touch-manipulation min-h-[38px]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Day</span>
+                </button>
+              </div>
+
+              {/* Action Buttons Row on Mobile */}
+              <div className="flex items-center gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setIsAddActivityOpen(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all min-h-[42px] touch-manipulation"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Activity</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={emailStatus.loading}
+                  onClick={() => handleSendEmail('itinerary')}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 min-h-[42px] touch-manipulation"
+                >
+                  <Mail className="h-4 w-4 text-emerald-500" />
+                  <span className="hidden sm:inline">Email Schedule</span>
+                </button>
+
+                {currentDay && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDay(currentDay.dayNumber)}
+                    title="Delete this entire day"
+                    className="flex items-center justify-center p-2.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 min-h-[42px] touch-manipulation"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
-                );
-              })}
-
-              <button
-                onClick={() => setIsAddDayOpen(true)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600 shrink-0 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add Day</span>
-              </button>
+                )}
+              </div>
             </div>
-
-            {/* Email Day Schedule Action Button */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                disabled={emailStatus.loading}
-                onClick={() => handleSendEmail('itinerary')}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors shadow-xs"
-              >
-                <Mail className="h-3.5 w-3.5" />
-                <span>{emailStatus.loading ? 'Dispatching...' : 'Email Day Schedule'}</span>
-              </button>
-
-              <button
-                onClick={() => setIsAddActivityOpen(true)}
-                className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add Activity</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Current Day Header Card */}
-          <div className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                    Day {currentDay.dayNumber} Timeline
-                  </span>
-                  {currentDay.date && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      • {currentDay.date}
+          {currentDay && (
+            <div className="glass-card p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                      Day {currentDay.dayNumber} Timeline
                     </span>
-                  )}
+                    {currentDay.date && (
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                        • {currentDay.date}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white mt-0.5">
+                    {currentDay.title}
+                  </h2>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                  {currentDay.title}
-                </h2>
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {currentDay.activities.length} planned spots & activities
+
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 block">
+                    {currentDay.activities.length} spot{currentDay.activities.length === 1 ? '' : 's'}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Activities List */}
-          {currentDay.activities.length === 0 ? (
-            <div className="glass-card p-8 rounded-2xl text-center border border-dashed border-slate-300 dark:border-slate-700">
-              <Calendar className="h-10 w-10 text-slate-400 mx-auto mb-2 opacity-50" />
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                No activities planned for Day {currentDay.dayNumber} yet
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3">
-                Add sunrise spots, temple visits, food joints, or evening shows!
-              </p>
+          {/* Clean State: If No Days Exist */}
+          {itineraryDays.length === 0 ? (
+            <div className="glass-card p-6 sm:p-8 rounded-3xl text-center border border-dashed border-slate-300 dark:border-slate-700 space-y-3">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center text-2xl shadow-xs">
+                📅
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Your Itinerary is Clean & Ready
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
+                  Start fresh! Create Day 1 to plan morning, afternoon, and evening timelines with 1-click Google Maps navigation and friend assignees.
+                </p>
+              </div>
               <button
-                onClick={() => setIsAddActivityOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700"
+                type="button"
+                onClick={() => setIsAddDayOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 touch-manipulation min-h-[42px]"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add First Activity</span>
+                <span>Create Day 1</span>
               </button>
             </div>
-          ) : (
+          ) : currentDay && currentDay.activities.length === 0 ? (
+            /* Empty State for a created day without activities */
+            <div className="glass-card p-6 rounded-2xl text-center border border-dashed border-slate-300 dark:border-slate-700 space-y-2.5">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                No activities entered for Day {currentDay.dayNumber} yet
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Tap the button below to add your first planned spot, darshan, meal, or evening spot.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsAddActivityOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 touch-manipulation min-h-[40px]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Activity to Day {currentDay.dayNumber}</span>
+              </button>
+            </div>
+          ) : currentDay ? (
+            /* Activities Cards List (Mobile-Optimized Architecture) */
             <div className="space-y-3">
               {currentDay.activities.map((act) => {
-                const leadMember = trip.members.find((m) => m.id === act.leadMemberId);
                 const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location)}`;
 
                 return (
                   <div
                     key={act.id}
-                    className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                    className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3 ${
                       act.status === 'completed'
-                        ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/20 dark:bg-emerald-950/10'
+                        ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/15 dark:bg-emerald-950/10'
                         : act.status === 'in_progress'
-                        ? 'border-amber-300 dark:border-amber-800/80 bg-amber-50/25 dark:bg-amber-950/15 ring-1 ring-amber-400/30'
+                        ? 'border-amber-300 dark:border-amber-800/80 bg-amber-50/20 dark:bg-amber-950/15 ring-1 ring-amber-400/25'
                         : 'border-slate-200/80 dark:border-slate-800'
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                      {/* Left: Time & Activity Info */}
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Time Badge */}
-                          <div className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg">
-                            <Clock className="h-3 w-3 shrink-0" />
-                            <span>{act.time}</span>
-                          </div>
-
-                          {/* Status Toggle Button */}
-                          <button
-                            onClick={() => handleToggleActivityStatus(currentDay.dayNumber, act.id)}
-                            title="Click to cycle status: Upcoming ➔ In Progress ➔ Completed"
-                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
-                              act.status === 'completed'
-                                ? 'bg-emerald-500 text-white shadow-xs'
-                                : act.status === 'in_progress'
-                                ? 'bg-amber-400 text-amber-950 animate-pulse'
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                            }`}
-                          >
-                            {act.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
-                            {act.status === 'in_progress' && <CircleDot className="h-3 w-3 animate-spin" />}
-                            {act.status === 'upcoming' && <Clock className="h-3 w-3" />}
-                            <span className="capitalize">
-                              {act.status === 'completed'
-                                ? 'Completed ✅'
-                                : act.status === 'in_progress'
-                                ? 'In Progress ⏳'
-                                : 'Upcoming'}
-                            </span>
-                          </button>
+                    {/* Top Row: Time, Status Toggle & Delete Button */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Time Badge */}
+                        <div className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2.5 py-1 rounded-lg">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span>{act.time}</span>
                         </div>
 
-                        {/* Title & Location */}
-                        <h3
-                          className={`text-sm sm:text-base font-extrabold ${
+                        {/* Interactive Status Toggle Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActivityStatus(currentDay.dayNumber, act.id)}
+                          title="Click to cycle: Upcoming ➔ In Progress ➔ Completed"
+                          className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-lg transition-all touch-manipulation ${
                             act.status === 'completed'
-                              ? 'text-slate-600 dark:text-slate-400 line-through'
-                              : 'text-slate-900 dark:text-white'
+                              ? 'bg-emerald-500 text-white shadow-xs'
+                              : act.status === 'in_progress'
+                              ? 'bg-amber-400 text-amber-950 animate-pulse font-black'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                           }`}
                         >
-                          {act.title}
-                        </h3>
-
-                        <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 font-medium">
-                          <span className="shrink-0">📍</span>
-                          <span className="truncate">{act.location}</span>
-                        </div>
-
-                        {/* Notes / Dress Code / Reminder */}
-                        {act.notes && (
-                          <div className="text-xs bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                            💡 {act.notes}
-                          </div>
-                        )}
+                          {act.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
+                          {act.status === 'in_progress' && <CircleDot className="h-3 w-3 animate-spin" />}
+                          {act.status === 'upcoming' && <Clock className="h-3 w-3" />}
+                          <span>
+                            {act.status === 'completed'
+                              ? 'Completed ✅'
+                              : act.status === 'in_progress'
+                              ? 'In Progress ⏳'
+                              : 'Upcoming'}
+                          </span>
+                        </button>
                       </div>
 
-                      {/* Right: Actions, Navigation & Lead Assignee */}
-                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 pt-1 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-800">
-                        {/* 1-Click Google Maps Navigation Button */}
-                        <a
-                          href={mapsUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0"
-                        >
-                          <Navigation className="h-3.5 w-3.5" />
-                          <span>Navigate</span>
-                        </a>
+                      {/* Delete Activity Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteActivity(currentDay.dayNumber, act.id)}
+                        title="Delete this activity"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors touch-manipulation"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
 
-                        {/* Lead Assignee Dropdown */}
-                        <div className="flex items-center gap-1 text-xs">
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold hidden sm:inline">
-                            Lead:
-                          </span>
-                          <select
-                            value={act.leadMemberId || ''}
-                            onChange={(e) =>
-                              handleAssignLead(currentDay.dayNumber, act.id, e.target.value)
-                            }
-                            className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-700 outline-none cursor-pointer"
-                          >
-                            <option value="">No lead assigned</option>
-                            {trip.members.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                👤 {m.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                    {/* Middle: Title & Location */}
+                    <div>
+                      <h3
+                        className={`text-sm sm:text-base font-black ${
+                          act.status === 'completed'
+                            ? 'text-slate-500 dark:text-slate-400 line-through'
+                            : 'text-slate-900 dark:text-white'
+                        }`}
+                      >
+                        {act.title}
+                      </h3>
 
-                        {/* Delete Activity Button */}
-                        <button
-                          onClick={() => handleDeleteActivity(currentDay.dayNumber, act.id)}
-                          title="Remove activity"
-                          className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                      <p className="text-xs text-slate-600 dark:text-slate-300 font-medium flex items-center gap-1 mt-0.5">
+                        <span className="shrink-0 text-emerald-500">📍</span>
+                        <span className="truncate">{act.location}</span>
+                      </p>
+                    </div>
+
+                    {/* Notes Box (If provided) */}
+                    {act.notes && (
+                      <div className="text-xs bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 leading-relaxed">
+                        💡 {act.notes}
+                      </div>
+                    )}
+
+                    {/* Bottom Action Bar: Google Maps Navigation & Lead Picker */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* 1-Click Google Maps Navigation Button */}
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors min-h-[38px] touch-manipulation"
+                      >
+                        <Navigation className="h-3.5 w-3.5" />
+                        <span>Navigate in Maps ↗</span>
+                      </a>
+
+                      {/* Lead Friend Picker */}
+                      <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 min-h-[38px]">
+                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                          👤 Lead:
+                        </span>
+                        <select
+                          value={act.leadMemberId || ''}
+                          onChange={(e) =>
+                            handleAssignLead(currentDay.dayNumber, act.id, e.target.value)
+                          }
+                          className="bg-transparent text-slate-800 dark:text-slate-200 text-xs font-bold outline-none cursor-pointer w-full truncate"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                          <option value="">No lead assigned</option>
+                          {trip.members.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
                 );
               })}
+            </div>
+          ) : null}
+
+          {/* Reset / Clear Entire Itinerary Button */}
+          {itineraryDays.length > 0 && (
+            <div className="pt-3 text-center">
+              <button
+                type="button"
+                onClick={handleClearAllItinerary}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors py-1 px-3"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Clear All Days & Start Fresh</span>
+              </button>
             </div>
           )}
         </div>
@@ -719,30 +839,32 @@ export function TripHubTab({
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeSubTab === 'transport' && (
         <div className="space-y-4">
-          {/* Top Actions Row */}
+          {/* Header Action Row */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                Transport & Commute Logistics
+                Transport & Commute Hub
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                PNR status, berth & seat numbers, live rail/flight tracker, and cab rental
+                Keep all train/flight tickets, berths, and driver contacts in one tap
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 disabled={emailStatus.loading}
                 onClick={() => handleSendEmail('transport')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 border border-slate-200 dark:border-slate-700 min-h-[38px] touch-manipulation"
               >
                 <Mail className="h-3.5 w-3.5" />
-                <span>{emailStatus.loading ? 'Dispatching...' : 'Email Travel Details'}</span>
+                <span className="hidden sm:inline">Email Travel Details</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsAddTicketOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-sky-600 text-white hover:bg-sky-700 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-sky-600 text-white hover:bg-sky-700 min-h-[38px] touch-manipulation shadow-xs"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add Ticket</span>
@@ -750,201 +872,244 @@ export function TripHubTab({
             </div>
           </div>
 
+          {/* Empty State for Tickets */}
+          {transportTickets.length === 0 && (
+            <div className="glass-card p-6 rounded-2xl text-center border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                No tickets or PNR reservations added yet
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Add your group flight, train, or bus tickets so everyone has coach/berth numbers handy.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsAddTicketOpen(true)}
+                className="inline-flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold bg-sky-600 text-white min-h-[38px] touch-manipulation"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add First Ticket</span>
+              </button>
+            </div>
+          )}
+
           {/* Tickets Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            {transportTickets.map((t) => {
-              const isFlight = t.mode === 'flight';
-              const isTrain = t.mode === 'train';
+          {transportTickets.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              {transportTickets.map((t) => {
+                const isFlight = t.mode === 'flight';
+                const isTrain = t.mode === 'train';
 
-              return (
-                <div
-                  key={t.id}
-                  className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 relative overflow-hidden"
-                >
-                  {/* Decorative top color bar */}
+                return (
                   <div
-                    className={`absolute top-0 left-0 right-0 h-1 ${
-                      isFlight
-                        ? 'bg-gradient-to-r from-sky-500 to-indigo-500'
-                        : isTrain
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                        : 'bg-gradient-to-r from-amber-500 to-orange-500'
-                    }`}
-                  />
+                    key={t.id}
+                    className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 relative overflow-hidden"
+                  >
+                    <div
+                      className={`absolute top-0 left-0 right-0 h-1 ${
+                        isFlight
+                          ? 'bg-gradient-to-r from-sky-500 to-indigo-500'
+                          : isTrain
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500'
+                      }`}
+                    />
 
-                  {/* Header: Mode & Title */}
-                  <div className="flex items-start justify-between gap-2 pt-1">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-base">{isFlight ? '✈️' : isTrain ? '🚆' : '🚌'}</span>
-                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white">
-                          {t.title}
-                        </h3>
-                      </div>
-                      <span className="text-[11px] uppercase tracking-wider font-bold text-sky-600 dark:text-sky-400">
-                        {t.mode}
-                      </span>
-                    </div>
-
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleDeleteTicket(t.id)}
-                      title="Delete ticket"
-                      className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  {/* PNR Badge with 1-Click Copy */}
-                  {t.pnr && (
-                    <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="flex items-start justify-between gap-2 pt-1">
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block leading-tight">
-                          PNR / Booking Ref
-                        </span>
-                        <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-slate-900 dark:text-white">
-                          {t.pnr}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base">{isFlight ? '✈️' : isTrain ? '🚆' : '🚌'}</span>
+                          <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                            {t.title}
+                          </h3>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wider font-extrabold text-sky-600 dark:text-sky-400">
+                          {t.mode}
                         </span>
                       </div>
+
                       <button
-                        onClick={() => handleCopyPnr(t.id, t.pnr || '')}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 transition-colors"
+                        type="button"
+                        onClick={() => handleDeleteTicket(t.id)}
+                        title="Delete ticket"
+                        className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
                       >
-                        {copiedPnrId === t.id ? (
-                          <>
-                            <Check className="h-3 w-3 text-emerald-500" />
-                            <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3 w-3" />
-                            <span>Copy</span>
-                          </>
-                        )}
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                  )}
 
-                  {/* Station & Timing Route */}
-                  <div className="bg-slate-50/70 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200/40 dark:border-slate-700/40 space-y-1">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-                      <span>{t.departureStation}</span>
-                      <span className="text-slate-400">➔</span>
-                      <span>{t.arrivalStation}</span>
+                    {t.pnr && (
+                      <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
+                            PNR / Booking Ref
+                          </span>
+                          <span className="text-xs sm:text-sm font-black font-mono tracking-wider text-slate-900 dark:text-white">
+                            {t.pnr}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPnr(t.id, t.pnr || '')}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 shadow-2xs"
+                        >
+                          {copiedPnrId === t.id ? (
+                            <>
+                              <Check className="h-3 w-3 text-emerald-500" />
+                              <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="bg-slate-50/70 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-200/40 dark:border-slate-700/40 space-y-1">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+                        <span>{t.departureStation}</span>
+                        <span className="text-slate-400">➔</span>
+                        <span>{t.arrivalStation}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                        <span>Dep: {t.departureTime}</span>
+                        {t.arrivalTime && <span>Arr: {t.arrivalTime}</span>}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                      <span>Dep: {t.departureTime}</span>
-                      {t.arrivalTime && <span>Arr: {t.arrivalTime}</span>}
+
+                    <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/60 flex items-center gap-1.5">
+                      <span>🪑</span>
+                      <span className="truncate">{t.seatsOrBerths}</span>
                     </div>
-                  </div>
 
-                  {/* Seats & Berths */}
-                  <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/60 flex items-center gap-1.5">
-                    <span>🪑</span>
-                    <span className="truncate">{t.seatsOrBerths}</span>
+                    {t.liveStatusUrl && (
+                      <a
+                        href={t.liveStatusUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-black bg-sky-600 hover:bg-sky-700 text-white transition-colors min-h-[38px] touch-manipulation"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>Live Tracking Status ↗</span>
+                      </a>
+                    )}
                   </div>
-
-                  {/* 1-Click Live Status Tracking Button */}
-                  {t.liveStatusUrl && (
-                    <a
-                      href={t.liveStatusUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-xs transition-colors"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span>Live Train / Flight Status ↗</span>
-                    </a>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Cab & Rental Logistics Section */}
-          <div className="glass-card p-4 sm:p-5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/15 dark:bg-amber-950/10 space-y-3">
+          <div className="glass-card p-4 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/15 dark:bg-amber-950/10 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🚕</span>
                 <div>
                   <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                    Cab & Private Vehicle Rental Details
+                    Cab & Private Vehicle Rental
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Driver contact, vehicle number, and fuel/contract tracker
+                    Driver contacts, pickup timings, and vehicle plates
                   </p>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  setCabForm(cabLogistics);
-                  setIsEditCabOpen(true);
-                }}
-                className="flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 hover:border-amber-500 transition-colors shadow-xs"
-              >
-                <Edit2 className="h-3 w-3" />
-                <span>Edit</span>
-              </button>
+              {cabLogistics ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCabForm(cabLogistics);
+                      setIsEditCabOpen(true);
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 shadow-2xs"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCabLogistics}
+                    title="Delete cab details"
+                    className="p-1.5 text-slate-400 hover:text-rose-500"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditCabOpen(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white shadow-2xs"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>Add Cab</span>
+                </button>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
-              {/* Vehicle & Plate */}
-              <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
-                  Vehicle Model & Plate
-                </span>
-                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block mt-0.5">
-                  {cabLogistics.vehicleModel}
-                </span>
-                <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400">
-                  {cabLogistics.plateNumber}
-                </span>
-              </div>
-
-              {/* Driver & 1-Tap Call */}
-              <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70 flex flex-col justify-between">
-                <div>
+            {cabLogistics ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-1">
+                <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
                   <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
-                    Driver Name & Contact
+                    Vehicle Model & Plate
                   </span>
                   <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block mt-0.5">
-                    {cabLogistics.driverName}
+                    {cabLogistics.vehicleModel}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400">
+                    {cabLogistics.plateNumber}
                   </span>
                 </div>
-                <a
-                  href={`tel:${cabLogistics.driverPhone.replace(/\s+/g, '')}`}
-                  className="mt-2 inline-flex items-center justify-center gap-1 py-1 px-2.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-                >
-                  <Phone className="h-3 w-3" />
-                  <span>Call {cabLogistics.driverPhone}</span>
-                </a>
-              </div>
 
-              {/* Pickup Location & Time */}
-              <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
-                  Pickup Location & Time
-                </span>
-                <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block mt-0.5 truncate">
-                  {cabLogistics.pickupLocation}
-                </span>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  ⏰ {cabLogistics.pickupTime}
-                </span>
-              </div>
+                <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
+                      Driver
+                    </span>
+                    <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block mt-0.5">
+                      {cabLogistics.driverName}
+                    </span>
+                  </div>
+                  {cabLogistics.driverPhone && (
+                    <a
+                      href={`tel:${cabLogistics.driverPhone.replace(/\s+/g, '')}`}
+                      className="mt-2 inline-flex items-center justify-center gap-1 py-1.5 px-3 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white min-h-[36px] touch-manipulation"
+                    >
+                      <Phone className="h-3 w-3" />
+                      <span>Call {cabLogistics.driverPhone}</span>
+                    </a>
+                  )}
+                </div>
 
-              {/* Contract & Fuel Reading Notes */}
-              <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
-                  Contract / Fuel Notes
-                </span>
-                <span className="text-xs text-slate-700 dark:text-slate-300 block mt-0.5 line-clamp-3">
-                  {cabLogistics.notes || 'No special terms noted.'}
-                </span>
+                <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
+                    Pickup Location & Time
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white block mt-0.5 truncate">
+                    {cabLogistics.pickupLocation}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    ⏰ {cabLogistics.pickupTime}
+                  </span>
+                </div>
+
+                <div className="bg-white/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block">
+                    Contract / Notes
+                  </span>
+                  <span className="text-xs text-slate-700 dark:text-slate-300 block mt-0.5">
+                    {cabLogistics.notes || 'None'}
+                  </span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                No cab or driver details added. Tap &quot;Add Cab&quot; to keep contact info ready.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -954,35 +1119,36 @@ export function TripHubTab({
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeSubTab === 'awards' && (
         <div className="space-y-4">
-          {/* Header Row */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
                   Trip Awards & Superlatives
                 </h2>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-                  Democratic Voting
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                  Live Voting
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Vote for funny titles, see live leaderboards, and download official honor certificates!
+                Vote for funny titles, see live leaderboards, and download official certificates
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 disabled={emailStatus.loading}
                 onClick={() => handleSendEmail('awards')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[38px] touch-manipulation"
               >
                 <Mail className="h-3.5 w-3.5" />
-                <span>{emailStatus.loading ? 'Dispatching...' : 'Email Awards to Friends'}</span>
+                <span className="hidden sm:inline">Email Awards</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsAddAwardOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation shadow-xs"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add Award</span>
@@ -990,10 +1156,8 @@ export function TripHubTab({
             </div>
           </div>
 
-          {/* Awards Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {awards.map((aw) => {
-              // Calculate vote tallies
               const voteCounts: Record<string, number> = {};
               const totalVotes = Object.keys(aw.votes || {}).length;
 
@@ -1001,7 +1165,6 @@ export function TripHubTab({
                 voteCounts[candId] = (voteCounts[candId] || 0) + 1;
               });
 
-              // Find current winner/leader
               let leaderId = '';
               let maxVotes = 0;
               Object.entries(voteCounts).forEach(([candId, count]) => {
@@ -1013,17 +1176,15 @@ export function TripHubTab({
 
               const leaderMember = trip.members.find((m) => m.id === leaderId);
               const myVoteCandidateId = aw.votes?.[currentMember.id];
-              const myVoteMember = trip.members.find((m) => m.id === myVoteCandidateId);
 
               return (
                 <div
                   key={aw.id}
-                  className="glass-card p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5"
+                  className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3"
                 >
-                  {/* Top Bar: Icon, Title & Leader Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="text-2xl sm:text-3xl p-2 rounded-2xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center shrink-0">
+                      <div className="text-2xl p-2 rounded-2xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center shrink-0">
                         {aw.icon}
                       </div>
                       <div>
@@ -1031,33 +1192,36 @@ export function TripHubTab({
                           {aw.title}
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                          "{aw.description}"
+                          &quot;{aw.description}&quot;
                         </p>
                       </div>
                     </div>
 
-                    {/* Current Leader Badge */}
-                    {leaderMember ? (
-                      <div className="shrink-0 text-right">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400/90 text-amber-950 shadow-xs">
+                    <div className="flex items-center gap-1">
+                      {leaderMember ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-amber-950 shadow-2xs">
                           👑 {leaderMember.name}
                         </span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          {maxVotes} vote{maxVotes === 1 ? '' : 's'} ({totalVotes > 0 ? Math.round((maxVotes / totalVotes) * 100) : 0}%)
+                      ) : (
+                        <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                          Awaiting votes
                         </span>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full shrink-0">
-                        Awaiting votes
-                      </span>
-                    )}
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAward(aw.id)}
+                        title="Delete award"
+                        className="p-1 text-slate-400 hover:text-rose-500 ml-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Live Vote Progress Bars for Top Nominees */}
                   {totalVotes > 0 && (
                     <div className="space-y-1.5 pt-1">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        Live Standings ({totalVotes} total votes)
+                        Live Standings ({totalVotes} votes)
                       </span>
                       {Object.entries(voteCounts)
                         .sort((a, b) => b[1] - a[1])
@@ -1068,10 +1232,10 @@ export function TripHubTab({
                           return (
                             <div key={candId} className="space-y-0.5">
                               <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                <span className="flex items-center gap-1">
-                                  <span>{candMember?.name || 'Friend'}</span>
+                                <span>
+                                  {candMember?.name || 'Friend'}
                                   {candId === myVoteCandidateId && (
-                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold">
+                                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold ml-1">
                                       (Your vote)
                                     </span>
                                   )}
@@ -1082,7 +1246,7 @@ export function TripHubTab({
                               </div>
                               <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                                 <div
-                                  className="bg-gradient-to-r from-amber-400 to-orange-500 h-1.5 rounded-full transition-all duration-500"
+                                  className="bg-gradient-to-r from-amber-400 to-orange-500 h-1.5 rounded-full"
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
@@ -1092,18 +1256,17 @@ export function TripHubTab({
                     </div>
                   )}
 
-                  {/* Voting Picker Row */}
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                        Cast your vote:
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
+                        Vote:
                       </span>
                       <select
                         value={myVoteCandidateId || ''}
                         onChange={(e) => handleVote(aw.id, e.target.value)}
-                        className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none cursor-pointer"
+                        className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full sm:w-auto"
                       >
-                        <option value="">Choose a friend...</option>
+                        <option value="">Select a friend...</option>
                         {trip.members.map((m) => (
                           <option key={m.id} value={m.id}>
                             {m.name}
@@ -1112,8 +1275,8 @@ export function TripHubTab({
                       </select>
                     </div>
 
-                    {/* Download Certificate PDF Button */}
                     <button
+                      type="button"
                       onClick={() => {
                         const winnerToHonor = leaderMember || trip.members[0];
                         downloadTripAwardCertificate(
@@ -1126,7 +1289,7 @@ export function TripHubTab({
                           totalVotes || 1
                         );
                       }}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition-colors shadow-xs shrink-0"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[36px] touch-manipulation"
                     >
                       <Award className="h-3.5 w-3.5" />
                       <span>Download Certificate (PDF)</span>
@@ -1140,21 +1303,22 @@ export function TripHubTab({
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── MODALS (ADD ACTIVITY, ADD DAY, ADD TICKET, EDIT CAB, ADD AWARD) ── */}
+      {/* ── MODALS ── */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
 
       {/* Modal: Add Activity */}
       {isAddActivityOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Plus className="h-4 w-4 text-emerald-500" />
-                <span>Add Activity to Day {currentDay.dayNumber}</span>
+                <span>Add Activity {currentDay ? `to Day ${currentDay.dayNumber}` : ''}</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddActivityOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1184,7 +1348,7 @@ export function TripHubTab({
                   required
                   value={newActivityTitle}
                   onChange={(e) => setNewActivityTitle(e.target.value)}
-                  placeholder="Sunrise at Golden Beach / Temple Darshan"
+                  placeholder="e.g. Sunrise Walk / Temple Darshan / Dinner"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1198,7 +1362,7 @@ export function TripHubTab({
                   required
                   value={newActivityLocation}
                   onChange={(e) => setNewActivityLocation(e.target.value)}
-                  placeholder="Golden Beach, Puri / Konark Sun Temple"
+                  placeholder="e.g. Golden Beach, Puri / Konark Sun Temple"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1237,13 +1401,13 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsAddActivityOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 min-h-[38px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 min-h-[38px]"
                 >
                   Save Activity
                 </button>
@@ -1256,12 +1420,13 @@ export function TripHubTab({
       {/* Modal: Add Day */}
       {isAddDayOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white">
                 Add Day {itineraryDays.length + 1}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddDayOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
@@ -1279,7 +1444,7 @@ export function TripHubTab({
                   required
                   value={newDayTitle}
                   onChange={(e) => setNewDayTitle(e.target.value)}
-                  placeholder="e.g. Chilika Dolphins & Seafood Safari"
+                  placeholder="e.g. Arrival & Temple Darshan"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -1300,13 +1465,13 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsAddDayOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white min-h-[38px]"
                 >
                   Create Day
                 </button>
@@ -1319,13 +1484,14 @@ export function TripHubTab({
       {/* Modal: Add Transport Ticket */}
       {isAddTicketOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-fadeIn max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Car className="h-4 w-4 text-sky-500" />
                 <span>Add Travel Ticket / Reservation</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddTicketOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
@@ -1359,7 +1525,7 @@ export function TripHubTab({
                     type="text"
                     value={newTicketPnr}
                     onChange={(e) => setNewTicketPnr(e.target.value)}
-                    placeholder="245-8971203 / W8Q4KZ"
+                    placeholder="e.g. 245-8971203"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1367,14 +1533,14 @@ export function TripHubTab({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Carrier / Name *
+                  Carrier / Train Name *
                 </label>
                 <input
                   type="text"
                   required
                   value={newTicketTitle}
                   onChange={(e) => setNewTicketTitle(e.target.value)}
-                  placeholder="Purushottam Express / IndiGo 6E-5212"
+                  placeholder="e.g. Purushottam Express / IndiGo 6E-5212"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                 />
               </div>
@@ -1389,7 +1555,7 @@ export function TripHubTab({
                     required
                     value={newTicketDepStation}
                     onChange={(e) => setNewTicketDepStation(e.target.value)}
-                    placeholder="KGP / NDLS / BBI"
+                    placeholder="e.g. KGP / NDLS"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1403,7 +1569,7 @@ export function TripHubTab({
                     required
                     value={newTicketArrStation}
                     onChange={(e) => setNewTicketArrStation(e.target.value)}
-                    placeholder="PURI / DEL"
+                    placeholder="e.g. PURI / DEL"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1426,7 +1592,7 @@ export function TripHubTab({
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                    Arrival Time (Optional)
+                    Arrival Time
                   </label>
                   <input
                     type="text"
@@ -1440,27 +1606,27 @@ export function TripHubTab({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Seats / Berths (e.g. Coach B3, Berths 21, 22, 23) *
+                  Seats / Berths *
                 </label>
                 <input
                   type="text"
                   required
                   value={newTicketSeats}
                   onChange={(e) => setNewTicketSeats(e.target.value)}
-                  placeholder="Coach B3, Berths 21, 22, 23"
+                  placeholder="e.g. Coach B3, Berths 21, 22, 23"
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Official Live Tracking Link (Optional)
+                  Live Tracking URL (Optional)
                 </label>
                 <input
                   type="url"
                   value={newTicketLiveUrl}
                   onChange={(e) => setNewTicketLiveUrl(e.target.value)}
-                  placeholder="https://www.railyatri.in/... / https://goindigo.in/..."
+                  placeholder="https://..."
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                 />
               </div>
@@ -1469,13 +1635,13 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsAddTicketOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-sky-600 hover:bg-sky-700 text-white min-h-[38px]"
                 >
                   Save Ticket
                 </button>
@@ -1488,13 +1654,14 @@ export function TripHubTab({
       {/* Modal: Edit Cab Rental Logistics */}
       {isEditCabOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Car className="h-4 w-4 text-amber-500" />
                 <span>Edit Cab & Rental Logistics</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsEditCabOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
@@ -1513,6 +1680,7 @@ export function TripHubTab({
                     required
                     value={cabForm.vehicleModel}
                     onChange={(e) => setCabForm({ ...cabForm, vehicleModel: e.target.value })}
+                    placeholder="Innova / Ertiga / Tempo"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1525,6 +1693,7 @@ export function TripHubTab({
                     required
                     value={cabForm.plateNumber}
                     onChange={(e) => setCabForm({ ...cabForm, plateNumber: e.target.value })}
+                    placeholder="OD 02 AB 1234"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1540,6 +1709,7 @@ export function TripHubTab({
                     required
                     value={cabForm.driverName}
                     onChange={(e) => setCabForm({ ...cabForm, driverName: e.target.value })}
+                    placeholder="Driver's Name"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1552,6 +1722,7 @@ export function TripHubTab({
                     required
                     value={cabForm.driverPhone}
                     onChange={(e) => setCabForm({ ...cabForm, driverPhone: e.target.value })}
+                    placeholder="+91 98765 43210"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1567,6 +1738,7 @@ export function TripHubTab({
                     required
                     value={cabForm.pickupLocation}
                     onChange={(e) => setCabForm({ ...cabForm, pickupLocation: e.target.value })}
+                    placeholder="Airport / Station Gate"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1579,6 +1751,7 @@ export function TripHubTab({
                     required
                     value={cabForm.pickupTime}
                     onChange={(e) => setCabForm({ ...cabForm, pickupTime: e.target.value })}
+                    placeholder="06:30 AM"
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                   />
                 </div>
@@ -1586,12 +1759,13 @@ export function TripHubTab({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Contract / Fuel Notes (Odometer, daily allowance)
+                  Contract / Fuel Notes (Optional)
                 </label>
                 <textarea
                   rows={2}
                   value={cabForm.notes || ''}
                   onChange={(e) => setCabForm({ ...cabForm, notes: e.target.value })}
+                  placeholder="300 km/day included with AC, starting odometer, etc."
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                 />
               </div>
@@ -1600,13 +1774,13 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsEditCabOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[38px]"
                 >
                   Save Logistics
                 </button>
@@ -1619,13 +1793,14 @@ export function TripHubTab({
       {/* Modal: Add Custom Award */}
       {isAddAwardOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-3.5 animate-fadeIn">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-amber-500" />
                 <span>Propose Trip Award</span>
               </h3>
               <button
+                type="button"
                 onClick={() => setIsAddAwardOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
               >
@@ -1679,13 +1854,13 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsAddAwardOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 min-h-[38px]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white"
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[38px]"
                 >
                   Add Award
                 </button>

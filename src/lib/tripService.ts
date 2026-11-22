@@ -91,6 +91,15 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
     const rawPaymentMethods = tripData.payment_methods || {};
     const hubData = rawPaymentMethods.hubData;
 
+    const cleanItinerary = (hubData?.itineraryDays || []).filter(
+      (d: any) => !d.activities?.some((a: any) => a.id?.startsWith('act-1-') || a.id?.startsWith('act-2-') || a.id?.startsWith('act-3-'))
+    );
+    const cleanTickets = (hubData?.transportTickets || []).filter(
+      (t: any) => t.id !== 'ticket-1' && t.id !== 'ticket-2'
+    );
+    const isDummyCab = hubData?.cabLogistics?.driverName === 'Ramesh Pradhan';
+    const cleanCab = isDummyCab ? undefined : hubData?.cabLogistics;
+
     return {
       id: tripData.id,
       name: tripData.name,
@@ -107,10 +116,10 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       payments,
       settlements,
       collectionRounds,
-      itineraryDays: hubData?.itineraryDays,
-      transportTickets: hubData?.transportTickets,
-      cabLogistics: hubData?.cabLogistics,
-      awards: hubData?.awards,
+      itineraryDays: cleanItinerary,
+      transportTickets: cleanTickets,
+      cabLogistics: cleanCab,
+      awards: hubData?.awards || [],
     };
   } catch (err) {
     console.error('Error fetching from Supabase:', err);

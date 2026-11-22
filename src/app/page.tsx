@@ -156,10 +156,22 @@ export default function TripFinancePortal() {
       };
     });
 
+    // Clean out any stale preseeded dummy info so user always has clean data
+    const cleanItinerary = (t.itineraryDays || []).filter(
+      (d) => !d.activities?.some((a) => a.id.startsWith('act-1-') || a.id.startsWith('act-2-') || a.id.startsWith('act-3-'))
+    );
+    const cleanTickets = (t.transportTickets || []).filter(
+      (tk) => tk.id !== 'ticket-1' && tk.id !== 'ticket-2'
+    );
+    const cleanCab = t.cabLogistics?.driverName === 'Ramesh Pradhan' ? undefined : t.cabLogistics;
+
     return {
       ...t,
       financeLeadId: targetLeadId,
       members: updatedMembers,
+      itineraryDays: cleanItinerary,
+      transportTickets: cleanTickets,
+      cabLogistics: cleanCab,
     };
   };
 
