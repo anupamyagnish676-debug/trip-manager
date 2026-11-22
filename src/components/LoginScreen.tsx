@@ -108,12 +108,18 @@ export function LoginScreen({ trip, onLoggedIn, onUpdateTrip, onSelectTrip }: Lo
       return;
     }
 
-    // Valid credentials! Save session
+    // Valid credentials! Check if first login (default password still active)
+    const defaultPass1 = `${found.name.toLowerCase()}123`;
+    const defaultPass2 = `${(found.loginId || found.name).toLowerCase().replace(/\s+/g, '')}123`;
+    const isDefaultPassword = found.password === defaultPass1 || found.password === defaultPass2;
+    const isCustomInStorage = typeof window !== 'undefined' && localStorage.getItem('pwd_custom_' + found.id) === 'true';
+    const hasAlreadyChanged = Boolean(found.hasChangedPassword || isCustomInStorage || !isDefaultPassword);
+
     saveSession({
       memberId: found.id,
       tripId: trip.id,
       role: found.role || 'member',
-      isFirstLogin: !found.hasChangedPassword,
+      isFirstLogin: !hasAlreadyChanged,
     });
 
     onLoggedIn();

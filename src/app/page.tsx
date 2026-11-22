@@ -7,7 +7,7 @@ import {
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
   TrendingUp, FileText, KeyRound, ExternalLink, Download,
-  Mail, Loader2,
+  Mail, Loader2, Sun, Moon,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -21,6 +21,7 @@ import { TripGroupMembersModal } from '@/components/TripGroupMembersModal';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { LoginScreen } from '@/components/LoginScreen';
 import { MemberView } from '@/components/MemberView';
+import { TripHubTab } from '@/components/TripHubTab';
 import { calculateMemberBalances } from '@/lib/calculations';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getSession, saveSession, clearSession } from '@/lib/session';
@@ -39,7 +40,7 @@ const CATEGORY_ICONS: Record<Category, string> = {
   activities: '⛷️', drinks: '🍻', groceries: '🛒', misc: '✨',
 };
 
-type TabKey = 'my_view' | 'expenses' | 'settle' | 'members';
+type TabKey = 'my_view' | 'expenses' | 'settle' | 'members' | 'hub';
 
 export default function TripFinancePortal() {
   const [trip, setTrip] = useState<Trip>(INITIAL_TRIP);
@@ -62,6 +63,44 @@ export default function TripFinancePortal() {
 
   const hasSupabase = isSupabaseConfigured();
 
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDark = document.documentElement.classList.contains('dark');
+      setIsDarkMode(isDark);
+
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleThemeChange = (e: MediaQueryListEvent) => {
+        if (!localStorage.getItem('theme')) {
+          if (e.matches) {
+            document.documentElement.classList.add('dark');
+            setIsDarkMode(true);
+          } else {
+            document.documentElement.classList.remove('dark');
+            setIsDarkMode(false);
+          }
+        }
+      };
+      mq.addEventListener('change', handleThemeChange);
+      return () => mq.removeEventListener('change', handleThemeChange);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (typeof window === 'undefined') return;
+    const willBeDark = !document.documentElement.classList.contains('dark');
+    if (willBeDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDarkMode(true);
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDarkMode(false);
+    }
+  };
+
   // Active member (every member is equal)
   const currentMember = session ? trip.members.find((m) => m.id === session.memberId) : null;
 
@@ -82,8 +121,11 @@ export default function TripFinancePortal() {
     const s = getSession();
     setSession(s);
     setSessionChecked(true);
-    if (s?.isFirstLogin) {
-      setIsChangePasswordOpen(true);
+    if (s?.isFirstLogin && s.memberId) {
+      const isCustomInStorage = typeof window !== 'undefined' && localStorage.getItem('pwd_custom_' + s.memberId) === 'true';
+      if (!isCustomInStorage) {
+        setIsChangePasswordOpen(true);
+      }
     }
   }, []);
 
@@ -91,14 +133,20 @@ export default function TripFinancePortal() {
     const s = getSession();
     setSession(s);
     setActiveTab('my_view');
-    if (s?.isFirstLogin) {
-      setIsChangePasswordOpen(true);
+    if (s?.isFirstLogin && s.memberId) {
+      const isCustomInStorage = typeof window !== 'undefined' && localStorage.getItem('pwd_custom_' + s.memberId) === 'true';
+      if (!isCustomInStorage) {
+        setIsChangePasswordOpen(true);
+      }
     }
   };
 
   const handleSaveNewPassword = (newPassword: string) => {
     if (!currentMember) return;
     const cleanPass = newPassword.trim();
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pwd_custom_' + currentMember.id, 'true');
+    }
     const updatedMembers = trip.members.map((m) =>
       m.id === currentMember.id
         ? { ...m, password: cleanPass, hasChangedPassword: true }
@@ -415,6 +463,7 @@ export default function TripFinancePortal() {
     { key: 'expenses', label: 'Trip Bills', mobileLabel: 'Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },
     { key: 'settle', label: 'Settle Up', mobileLabel: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
     { key: 'members', label: 'Friends', mobileLabel: 'Friends', icon: <Users className="h-4 w-4" />, count: trip.members.length },
+    { key: 'hub', label: '🧭 Trip Hub', mobileLabel: 'Trip Hub', icon: <Compass className="h-4 w-4 text-cyan-500" /> },
   ];
 
   if (!sessionChecked || isInitialLoading) {
@@ -488,7 +537,22 @@ export default function TripFinancePortal() {
           </div>
 
           {/* Right Action Bar: Ultra-clean & Professional */}
-          <div className="flex items-center gap-2 relative flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 relative flex-shrink-0">
+            {/* Theme Toggle Button (Light / Dark) */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle theme"
+              className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl sm:rounded-2xl glass-card hover:border-slate-300 dark:hover:border-slate-600 transition-all text-slate-700 dark:text-amber-400 shadow-2xs"
+            >
+              {isDarkMode ? (
+                <Sun className="h-4 w-4 text-amber-400" />
+              ) : (
+                <Moon className="h-4 w-4 text-slate-700" />
+              )}
+            </button>
+
             {/* User Identity & Menu Dropdown */}
             <div className="relative">
               <button
@@ -972,6 +1036,16 @@ export default function TripFinancePortal() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── TAB 5: TRIP HUB (ITINERARY, TRANSPORT & AWARDS) ── */}
+        {activeTab === 'hub' && currentMember && (
+          <TripHubTab
+            trip={trip}
+            currentMember={currentMember}
+            isTripManager={isTripManager}
+            onUpdateTrip={saveTripState}
+          />
         )}
       </main>
 

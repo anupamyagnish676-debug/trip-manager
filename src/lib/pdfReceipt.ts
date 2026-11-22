@@ -1260,3 +1260,222 @@ export function downloadOverallTripReport(trip: Trip) {
   const cleanTripName = trip.name.replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Overall_Trip_Bills_${cleanTripName}.pdf`);
 }
+
+export interface AwardCertificateData {
+  tripName: string;
+  destination: string;
+  awardTitle: string;
+  awardIcon: string;
+  winnerName: string;
+  awardDescription: string;
+  voteCount: number;
+  totalVoters: number;
+  financeLeadName: string;
+  date: string;
+}
+
+/**
+ * Generate a regal landscape A4 Trip Superlative & Award Certificate of Honor
+ */
+export function generateTripAwardCertificatePdf(data: AwardCertificateData): jsPDF {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+  const margin = 14;
+
+  // ── 1. Ornate Border Frame ──
+  // Outer emerald border
+  doc.setDrawColor(16, 185, 129); // emerald-500
+  doc.setLineWidth(2.5);
+  doc.rect(margin, margin, pageWidth - margin * 2, pageHeight - margin * 2);
+
+  // Inner thin gold/amber accent border
+  doc.setDrawColor(217, 119, 6); // amber-600
+  doc.setLineWidth(0.8);
+  doc.rect(margin + 3, margin + 3, pageWidth - (margin + 3) * 2, pageHeight - (margin + 3) * 2);
+
+  // Corner decorative flourishes
+  const cornerSize = 10;
+  const drawCorner = (x: number, y: number, xFlip: number, yFlip: number) => {
+    doc.setFillColor(16, 185, 129);
+    doc.triangle(x, y, x + cornerSize * xFlip, y, x, y + cornerSize * yFlip, 'F');
+  };
+  drawCorner(margin + 3, margin + 3, 1, 1);
+  drawCorner(pageWidth - margin - 3, margin + 3, -1, 1);
+  drawCorner(margin + 3, pageHeight - margin - 3, 1, -1);
+  drawCorner(pageWidth - margin - 3, pageHeight - margin - 3, -1, -1);
+
+  // ── 2. Header & Banner ──
+  let y = 30;
+
+  // Star Emblem
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(217, 119, 6); // amber-600
+  doc.text('★ ★ ★   OFFICIAL TRIP MEMORIES & SUPERLATIVE CITATION   ★ ★ ★', pageWidth / 2, y, { align: 'center' });
+
+  // Main Trip Title
+  y += 10;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(15, 23, 42); // slate-900
+  doc.text(`${data.tripName.toUpperCase()} • ${data.destination.toUpperCase()}`, pageWidth / 2, y, { align: 'center' });
+
+  // Certificate Title
+  y += 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(5, 150, 105); // emerald-600
+  doc.text('CERTIFICATE OF COMRADERY & DISTINCTION', pageWidth / 2, y, { align: 'center' });
+
+  // Divider Line
+  y += 5;
+  doc.setDrawColor(203, 213, 225); // slate-300
+  doc.setLineWidth(0.5);
+  doc.line(pageWidth / 2 - 60, y, pageWidth / 2 + 60, y);
+
+  // Conferral statement
+  y += 11;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text('This distinguished recognition is proudly awarded to', pageWidth / 2, y, { align: 'center' });
+
+  // Winner Name
+  y += 16;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(15, 23, 42); // slate-900
+  doc.text(data.winnerName, pageWidth / 2, y, { align: 'center' });
+
+  // Underline for Winner
+  y += 3;
+  doc.setDrawColor(16, 185, 129);
+  doc.setLineWidth(1);
+  const nameWidth = doc.getTextWidth(data.winnerName);
+  doc.line(pageWidth / 2 - nameWidth / 2 - 5, y, pageWidth / 2 + nameWidth / 2 + 5, y);
+
+  // Subtitle
+  y += 11;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(100, 116, 139);
+  doc.text('for overwhelmingly clinching the peer-voted title of', pageWidth / 2, y, { align: 'center' });
+
+  // Award Title Card
+  y += 6;
+  const awardBoxWidth = 180;
+  const awardBoxHeight = 16;
+  const awardBoxX = pageWidth / 2 - awardBoxWidth / 2;
+  doc.setFillColor(240, 253, 244); // emerald-50
+  doc.roundedRect(awardBoxX, y, awardBoxWidth, awardBoxHeight, 3, 3, 'F');
+  doc.setDrawColor(110, 231, 183); // emerald-300
+  doc.roundedRect(awardBoxX, y, awardBoxWidth, awardBoxHeight, 3, 3, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(6, 95, 70); // emerald-800
+  doc.text(`${data.awardTitle.toUpperCase()}`, pageWidth / 2, y + 10.5, { align: 'center' });
+
+  // Description & Citation
+  y += 24;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(10);
+  doc.setTextColor(71, 85, 105); // slate-600
+  doc.text(`"${data.awardDescription}"`, pageWidth / 2, y, { align: 'center' });
+
+  y += 7;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Secured with ${data.voteCount} vote${data.voteCount === 1 ? '' : 's'} across the travel delegation.`, pageWidth / 2, y, { align: 'center' });
+
+  // ── 3. Footer Seal & Signatures ──
+  const footerY = pageHeight - 38;
+
+  // Left: Date & Destination Seal
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`Date of Issue: ${data.date}`, margin + 20, footerY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Location: ${data.destination}`, margin + 20, footerY + 5);
+  doc.text('Certified by Trip Delegation', margin + 20, footerY + 10);
+
+  // Center: Official Gold Seal Badge
+  const sealX = pageWidth / 2;
+  const sealY = footerY + 5;
+  doc.setFillColor(254, 243, 199); // amber-100
+  doc.circle(sealX, sealY, 14, 'F');
+  doc.setDrawColor(217, 119, 6); // amber-600
+  doc.setLineWidth(1);
+  doc.circle(sealX, sealY, 14, 'S');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(180, 83, 9); // amber-700
+  doc.text('OFFICIAL', sealX, sealY - 4, { align: 'center' });
+  doc.text('TRIP AWARD', sealX, sealY + 0.5, { align: 'center' });
+  doc.text('VERIFIED', sealX, sealY + 5, { align: 'center' });
+
+  // Right: Trip Manager / Finance Lead Signature
+  const sigX = pageWidth - margin - 20;
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.5);
+  doc.line(sigX - 45, footerY + 2, sigX, footerY + 2);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text(data.financeLeadName, sigX - 22.5, footerY + 7, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Trip Manager & Finance Lead', sigX - 22.5, footerY + 12, { align: 'center' });
+
+  return doc;
+}
+
+/**
+ * Download a single trip award certificate PDF
+ */
+export function downloadTripAwardCertificate(
+  trip: Trip,
+  awardTitle: string,
+  awardIcon: string,
+  winnerName: string,
+  awardDescription: string,
+  voteCount: number,
+  totalVoters: number = 0
+) {
+  const financeLead = trip.members.find((m) => m.id === trip.financeLeadId) || trip.members[0];
+  const doc = generateTripAwardCertificatePdf({
+    tripName: trip.name,
+    destination: trip.destination,
+    awardTitle,
+    awardIcon,
+    winnerName,
+    awardDescription,
+    voteCount,
+    totalVoters,
+    financeLeadName: financeLead?.name || 'Yagnish Anupam',
+    date: new Date().toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }),
+  });
+
+  const cleanAward = awardTitle.replace(/[^a-zA-Z0-9]/g, '_');
+  const cleanWinner = winnerName.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Trip_Award_${cleanAward}_${cleanWinner}.pdf`);
+}
+

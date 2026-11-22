@@ -135,6 +135,63 @@ export interface Trip {
   collectionRounds?: CollectionRound[];
   inviteCode?: string; // e.g. TOKYO26
   createdAt?: string;
+
+  // ── Trip Hub Modules (Additive & Optional) ──
+  itineraryDays?: ItineraryDay[];
+  transportTickets?: TransportTicket[];
+  cabLogistics?: CabRentalLogistics;
+  awards?: TripAward[];
+}
+
+// ── Trip Hub Module 1: Day-by-Day Itinerary ──
+export interface ItineraryActivity {
+  id: string;
+  time: string; // e.g. "07:00 AM"
+  title: string;
+  location: string;
+  notes?: string;
+  status: 'upcoming' | 'in_progress' | 'completed';
+  leadMemberId?: string;
+}
+
+export interface ItineraryDay {
+  dayNumber: number;
+  date: string; // e.g. "2026-11-25"
+  title: string; // e.g. "Puri Beach & Jagannath Temple"
+  activities: ItineraryActivity[];
+}
+
+// ── Trip Hub Module 2: Transport & Logistics ──
+export interface TransportTicket {
+  id: string;
+  mode: 'train' | 'flight' | 'bus' | 'cab';
+  title: string; // e.g. "12801 Purushottam Express"
+  pnr?: string;
+  departureStation: string;
+  arrivalStation: string;
+  departureTime: string;
+  arrivalTime?: string;
+  seatsOrBerths: string; // e.g. "Coach B3, Berths 21, 22, 23"
+  liveStatusUrl?: string;
+}
+
+export interface CabRentalLogistics {
+  vehicleModel: string; // e.g. "Toyota Innova Crysta"
+  plateNumber: string; // e.g. "OD 02 AB 1234"
+  driverName: string;
+  driverPhone: string;
+  pickupLocation: string;
+  pickupTime: string;
+  notes?: string;
+}
+
+// ── Trip Hub Module 3: Post-Trip Awards & Superlatives ──
+export interface TripAward {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  votes: Record<string, string>; // key: voterMemberId, value: candidateMemberId
 }
 
 export interface AppSession {

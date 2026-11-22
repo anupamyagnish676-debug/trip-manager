@@ -16,20 +16,30 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
     const { data: settlementsData } = await supabase.from('settlements').select('*').eq('trip_id', tripId);
     const { data: roundsData } = await supabase.from('collection_rounds').select('*').eq('trip_id', tripId).order('created_at', { ascending: true });
 
-    const members: Member[] = (membersData || []).map((m: any) => ({
-      id: m.id,
-      name: m.name,
-      loginId: m.login_id || m.loginId || m.name.toLowerCase().replace(/\s+/g, ''),
-      password: m.password || `${m.name.toLowerCase()}123`,
-      role: m.role || 'member',
-      specialty: m.specialty || 'none',
-      upiId: m.upi_id,
-      phone: m.phone,
-      avatarColor: m.avatar_color,
-      isFinanceLead: m.is_finance_lead,
-      email: m.email || undefined,
-      pin: m.pin,
-    }));
+    const members: Member[] = (membersData || []).map((m: any) => {
+      const pass = m.password || `${m.name.toLowerCase()}123`;
+      const defaultPass1 = `${m.name.toLowerCase()}123`;
+      const defaultPass2 = `${(m.login_id || m.loginId || m.name).toLowerCase().replace(/\s+/g, '')}123`;
+      const isDefault = pass === defaultPass1 || pass === defaultPass2;
+      const isCustomInStorage = typeof window !== 'undefined' && localStorage.getItem('pwd_custom_' + m.id) === 'true';
+      const hasChanged = Boolean(m.has_changed_password || isCustomInStorage || !isDefault);
+
+      return {
+        id: m.id,
+        name: m.name,
+        loginId: m.login_id || m.loginId || m.name.toLowerCase().replace(/\s+/g, ''),
+        password: pass,
+        hasChangedPassword: hasChanged,
+        role: m.role || 'member',
+        specialty: m.specialty || 'none',
+        upiId: m.upi_id,
+        phone: m.phone,
+        avatarColor: m.avatar_color,
+        isFinanceLead: m.is_finance_lead,
+        email: m.email || undefined,
+        pin: m.pin,
+      };
+    });
 
     const expenses: Expense[] = (expensesData || []).map((e: any) => ({
       id: e.id,
@@ -78,6 +88,9 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       memberStatus: r.member_status || {},
     }));
 
+    const rawPaymentMethods = tripData.payment_methods || {};
+    const hubData = rawPaymentMethods.hubData;
+
     return {
       id: tripData.id,
       name: tripData.name,
@@ -94,6 +107,10 @@ export async function fetchTripFromSupabase(tripId: string): Promise<Trip | null
       payments,
       settlements,
       collectionRounds,
+      itineraryDays: hubData?.itineraryDays,
+      transportTickets: hubData?.transportTickets,
+      cabLogistics: hubData?.cabLogistics,
+      awards: hubData?.awards,
     };
   } catch (err) {
     console.error('Error fetching from Supabase:', err);
@@ -128,6 +145,12 @@ export async function seedTripToSupabase(trip: Trip): Promise<boolean> {
   try {
     const paymentMethodsPayload = {
       ...(trip.paymentMethods || {}),
+      hubData: {
+        itineraryDays: trip.itineraryDays || [],
+        transportTickets: trip.transportTickets || [],
+        cabLogistics: trip.cabLogistics || null,
+        awards: trip.awards || [],
+      },
     };
 
     await supabase.from('trips').upsert({
@@ -196,6 +219,12 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
   try {
     const paymentMethodsPayload = {
       ...(trip.paymentMethods || {}),
+      hubData: {
+        itineraryDays: trip.itineraryDays || [],
+        transportTickets: trip.transportTickets || [],
+        cabLogistics: trip.cabLogistics || null,
+        awards: trip.awards || [],
+      },
     };
 
     await supabase.from('trips').upsert({
