@@ -34,7 +34,13 @@ import {
   RotateCcw,
   FileText,
   Upload,
+  CloudSun,
+  Fuel,
+  Sparkles,
 } from 'lucide-react';
+import { TripWeatherForecast } from './hub/TripWeatherForecast';
+import { FuelTollCalculator } from './hub/FuelTollCalculator';
+import { TripWrappedView } from './hub/TripWrappedView';
 
 interface TripHubTabProps {
   trip: Trip;
@@ -81,7 +87,9 @@ export function TripHubTab({
   onUpdateTrip,
 }: TripHubTabProps) {
   // Active sub-tab inside Trip Hub
-  const [activeSubTab, setActiveSubTab] = useState<'itinerary' | 'transport' | 'awards'>('itinerary');
+  const [activeSubTab, setActiveSubTab] = useState<
+    'itinerary' | 'transport' | 'awards' | 'weather' | 'fuel' | 'wrapped'
+  >('itinerary');
 
   // Filter out any dummy preseeded info so the user starts with clean data
   const DUMMY_IDS = new Set([
@@ -820,45 +828,84 @@ export function TripHubTab({
 
   return (
     <div className="space-y-4 pb-12 sm:pb-6">
-      {/* ── TOP SEGMENTED SUB-NAVIGATION ── */}
-      <div className="glass-card p-1 sm:p-1.5 rounded-2xl flex items-center justify-between gap-1 shadow-xs border border-slate-200/80 dark:border-slate-800">
+      {/* ── TOP SEGMENTED SUB-NAVIGATION (Mobile Scrollable) ── */}
+      <div className="glass-card p-1 sm:p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto scrollbar-none shadow-xs border border-slate-200/80 dark:border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-1.5">
         <button
           type="button"
           onClick={() => setActiveSubTab('itinerary')}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[42px] ${
+          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
             activeSubTab === 'itinerary'
               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Calendar className="h-4 w-4 shrink-0" />
-          <span>📅 Itinerary</span>
+          <span>Itinerary</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('transport')}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[42px] ${
+          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
             activeSubTab === 'transport'
               ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-md shadow-sky-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Car className="h-4 w-4 shrink-0" />
-          <span>🚗 Commute</span>
+          <span>Commute</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('awards')}
-          className={`flex-1 py-2 sm:py-2.5 px-2 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[42px] ${
+          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
             activeSubTab === 'awards'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Trophy className="h-4 w-4 shrink-0" />
-          <span>🏆 Awards</span>
+          <span>Awards</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('weather')}
+          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+            activeSubTab === 'weather'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <CloudSun className="h-4 w-4 shrink-0" />
+          <span>Weather</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('fuel')}
+          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+            activeSubTab === 'fuel'
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Fuel className="h-4 w-4 shrink-0" />
+          <span>Fuel & Tolls</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('wrapped')}
+          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+            activeSubTab === 'wrapped'
+              ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Sparkles className="h-4 w-4 shrink-0" />
+          <span>Trip Wrapped</span>
         </button>
       </div>
 
@@ -1243,6 +1290,30 @@ export function TripHubTab({
             </div>
           </div>
 
+          {/* Quick Fuel & Highway Tolls Shortcut Banner */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-indigo-500/10 border border-purple-200/80 dark:border-purple-800/80 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 shrink-0">
+                <Fuel className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs font-black text-slate-900 dark:text-white">
+                  Highway Drive or Rental Cab?
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Calculate fuel liters, Fastag tolls, and split costs per person in 1 tap
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('fuel')}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-xs touch-manipulation min-h-[36px]"
+            >
+              Open Fuel & Tolls ↗
+            </button>
+          </div>
+
           {/* Empty State for Tickets */}
           {transportTickets.length === 0 && (
             <div className="glass-card p-6 rounded-2xl text-center border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
@@ -1526,7 +1597,8 @@ export function TripHubTab({
 
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            {/* Header: Responsive Stack on Mobile */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
@@ -1536,20 +1608,20 @@ export function TripHubTab({
                     Live Voting
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Vote for funny titles, see live leaderboards, and download official certificates
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   disabled={emailStatus.loading}
                   onClick={() => handleSendEmail('awards')}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[38px] touch-manipulation"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[40px] touch-manipulation hover:bg-slate-50"
                 >
-                  <Mail className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Email Awards</span>
+                  <Mail className="h-3.5 w-3.5 shrink-0" />
+                  <span>Email Awards</span>
                 </button>
 
                 <button
@@ -1562,16 +1634,16 @@ export function TripHubTab({
                     );
                     setIsAddAwardOpen(true);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation shadow-xs"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[40px] touch-manipulation shadow-xs"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-3.5 w-3.5 shrink-0" />
                   <span>Add Award</span>
                 </button>
               </div>
             </div>
 
             {/* Category Filter & Management Bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-2 px-2 sm:mx-0 sm:px-0">
               <button
                 type="button"
                 onClick={() => setSelectedAwardCategory('All')}
@@ -1700,55 +1772,73 @@ export function TripHubTab({
                 return (
                   <div
                     key={aw.id}
-                    className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3"
+                    className="glass-card p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3.5 shadow-xs"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="text-2xl p-2 rounded-2xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center shrink-0">
+                    {/* Header Row: Icon + Title + Category + Trash */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <div className="text-2xl p-2 sm:p-2.5 rounded-2xl bg-amber-100/60 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-center shrink-0">
                           {aw.icon}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight">
                               {aw.title}
                             </h3>
                             {selectedAwardCategory === 'All' && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0">
                                 {aw.category || 'Trip Superlatives'}
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 italic mt-0.5 line-clamp-2">
                             &quot;{aw.description}&quot;
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        {leaderMember ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-400 text-amber-950 shadow-2xs">
-                            👑 {leaderMember.name}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                            Awaiting votes
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAward(aw.id)}
-                          title="Delete award"
-                          className="p-1 text-slate-400 hover:text-rose-500 ml-1"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAward(aw.id)}
+                        title="Delete award"
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0 touch-manipulation"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
 
+                    {/* Prominent Leader Banner for Mobile & Desktop */}
+                    {leaderMember ? (
+                      <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-400/15 to-orange-500/10 border border-amber-300/50 dark:border-amber-700/50 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-base shrink-0">👑</span>
+                          <div className="min-w-0">
+                            <span className="text-[9px] uppercase font-bold text-amber-700 dark:text-amber-400 block tracking-wider">
+                              Current Leader
+                            </span>
+                            <span className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-200 truncate block">
+                              {leaderMember.name}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-400 text-amber-950 shadow-2xs shrink-0 font-mono">
+                          {maxVotes} {maxVotes === 1 ? 'vote' : 'votes'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/50 flex items-center gap-2">
+                        <span className="text-sm">⏳</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                          No votes cast yet. Be the first to vote below!
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Live Standings Progress Bars */}
                     {totalVotes > 0 && (
-                      <div className="space-y-1.5 pt-1">
+                      <div className="space-y-1.5 pt-0.5">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                          Live Standings ({totalVotes} votes)
+                          Live Standings ({totalVotes} votes cast)
                         </span>
                         {Object.entries(voteCounts)
                           .sort((a, b) => b[1] - a[1])
@@ -1759,7 +1849,7 @@ export function TripHubTab({
                             return (
                               <div key={candId} className="space-y-0.5">
                                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                  <span>
+                                  <span className="truncate pr-1">
                                     {candMember?.name || 'Friend'}
                                     {candId === myVoteCandidateId && (
                                       <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold ml-1">
@@ -1767,7 +1857,7 @@ export function TripHubTab({
                                       </span>
                                     )}
                                   </span>
-                                  <span className="text-slate-500 font-mono text-[11px]">
+                                  <span className="text-slate-500 font-mono text-[11px] shrink-0">
                                     {count} ({pct}%)
                                   </span>
                                 </div>
@@ -1783,17 +1873,18 @@ export function TripHubTab({
                       </div>
                     )}
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
-                          Vote:
-                        </span>
+                    {/* Vote Dropdown & Action Buttons Grid (Mobile Friendly) */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block">
+                          Cast Your Vote:
+                        </label>
                         <select
                           value={myVoteCandidateId || ''}
                           onChange={(e) => handleVote(aw.id, e.target.value)}
-                          className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full sm:w-auto"
+                          className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full min-h-[38px] touch-manipulation"
                         >
-                          <option value="">Select a friend...</option>
+                          <option value="">Select a friend to vote...</option>
                           {trip.members.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name}
@@ -1802,7 +1893,8 @@ export function TripHubTab({
                         </select>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
+                      {/* 2-Column Equal Grid on Mobile */}
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
                         <button
                           type="button"
                           onClick={() => {
@@ -1817,9 +1909,9 @@ export function TripHubTab({
                               totalVotes || 1
                             );
                           }}
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-white min-h-[36px] touch-manipulation shadow-xs"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 active:scale-98 text-white min-h-[42px] touch-manipulation shadow-xs"
                         >
-                          <Award className="h-3.5 w-3.5" />
+                          <Award className="h-4 w-4 shrink-0" />
                           <span>Download PDF</span>
                         </button>
 
@@ -1827,10 +1919,10 @@ export function TripHubTab({
                           type="button"
                           onClick={() => handleEmailAwardCertificate(aw, leaderMember, maxVotes, totalVotes)}
                           disabled={emailStatus.loading}
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 min-h-[36px] touch-manipulation"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700 active:scale-98 border border-slate-200 dark:border-slate-700 min-h-[42px] touch-manipulation"
                         >
-                          <Mail className="h-3.5 w-3.5" />
-                          <span>Email PDF</span>
+                          <Mail className="h-4 w-4 shrink-0" />
+                          <span>Email Cert</span>
                         </button>
                       </div>
                     </div>
@@ -1841,6 +1933,27 @@ export function TripHubTab({
           </div>
         );
       })()}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* ── SUB-MODULE 4: LIVE DESTINATION WEATHER & SUNSET FORECAST ── */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeSubTab === 'weather' && (
+        <TripWeatherForecast trip={trip} />
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* ── SUB-MODULE 5: HIGHWAY FUEL & TOLL CALCULATOR ── */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeSubTab === 'fuel' && (
+        <FuelTollCalculator trip={trip} onUpdateTrip={onUpdateTrip} />
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* ── SUB-MODULE 6: TRIP WRAPPED & HIGHLIGHTS REEL ── */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeSubTab === 'wrapped' && (
+        <TripWrappedView trip={trip} />
+      )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {/* ── MODALS (ADD/EDIT ACTIVITY, ADD/EDIT DAY, ADD/EDIT TICKET, CAB, AWARD) ── */}
