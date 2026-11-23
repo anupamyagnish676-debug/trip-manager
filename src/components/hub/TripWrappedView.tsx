@@ -147,11 +147,9 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
   ];
 
   const standardChapter2 = [
-    secondSpender && maxSpent > 0
-      ? `👑 ${topSpender?.name} fronted the most upfront cash (${formatMoney(maxSpent, trip.currency)}), closely backed by ${secondSpender.name} (${formatMoney(secondSpent, trip.currency)})!`
-      : `👑 ${topSpender?.name} acted as the chief banker fronting ${formatMoney(maxSpent, trip.currency)} for the team!`,
-    `💳 Group UPI debt simplification reduced all possible arguments into seamless 1-tap settlements!`,
-    `✨ 0 lost receipts, 100% transparency between all ${memberCount} friends!`,
+    `🤝 100% Equal Split: All ${memberCount} friends share every expense equally down to the exact rupee!`,
+    `💳 Seamless UPI debt simplification eliminated all confusion into direct 1-tap settlements.`,
+    `✨ Zero financial judgement, 100% transparency, and lifelong roadtrip brotherhood!`,
   ];
 
   // ── Action: Generate Real Story with Gemini ──
@@ -557,15 +555,26 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
         </div>
       </div>
 
-      {/* ── GEMINI MEMBER SUPERLATIVES & ROASTS ── */}
+      {/* ── GEMINI MEMBER SUPERLATIVES & HALL OF FAME (ZERO MONEY JUDGEMENT) ── */}
       {geminiStory?.memberSuperlatives && geminiStory.memberSuperlatives.length > 0 && (
         <div className="glass-card p-5 rounded-3xl border border-purple-200 dark:border-purple-900/60 space-y-3">
-          <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <h4 className="text-sm font-black text-slate-900 dark:text-white">
-              Gemini Group Hall of Fame & Roasts
-            </h4>
+          <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-amber-500 shrink-0" />
+              <div>
+                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                  Group Hall of Fame & Roadtrip Superlatives
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Celebrating each friend&apos;s roadtrip energy, navigation & vibes • <strong>Zero financial judgement</strong>
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+              🤝 100% Equal Split
+            </span>
           </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {geminiStory.memberSuperlatives.map((m, idx) => (
               <div
@@ -576,7 +585,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
                   <span className="text-xs font-black text-slate-900 dark:text-white">
                     {m.memberName}
                   </span>
-                  <span className="text-base">👑</span>
+                  <span className="text-base select-none">👑</span>
                 </div>
                 <h5 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">
                   {m.awardTitle}
@@ -590,7 +599,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
         </div>
       )}
 
-      {/* 4 Big Summary Metric Tiles */}
+      {/* 4 Big Summary Metric Tiles (Wholesome Equal Split - Zero Money Shaming) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="glass-card p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-xs">
           <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 block">Total Spend</span>
@@ -601,20 +610,20 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
         </div>
 
         <div className="glass-card p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Average Share</span>
+          <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 block">Each Friend Pays</span>
           <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
             {formatMoney(avgPerPerson, trip.currency)}
           </div>
-          <span className="text-[10px] text-slate-500 block">Per friend</span>
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">100% equal share</span>
         </div>
 
         <div className="glass-card p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-1 shadow-xs">
-          <span className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400 block">Top Spender</span>
+          <span className="text-[10px] uppercase font-bold text-purple-600 dark:text-purple-400 block">Total Bills Logged</span>
           <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-            {topSpender?.name}
+            {trip.expenses.length} bills
           </div>
           <span className="text-[10px] text-slate-500 block font-mono">
-            {formatMoney(maxSpent, trip.currency)}
+            Across {memberCount} friends
           </span>
         </div>
 

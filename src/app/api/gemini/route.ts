@@ -457,46 +457,50 @@ function generateFallbackTripWrapped(summary: any, tripName: string, destination
   const count = summary.expenseCount || 0;
   const cur = summary.currency || 'INR';
   const topCat = summary.topCategories?.[0]?.category || 'food';
-  const heroPayer = summary.balances?.sort((a: any, b: any) => b.totalPaid - a.totalPaid)?.[0]?.memberName || 'The Banker';
+  const memberCount = summary.balances?.length || 7;
+  const avgShare = memberCount > 0 ? Math.round(total / memberCount) : 0;
 
   return {
     vibeTitle: `${destination} Highway Legends Expedition`,
-    catchphrase: `A wild roadtrip where ${summary.balances?.length || 7} friends logged ${count} bills without breaking friendship!`,
+    catchphrase: `A legendary mountain roadtrip where ${memberCount} friends shared ${count} bills equally with zero drama!`,
     totalSpendFormatted: `${cur} ${total.toLocaleString('en-IN')}`,
     chapters: [
       {
         chapterNumber: 1,
-        title: 'Where The Treasure Flew',
-        icon: '💸',
-        story: `Across this ${destination} journey, the group spent a grand total of ${cur} ${total.toLocaleString('en-IN')}. Dominating the charts was ${topCat.toUpperCase()}, which accounted for the lion's share of memories and fuel. From roadside chai halts to hearty feasts, every rupee was well deployed in the name of brotherhood.`,
-        statBadges: [`${cur} ${total} Total Spend`, `${count} Bills Logged`, `Top Category: ${topCat}`],
+        title: 'The Great Mountain Adventure',
+        icon: '🏔️',
+        story: `Across this epic ${destination} journey, the crew invested a grand total of ${cur} ${total.toLocaleString('en-IN')} across ${count} adventures. Dominating the trip was ${topCat.toUpperCase()}, fueling our journeys through winding ghats, misty peaks, and scenic halts. Every rupee was an investment in unforgettable memories.`,
+        statBadges: [`${cur} ${total.toLocaleString('en-IN')} Total Group Spend`, `${count} Bills Logged`, `Top Category: ${topCat}`],
       },
       {
         chapterNumber: 2,
-        title: 'The Great Front-Line ATM Hero',
+        title: 'Peak Feast & Highway Milestones',
         icon: '⚡',
-        story: `Every trip has that one legendary friend who instinctively pulls out their phone or cash wallet before anyone else finishes saying "let me scan". In this expedition, ${heroPayer} stepped up as the unofficial group banker, keeping bills moving and the trip flowing smoothly!`,
-        statBadges: [`Banker Hero: ${heroPayer}`, `Peak Activity: Highway Dhabas`],
+        story: `From steaming cups of roadside tea and hot parathas to authentic local dhabas, the group lived large. The team stayed united through every single pitstop, keeping spirits high across every kilometer of the journey!`,
+        statBadges: [`Avg ${cur} ${avgShare.toLocaleString('en-IN')} per friend`, `Peak Vibe: Highway Dhabas & Viewpoints`],
       },
       {
         chapterNumber: 3,
-        title: 'The Friendship & Ledger Balance',
-        icon: '🏆',
-        story: `The best part of this roadtrip? We all split equally in the end! With zero awkward money tension and zero judgement, the entire group shared every bill down to the rupee. No friendship was harmed, only epic memories created.`,
-        statBadges: ['100% Equal Split Homies', 'Zero Judgement Zone', 'Lifelong Memories'],
+        title: 'The Equal Split Fellowship',
+        icon: '🤝',
+        story: `The true hallmark of this friendship: 100% EQUAL SHARES! No matter who had cash at hand or swiped at a stall, every friend chipped in equally at the end. Zero financial judgement, zero awkwardness, only pure brotherhood.`,
+        statBadges: ['100% Equal Split Homies', 'Zero Financial Judgement', 'Lifelong Memories'],
       },
     ],
     memberSuperlatives: (summary.balances || []).map((b: any, idx: number) => {
-      const titles = [
-        { title: 'The Chief Financial Officer', reason: 'Stepped up first to swipe cards and scan QR codes without flinching.' },
-        { title: 'The Mandia Jau & Chicken Auditor', reason: 'Ensured zero food waste across every single dhaba meal.' },
-        { title: 'The 1% Battery Magician', reason: 'Phone mysteriously turned off right when the bill arrived, but we love them anyway!' },
-        { title: 'The Route Navigation Pilot', reason: 'Masterminded the scenic shortcuts and hidden dhaba stops.' },
-        { title: 'The Round Figure Mathematician', reason: 'Applied Nobel-prize mental math to balance all bill fractions.' },
-        { title: 'The Chai & Snack Sponsor', reason: 'Kept the group caffeinated and energized throughout the journey.' },
-        { title: 'The Equal Split Champion', reason: 'Proudly carried the group banner of 100% equal roadtrip brotherhood!' },
+      // 100% PERSONALITY AND TRAVEL ROLE BASED — NEVER JUDGE ON MONEY!
+      const personalityAwards = [
+        { title: 'The Master Route Navigator', reason: 'Masterminded the scenic shortcuts, curve warnings, and mountain viewpoints.' },
+        { title: 'The Dhaba & Food Connoisseur', reason: 'Ensured the crew tasted the most delicious local feasts, fresh fry, and authentic dishes.' },
+        { title: 'The Aux Cable & Playlist DJ', reason: 'Kept the car sound system pumping with roadtrip anthems through every mountain turn.' },
+        { title: 'The Golden Hour Photographer', reason: 'Captured the most cinematic group portraits, mist reels, and scenic sunsets.' },
+        { title: 'The Highway Snack Auditor', reason: 'Kept the group fueled with biscuits, chips, and refreshing chai halts.' },
+        { title: 'The Mountain Philosopher', reason: 'Shared legendary roadtrip stories, deep talks, and endless laughs at every stop.' },
+        { title: 'The Early Bird Viewpoint Scout', reason: 'First to spot the sea of clouds and inspire the crew to reach the summit.' },
+        { title: 'The Chill Co-Pilot Legend', reason: 'Always kept the driver company with great energy, alertness, and endless jokes.' },
+        { title: 'The Equal Split Champion', reason: 'Stands tall for 100% equal brotherhood, fair shares, and hassle-free adventures.' },
       ];
-      const match = titles[idx % titles.length];
+      const match = personalityAwards[idx % personalityAwards.length];
       return {
         memberName: b.memberName,
         awardTitle: match.title,
@@ -741,42 +745,49 @@ Return valid JSON matching:
         );
       }
 
-      const systemInstruction = `You are the witty, observant group storyteller for a Spotify Wrapped style trip financial recap.
-Analyze this group's ACTUAL expenses, category breakdown, and settlement balances.
-Write a fun, warm, memorable 3-chapter story highlighting spending habits, peak days, front-line cash payers vs UPI collectors, and assign a witty superlative title to group members based on their actual spending/paying patterns.
+      const systemInstruction = `You are the witty, observant, warm group storyteller for a Spotify Wrapped style roadtrip recap for ${destination}.
+
+STRICT MANDATORY POLICY — ZERO FINANCIAL JUDGEMENT:
+1. Every member of this group shares ALL trip costs 100% EQUALLY at the end!
+2. Upfront card swipes or cash payments were purely logistical (whoever had cash or connectivity at the counter).
+3. NEVER judge, rank, shame, or mock any friend for how much money they spent, paid, or didn't pay upfront.
+4. DO NOT call anyone "cheap", "minimalist spender", "freeloader", "debtor", or praise anyone for having "more money".
+5. Every single member award ("memberSuperlatives") MUST be 100% focused on ROADTRIP PERSONALITY, TRAVEL HABITS, ENERGY, AND HUMOR (e.g., "The Master Route Navigator", "The Dhaba Connoisseur", "The Aux Cable DJ", "The Golden Hour Photographer", "The Highway Snack Auditor", "The Mountain Philosopher", "The Early Morning Scout", "The 100% Equal Split Champion").
+6. Chapter 3 MUST celebrate "The Equal Split Fellowship": highlighting that all friends share equally down to the rupee, celebrating lifelong brotherhood and zero money tension.
+
 Return valid JSON matching:
 {
-  "vibeTitle": "3-5 word clever theme for this group's trip spending vibe (e.g. 'The Seafood Royalty Expedition')",
-  "catchphrase": "Punchy 1-sentence recap of the trip's financial journey",
+  "vibeTitle": "3-5 word clever theme for this group's roadtrip vibe (e.g. 'The Mountain Mist Highway Fellowship')",
+  "catchphrase": "Punchy 1-sentence recap of the trip's legendary memories & equal sharing",
   "totalSpendFormatted": "Total formatted spend string",
   "chapters": [
     {
       "chapterNumber": 1,
-      "title": "Where The Treasure Went",
-      "icon": "💸",
-      "story": "2-3 paragraphs analyzing where the money flew, dominant spending categories, and group habits with witty humor.",
-      "statBadges": ["Category spend stat", "Interesting transaction fact"]
+      "title": "The Roadtrip Chronicles & Vibe",
+      "icon": "🏔️",
+      "story": "2-3 paragraphs analyzing the journey, where the crew traveled, dominant categories (food, dhabas, fuel, scenic spots), and group spirit.",
+      "statBadges": ["Total spend investment", "Bills logged", "Top adventure category"]
     },
     {
       "chapterNumber": 2,
-      "title": "The Big Spender Day & Peak Hour",
+      "title": "Peak Feasts & Highway Milestones",
       "icon": "⚡",
-      "story": "Story of the most expensive day or largest single bills, who stepped up with cash, and the climax of group spending.",
-      "statBadges": ["Peak day bill amount", "Hero payer mention"]
+      "story": "Story of the most memorable group feasts, biggest team activities, scenic road moments, and high spirits.",
+      "statBadges": ["Average equal share per friend", "Group milestone"]
     },
     {
       "chapterNumber": 3,
-      "title": "The Group Hall of Fame",
-      "icon": "🏆",
-      "story": "Humorous and affectionate awards and behavioral archetypes for the friends based on who paid, who owes, and who collected.",
-      "statBadges": ["Group friendship metric", "Settlement status"]
+      "title": "The Equal Split Fellowship & Brotherhood",
+      "icon": "🤝",
+      "story": "Warm, uplifting story celebrating 100% equal sharing between all friends, zero financial tension, and unforgettable roadtrip memories.",
+      "statBadges": ["100% Equal Split Homies", "Zero Judgement Zone", "Lifelong Friends"]
     }
   ],
   "memberSuperlatives": [
     {
       "memberName": "Name of member",
-      "awardTitle": "Creative and funny award (e.g. 'The Cash ATM Hero', 'The QR Code Ninja')",
-      "reason": "Why they earned this based on the real ledger"
+      "awardTitle": "Affectionate personality award (e.g. 'The Master Route Navigator', 'The Golden Hour Photographer', 'The Dhaba Connoisseur')",
+      "reason": "Fun behavioral/roadtrip reason celebrating their energy, habits, or navigation (NEVER about money or upfront payments)"
     }
   ]
 }`;
@@ -784,10 +795,10 @@ Return valid JSON matching:
       const prompt = `Analyze this group trip: "${tripName}" in ${destination}.
 Total Spend: ${summary.currency} ${summary.totalSpend} across ${summary.expenseCount} bills.
 Top Categories: ${JSON.stringify(summary.topCategories)}.
-Balances and Members: ${JSON.stringify(summary.balances)}.
-Sample Expenses: ${JSON.stringify(summary.expenses.slice(0, 15))}.
+All Members: ${(summary.balances || []).map((b: any) => b.memberName).join(', ')}.
+Sample Activities: ${JSON.stringify(summary.expenses.slice(0, 15))}.
 
-Write a brilliant, engaging, customized Trip Wrapped story for this group!`;
+IMPORTANT REMINDER: All friends share 100% equally! Assign superlatives purely for travel personality, navigation, music, food love, and roadtrip vibes. Zero money-based awards!`;
 
       if (apiKey) {
         try {
