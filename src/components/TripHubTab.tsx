@@ -35,11 +35,9 @@ import {
   FileText,
   Upload,
   CloudSun,
-  Fuel,
   Sparkles,
 } from 'lucide-react';
 import { TripWeatherForecast } from './hub/TripWeatherForecast';
-import { FuelTollCalculator } from './hub/FuelTollCalculator';
 import { TripWrappedView } from './hub/TripWrappedView';
 import { ItineraryAiCopilot } from './hub/ItineraryAiCopilot';
 
@@ -1368,33 +1366,6 @@ export function TripHubTab({
             </div>
           </div>
 
-          {/* Quick Fuel & Highway Tolls Shortcut Banner */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-indigo-500/10 border border-purple-200/80 dark:border-purple-800/80 flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 shrink-0">
-                <Fuel className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-slate-900 dark:text-white">
-                  Highway Drive or Rental Cab?
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Calculate fuel liters, Fastag tolls, and split costs per person in 1 tap
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('fuel-toll-calculator-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-xs touch-manipulation min-h-[36px]"
-            >
-              Calculate Fuel & Tolls ↓
-            </button>
-          </div>
-
           {/* Empty State for Tickets */}
           {transportTickets.length === 0 && (
             <div className="glass-card p-6 rounded-2xl text-center border border-dashed border-slate-300 dark:border-slate-700 space-y-2">
@@ -1662,11 +1633,6 @@ export function TripHubTab({
                 No cab or driver details added. Tap &quot;Add Cab&quot; to keep contact info ready.
               </p>
             )}
-          </div>
-
-          {/* ── Highway Fuel & Tolls Calculator ── */}
-          <div id="fuel-toll-calculator-section" className="pt-2">
-            <FuelTollCalculator trip={trip} onUpdateTrip={onUpdateTrip} />
           </div>
         </div>
       )}
