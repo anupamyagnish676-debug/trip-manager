@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Trip, ItineraryActivity } from '@/types';
 import {
   Sparkles,
@@ -20,7 +20,6 @@ import {
   Info,
   X,
   RotateCcw,
-  Key,
   MessageSquare,
   Send,
   Loader2,
@@ -30,12 +29,10 @@ import {
   getGeminiWhatNext,
   getGeminiHiddenGems,
   chatWithGeminiGuide,
-  getStoredGeminiApiKey,
   GeneratedItineraryResponse,
   WhatNextResponse,
   HiddenGemsResponse,
 } from '@/lib/geminiService';
-import { GeminiApiKeyModal } from './GeminiApiKeyModal';
 
 interface ItineraryAiCopilotProps {
   trip: Trip;
@@ -66,8 +63,6 @@ export function ItineraryAiCopilot({
   onClose,
 }: ItineraryAiCopilotProps) {
   const [activeTab, setActiveTab] = useState<'generate' | 'pivot' | 'gems' | 'chat'>('generate');
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
 
   // ── Tab 1: Itinerary Generation State ──
   const [selectedVibe, setSelectedVibe] = useState(PRESET_VIBES[0]);
@@ -98,16 +93,6 @@ export function ItineraryAiCopilot({
   ]);
   const [isChatting, setIsChatting] = useState(false);
 
-  useEffect(() => {
-    const key = getStoredGeminiApiKey();
-    setHasApiKey(Boolean(key));
-  }, []);
-
-  const refreshKeyStatus = () => {
-    const key = getStoredGeminiApiKey();
-    setHasApiKey(Boolean(key));
-  };
-
   // ── Action 1: Generate Itinerary with Gemini ──
   const handleGeneratePlan = async () => {
     setIsGenerating(true);
@@ -125,11 +110,7 @@ export function ItineraryAiCopilot({
       });
       setGeneratedPlan(plan);
     } catch (err: any) {
-      if (err.code === 'MISSING_API_KEY') {
-        setIsKeyModalOpen(true);
-      } else {
-        setGenError(err.message || 'Failed to generate itinerary. Please try again.');
-      }
+      setGenError(err.message || 'Failed to generate itinerary with Gemini. Ensure GEMINI_API_KEY is configured in Vercel environment variables.');
     } finally {
       setIsGenerating(false);
     }
@@ -149,11 +130,7 @@ export function ItineraryAiCopilot({
       });
       setPivotResult(res);
     } catch (err: any) {
-      if (err.code === 'MISSING_API_KEY') {
-        setIsKeyModalOpen(true);
-      } else {
-        alert(err.message || 'Failed to get alternatives from Gemini.');
-      }
+      alert(err.message || 'Failed to get alternatives from Gemini. Ensure GEMINI_API_KEY is set in Vercel environment variables.');
     } finally {
       setIsPivoting(false);
     }
@@ -168,11 +145,7 @@ export function ItineraryAiCopilot({
       });
       setGemsResult(res);
     } catch (err: any) {
-      if (err.code === 'MISSING_API_KEY') {
-        setIsKeyModalOpen(true);
-      } else {
-        alert(err.message || 'Failed to get hidden gems from Gemini.');
-      }
+      alert(err.message || 'Failed to get hidden gems from Gemini. Ensure GEMINI_API_KEY is set in Vercel environment variables.');
     } finally {
       setIsFetchingGems(false);
     }
@@ -196,14 +169,10 @@ export function ItineraryAiCopilot({
       });
       setChatMessages([...newMsgs, { role: 'model', text: reply }]);
     } catch (err: any) {
-      if (err.code === 'MISSING_API_KEY') {
-        setIsKeyModalOpen(true);
-      } else {
-        setChatMessages([
-          ...newMsgs,
-          { role: 'model', text: `⚠️ ${err.message || 'Could not connect to Gemini AI.'}` },
-        ]);
-      }
+      setChatMessages([
+        ...newMsgs,
+        { role: 'model', text: `⚠️ ${err.message || 'Could not connect to Gemini AI. Ensure GEMINI_API_KEY is set in Vercel environment variables.'}` },
+      ]);
     } finally {
       setIsChatting(false);
     }
@@ -254,21 +223,6 @@ export function ItineraryAiCopilot({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Gemini Key Pill */}
-          <button
-            type="button"
-            onClick={() => setIsKeyModalOpen(true)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all touch-manipulation min-h-[34px] ${
-              hasApiKey
-                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100'
-            }`}
-            title="Configure your Google Gemini API Key"
-          >
-            <Key className="h-3.5 w-3.5" />
-            <span>{hasApiKey ? 'Gemini: Active ✨' : 'Connect Key 🔑'}</span>
-          </button>
-
           {onClose && (
             <button
               type="button"
@@ -758,13 +712,6 @@ export function ItineraryAiCopilot({
           </form>
         </div>
       )}
-
-      {/* ── GEMINI API KEY MODAL ── */}
-      <GeminiApiKeyModal
-        isOpen={isKeyModalOpen}
-        onClose={() => setIsKeyModalOpen(false)}
-        onKeySaved={refreshKeyStatus}
-      />
     </div>
   );
 }

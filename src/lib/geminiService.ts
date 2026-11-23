@@ -1,40 +1,14 @@
 /**
  * Service for interacting with the Google Gemini AI backend API
+ * Authentication is handled securely server-side via GEMINI_API_KEY environment variable.
  */
 
-export function getStoredGeminiApiKey(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('gemini_api_key') || null;
-}
-
-export function saveStoredGeminiApiKey(key: string): void {
-  if (typeof window === 'undefined') return;
-  const clean = key.trim();
-  if (clean) {
-    localStorage.setItem('gemini_api_key', clean);
-  } else {
-    localStorage.removeItem('gemini_api_key');
-  }
-}
-
-export function removeStoredGeminiApiKey(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('gemini_api_key');
-}
-
 async function postToGeminiApi(payload: any): Promise<any> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  const storedKey = getStoredGeminiApiKey();
-  if (storedKey) {
-    headers['x-gemini-api-key'] = storedKey;
-  }
-
   const res = await fetch('/api/gemini', {
     method: 'POST',
-    headers,
+    headers: {
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(payload),
   });
 

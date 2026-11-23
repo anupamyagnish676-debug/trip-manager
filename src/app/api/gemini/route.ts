@@ -84,20 +84,16 @@ async function callGeminiApi(
 
 export async function POST(req: NextRequest) {
   try {
-    const headerKey = req.headers.get('x-gemini-api-key');
-    const apiKey =
-      (headerKey && headerKey.trim().length > 5 ? headerKey.trim() : null) ||
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json(
         {
           error: 'MISSING_API_KEY',
           message:
-            'Google Gemini API key not found. Please provide an API key in the app settings or set GEMINI_API_KEY in your environment.',
+            'GEMINI_API_KEY environment variable is not configured on the server. Please add GEMINI_API_KEY in Vercel settings (Environment Variables).',
         },
-        { status: 401 }
+        { status: 503 }
       );
     }
 

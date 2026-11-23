@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Trip } from '@/types';
 import { formatMoney } from '@/lib/currency';
 import { calculateMemberBalances } from '@/lib/calculations';
@@ -25,17 +25,14 @@ import {
   TrendingUp,
   MessageCircle,
   Zap,
-  Key,
   Loader2,
   RotateCcw,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import {
   getGeminiTripWrapped,
-  getStoredGeminiApiKey,
   TripWrappedResponse,
 } from '@/lib/geminiService';
-import { GeminiApiKeyModal } from './GeminiApiKeyModal';
 
 interface TripWrappedViewProps {
   trip: Trip;
@@ -44,24 +41,12 @@ interface TripWrappedViewProps {
 export function TripWrappedView({ trip }: TripWrappedViewProps) {
   const [copied, setCopied] = useState(false);
   const [activeStorySlide, setActiveStorySlide] = useState<number>(0);
-  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(false);
 
   // Gemini Live Story State
   const [geminiStory, setGeminiStory] = useState<TripWrappedResponse | null>(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [storyError, setStoryError] = useState<string | null>(null);
   const [storyMode, setStoryMode] = useState<'gemini' | 'standard'>('gemini');
-
-  useEffect(() => {
-    const key = getStoredGeminiApiKey();
-    setHasApiKey(Boolean(key));
-  }, []);
-
-  const refreshKeyStatus = () => {
-    const key = getStoredGeminiApiKey();
-    setHasApiKey(Boolean(key));
-  };
 
   // ── Financial Calculations ──
   const totalSpend = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -213,11 +198,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
       setStoryMode('gemini');
       setActiveStorySlide(0);
     } catch (err: any) {
-      if (err.code === 'MISSING_API_KEY') {
-        setIsKeyModalOpen(true);
-      } else {
-        setStoryError(err.message || 'Failed to generate story with Gemini.');
-      }
+      setStoryError(err.message || 'Failed to generate story with Gemini. Please ensure GEMINI_API_KEY is configured in Vercel environment variables.');
     } finally {
       setIsGeneratingStory(false);
     }
@@ -647,13 +628,6 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
           </span>
         </div>
       </div>
-
-      {/* Gemini API Key Modal */}
-      <GeminiApiKeyModal
-        isOpen={isKeyModalOpen}
-        onClose={() => setIsKeyModalOpen(false)}
-        onKeySaved={refreshKeyStatus}
-      />
     </div>
   );
 }
