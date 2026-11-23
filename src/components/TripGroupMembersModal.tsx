@@ -16,8 +16,15 @@ import {
   Edit2,
   Save,
   RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 import { Trip, Member, MemberRole, TripSpecialty } from '@/types';
+import {
+  getMemberFinancialSummary,
+  rebalanceTripOnMemberRemoval,
+  rebalanceTripOnMemberAddition,
+  MemberFinancialSummary,
+} from '@/lib/ledgerSync';
 
 interface TripGroupMembersModalProps {
   isOpen: boolean;
@@ -25,6 +32,7 @@ interface TripGroupMembersModalProps {
   trip: Trip;
   currentMember?: Member | null;
   onSaveMembers: (updatedMembers: Member[]) => void;
+  onUpdateTrip?: (updatedTrip: Trip) => void;
 }
 
 const SPECIALTY_OPTIONS: { value: TripSpecialty; label: string; icon: string; desc: string }[] = [
@@ -48,9 +56,13 @@ export function TripGroupMembersModal({
   trip,
   currentMember,
   onSaveMembers,
+  onUpdateTrip,
 }: TripGroupMembersModalProps) {
   const [members, setMembers] = useState<Member[]>(trip.members);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [includeInExistingExpenses, setIncludeInExistingExpenses] = useState(true);
+  const [deleteTargetSummary, setDeleteTargetSummary] = useState<MemberFinancialSummary | null>(null);
+  const [rebalanceStatusNotice, setRebalanceStatusNotice] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editingMyUpiId, setEditingMyUpiId] = useState<string | null>(null);
@@ -118,9 +130,25 @@ export function TripGroupMembersModal({
       pin: trimmedPass,
     };
 
-    const updated = [...members, newMember];
-    setMembers(updated);
-    onSaveMembers(updated);
+    if (onUpdateTrip) {
+      const { updatedTrip, rebalancedExpensesCount } = rebalanceTripOnMemberAddition(
+        trip,
+        newMember,
+        includeInExistingExpenses
+      );
+      setMembers(updatedTrip.members);
+      onUpdateTrip(updatedTrip);
+      if (rebalancedExpensesCount > 0) {
+        setRebalanceStatusNotice(
+          `Added ${newMember.name} and rebalanced ${rebalancedExpensesCount} group expense(s) equally!`
+        );
+        setTimeout(() => setRebalanceStatusNotice(null), 4500);
+      }
+    } else {
+      const updated = [...members, newMember];
+      setMembers(updated);
+      onSaveMembers(updated);
+    }
 
     // Reset form
     setName('');
@@ -257,11 +285,47 @@ export function TripGroupMembersModal({
       alert('A trip group requires at least 1 member!');
       return;
     }
-    if (confirm('Remove this member from the trip group?')) {
+
+    const targetMember = members.find((m) => m.id === id);
+    if (!targetMember) return;
+
+    // Check financial summary for this member
+    const summary = getMemberFinancialSummary(trip, id);
+
+    // If the member has NO financial records (no paid bills, no splits)
+    if (summary.expensesPaidCount === 0 && summary.splitsCount === 0) {
+      if (confirm(`Remove "${targetMember.name}" from the trip group?`)) {
+        executeMemberRemoval(id);
+      }
+      return;
+    }
+
+    // If member has active bills or splits, show the Rebalance Confirmation Dialog
+    setDeleteTargetSummary(summary);
+  };
+
+  const executeMemberRemoval = (id: string) => {
+    if (onUpdateTrip) {
+      const { updatedTrip, removedMemberName, rebalancedExpensesCount, reassignedPayerCount } =
+        rebalanceTripOnMemberRemoval(trip, id);
+      setMembers(updatedTrip.members);
+      onUpdateTrip(updatedTrip);
+
+      const noticeParts: string[] = [`Removed ${removedMemberName}.`];
+      if (rebalancedExpensesCount > 0) {
+        noticeParts.push(`Rebalanced ${rebalancedExpensesCount} shared bill(s) among remaining friends.`);
+      }
+      if (reassignedPayerCount > 0) {
+        noticeParts.push(`Reassigned ${reassignedPayerCount} paid bill(s) to Trip Lead.`);
+      }
+      setRebalanceStatusNotice(noticeParts.join(' '));
+      setTimeout(() => setRebalanceStatusNotice(null), 5000);
+    } else {
       const updated = members.filter((m) => m.id !== id);
       setMembers(updated);
       onSaveMembers(updated);
     }
+    setDeleteTargetSummary(null);
   };
 
   const copyCredentials = (member: Member) => {
@@ -329,6 +393,14 @@ export function TripGroupMembersModal({
             </p>
           </div>
         </div>
+
+        {/* Rebalance & Status Feedback Banner */}
+        {rebalanceStatusNotice && (
+          <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 mb-4 animate-fadeIn">
+            <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span>{rebalanceStatusNotice}</span>
+          </div>
+        )}
 
         {/* Actions bar */}
         <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
@@ -469,6 +541,25 @@ export function TripGroupMembersModal({
                 />
               </div>
             </div>
+
+            {trip.expenses && trip.expenses.filter((e) => !e.isPersonal).length > 0 && (
+              <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-sky-100/60 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/80 cursor-pointer text-xs">
+                <input
+                  type="checkbox"
+                  checked={includeInExistingExpenses}
+                  onChange={(e) => setIncludeInExistingExpenses(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded text-sky-600 focus:ring-sky-500 shrink-0"
+                />
+                <div>
+                  <span className="font-black text-slate-900 dark:text-white block">
+                    Include in existing shared group bills ({trip.expenses.filter((e) => !e.isPersonal).length} shared bills)
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5 leading-relaxed">
+                    Recommended for friends joining the whole trip. Automatically recalculates hotel, cab, and common expenses to split equally with them.
+                  </span>
+                </div>
+              </label>
+            )}
 
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -798,6 +889,94 @@ export function TripGroupMembersModal({
           </button>
         </div>
       </div>
+
+      {/* ── REBALANCE & REMOVE CONFIRMATION MODAL ── */}
+      {deleteTargetSummary && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 shrink-0">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Rebalance & Remove {deleteTargetSummary.memberName}?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  This friend has recorded financial activity in the trip:
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 p-3.5 space-y-2 text-xs">
+              {deleteTargetSummary.expensesPaidCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    Bills Paid by {deleteTargetSummary.memberName}:
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white font-mono">
+                    {deleteTargetSummary.expensesPaidCount} bill(s) (₹{deleteTargetSummary.expensesPaidTotal})
+                  </span>
+                </div>
+              )}
+              {deleteTargetSummary.splitsCount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 dark:text-slate-300">Group Splits Included:</span>
+                  <span className="font-bold text-slate-900 dark:text-white font-mono">
+                    {deleteTargetSummary.splitsCount} split(s) (₹{deleteTargetSummary.splitsTotal} share)
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-700 font-extrabold">
+                <span className="text-slate-700 dark:text-slate-300">Current Net Balance:</span>
+                <span
+                  className={
+                    deleteTargetSummary.netBalance > 0
+                      ? 'text-emerald-600 dark:text-emerald-400 font-mono'
+                      : deleteTargetSummary.netBalance < 0
+                      ? 'text-rose-600 dark:text-rose-400 font-mono'
+                      : 'text-slate-600 font-mono'
+                  }
+                >
+                  {deleteTargetSummary.netBalance > 0
+                    ? `+₹${deleteTargetSummary.netBalance} (Owed money)`
+                    : deleteTargetSummary.netBalance < 0
+                    ? `-₹${Math.abs(deleteTargetSummary.netBalance)} (Owes money)`
+                    : '₹0 (Fully Settled)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 p-3 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+              <span className="font-black block text-amber-950 dark:text-amber-300">
+                ⚡ Automatic Smart Rebalance:
+              </span>
+              <ul className="text-[11px] leading-relaxed space-y-0.5 list-disc list-inside">
+                <li>Shared group bills will automatically re-split equally among the remaining {members.length - 1} friends.</li>
+                <li>Any bills paid by {deleteTargetSummary.memberName} will be reassigned to the Trip Lead.</li>
+                <li>Settle Up receiving and paying parties will automatically update with zero ledger errors.</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetSummary(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 min-h-[38px] touch-manipulation"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeMemberRemoval(deleteTargetSummary.memberId)}
+                className="px-4 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white min-h-[38px] touch-manipulation shadow-md shadow-rose-600/20"
+              >
+                Rebalance & Remove Friend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

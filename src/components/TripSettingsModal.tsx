@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Check, Trash2, Plus, Upload, QrCode as QrIcon, Globe, CreditCard, ExternalLink, RotateCcw } from 'lucide-react';
 import { Trip, Member } from '@/types';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { rebalanceTripOnMemberRemoval, rebalanceTripOnMemberAddition } from '@/lib/ledgerSync';
 
 interface TripSettingsModalProps {
   isOpen: boolean;
@@ -109,7 +110,26 @@ export function TripSettingsModal({
   };
 
   const handleSave = () => {
-    const updatedMembers = members.map((m) => {
+    let currentWorkingTrip: Trip = { ...trip };
+
+    // Check for removed members and rebalance expenses safely
+    const removedMemberIds = trip.members
+      .map((m) => m.id)
+      .filter((id) => !members.some((m) => m.id === id));
+
+    for (const remId of removedMemberIds) {
+      const { updatedTrip } = rebalanceTripOnMemberRemoval(currentWorkingTrip, remId);
+      currentWorkingTrip = updatedTrip;
+    }
+
+    // Check for newly added members and rebalance equal expenses
+    const addedMembers = members.filter((m) => !trip.members.some((old) => old.id === m.id));
+    for (const newM of addedMembers) {
+      const { updatedTrip } = rebalanceTripOnMemberAddition(currentWorkingTrip, newM, true);
+      currentWorkingTrip = updatedTrip;
+    }
+
+    const updatedMembers = currentWorkingTrip.members.map((m) => {
       const isLead = m.id === selectedFinanceLeadId;
       return {
         ...m,
@@ -120,7 +140,7 @@ export function TripSettingsModal({
     });
 
     const updated: Trip = {
-      ...trip,
+      ...currentWorkingTrip,
       name: tripName.trim() || 'Our Trip Group',
       destination: destination.trim() || 'Worldwide',
       currency,

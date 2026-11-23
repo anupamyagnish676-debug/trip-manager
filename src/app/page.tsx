@@ -1079,6 +1079,7 @@ export default function TripFinancePortal() {
         onClose={() => setIsGroupMembersOpen(false)}
         trip={trip}
         currentMember={currentMember}
+        onUpdateTrip={(updatedTrip) => saveTripState(updatedTrip)}
         onSaveMembers={(updatedMembers) => {
           const lead =
             updatedMembers.find((m) => m.isFinanceLead) ||
