@@ -4,35 +4,17 @@ import React, { useState } from 'react';
 import { Trip, ItineraryActivity } from '@/types';
 import {
   Sparkles,
-  Compass,
-  MapPin,
   Clock,
-  ShieldAlert,
-  Plus,
+  MapPin,
   Check,
-  Navigation,
-  Utensils,
-  Sun,
-  CloudRain,
-  Users,
-  Flame,
-  ArrowRight,
-  Info,
+  Plus,
   X,
-  RotateCcw,
-  MessageSquare,
-  Send,
   Loader2,
+  Info,
+  RotateCcw,
+  Languages,
 } from 'lucide-react';
-import {
-  generateGeminiItinerary,
-  getGeminiWhatNext,
-  getGeminiHiddenGems,
-  chatWithGeminiGuide,
-  GeneratedItineraryResponse,
-  WhatNextResponse,
-  HiddenGemsResponse,
-} from '@/lib/geminiService';
+import { generateGeminiItinerary, GeneratedItineraryResponse } from '@/lib/geminiService';
 
 interface ItineraryAiCopilotProps {
   trip: Trip;
@@ -41,19 +23,10 @@ interface ItineraryAiCopilotProps {
   onClose?: () => void;
 }
 
-interface DraftActivity {
-  time: string;
-  title: string;
-  location: string;
-  notes: string;
-  dressCodeOrTips?: string;
-}
-
-const PRESET_VIBES = [
-  { id: 'temple_beach', label: 'Puri Sacred Temples & Beach', hint: 'Jagannath darshan, Anandabazar Mahaprasad, Golden Beach sunset' },
-  { id: 'marine_drive', label: 'Konark Marine Drive & Sun Temple', hint: 'Coastal highway cruise, 13th-century Sun Temple, Chandrabhaga beach' },
-  { id: 'chilika_nature', label: 'Chilika Lake & Satapada Dolphins', hint: 'Scenic boat ride, Irrawaddy dolphins, fresh coastal crab fry' },
-  { id: 'food_dhaba', label: 'Highway Dhabas & Seafood Crawl', hint: 'Authentic Dalma, Chhena Poda, highway seafood dhabas, Pipili crafts' },
+const QUICK_INSPIRATIONS = [
+  'Morning temple darshan, local breakfast, afternoon beach, seafood dinner',
+  'Scenic waterfall hike, highway dhaba lunch, lake boating & sunset viewpoint',
+  'Local sightseeing, authentic Odia food crawl, market shopping & relaxed evening',
 ];
 
 export function ItineraryAiCopilot({
@@ -62,125 +35,44 @@ export function ItineraryAiCopilot({
   onAddActivitiesToDay,
   onClose,
 }: ItineraryAiCopilotProps) {
-  const [activeTab, setActiveTab] = useState<'generate' | 'pivot' | 'gems' | 'chat'>('generate');
-
-  // ── Tab 1: Itinerary Generation State ──
-  const [selectedVibe, setSelectedVibe] = useState(PRESET_VIBES[0]);
-  const [customPrompt, setCustomPrompt] = useState('');
   const [targetDay, setTargetDay] = useState<number>(activeDayNumber || 1);
+  const [userPrompt, setUserPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedItineraryResponse | null>(null);
-  const [addedSuccess, setAddedSuccess] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  const [addedSuccess, setAddedSuccess] = useState(false);
 
-  // ── Tab 2: What Next (Emergency Pivot) State ──
-  const [pivotLocation, setPivotLocation] = useState(trip.destination || 'Puri Beach');
-  const [pivotReason, setPivotReason] = useState('Spot is overly crowded with long lines');
-  const [isPivoting, setIsPivoting] = useState(false);
-  const [pivotResult, setPivotResult] = useState<WhatNextResponse | null>(null);
+  // Available days for dropdown (existing trip days + extra day option)
+  const existingDays = trip.itineraryDays?.length || 1;
+  const dayOptions = Array.from({ length: Math.max(existingDays, targetDay, 3) }, (_, i) => i + 1);
 
-  // ── Tab 3: Hidden Gems State ──
-  const [isFetchingGems, setIsFetchingGems] = useState(false);
-  const [gemsResult, setGemsResult] = useState<HiddenGemsResponse | null>(null);
-
-  // ── Tab 4: Chat with Gemini State ──
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([
-    {
-      role: 'model',
-      text: `Namaste! I am your Gemini travel copilot for ${trip.destination || 'Odisha'}. Ask me about temple dress codes, best times to avoid crowds, hidden dhabas, or route driving times!`,
-    },
-  ]);
-  const [isChatting, setIsChatting] = useState(false);
-
-  // ── Action 1: Generate Itinerary with Gemini ──
-  const handleGeneratePlan = async () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
     setGenError(null);
     setAddedSuccess(false);
 
     try {
       const plan = await generateGeminiItinerary({
-        destination: trip.destination || 'Puri & Konark, Odisha',
+        destination: trip.destination || 'Odisha',
         tripName: trip.name,
         dayNumber: targetDay,
         members: trip.members.map((m) => ({ id: m.id, name: m.name })),
-        preferences: selectedVibe.hint,
-        customPrompt: customPrompt.trim() || undefined,
+        customPrompt: userPrompt.trim() || undefined,
       });
+
       setGeneratedPlan(plan);
     } catch (err: any) {
-      setGenError(err.message || 'Failed to generate itinerary with Gemini. Ensure GEMINI_API_KEY is configured in Vercel environment variables.');
+      setGenError(
+        err.message ||
+          'Failed to connect to Gemini AI. Please verify GEMINI_API_KEY in Vercel environment variables.'
+      );
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // ── Action 2: Emergency Pivot with Gemini ──
-  const handleRunPivot = async (reasonOverride?: string) => {
-    setIsPivoting(true);
-    const chosenReason = reasonOverride || pivotReason;
-    if (reasonOverride) setPivotReason(reasonOverride);
-
-    try {
-      const res = await getGeminiWhatNext({
-        destination: trip.destination || 'Puri & Konark',
-        currentSpot: pivotLocation,
-        reason: chosenReason,
-      });
-      setPivotResult(res);
-    } catch (err: any) {
-      alert(err.message || 'Failed to get alternatives from Gemini. Ensure GEMINI_API_KEY is set in Vercel environment variables.');
-    } finally {
-      setIsPivoting(false);
-    }
-  };
-
-  // ── Action 3: Hidden Gems with Gemini ──
-  const handleFetchGems = async () => {
-    setIsFetchingGems(true);
-    try {
-      const res = await getGeminiHiddenGems({
-        destination: trip.destination || 'Odisha Road Trip (Puri, Konark, Bhubaneswar)',
-      });
-      setGemsResult(res);
-    } catch (err: any) {
-      alert(err.message || 'Failed to get hidden gems from Gemini. Ensure GEMINI_API_KEY is set in Vercel environment variables.');
-    } finally {
-      setIsFetchingGems(false);
-    }
-  };
-
-  // ── Action 4: Chat with Gemini Guide ──
-  const handleSendChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = chatInput.trim();
-    if (!clean || isChatting) return;
-
-    const newMsgs = [...chatMessages, { role: 'user' as const, text: clean }];
-    setChatMessages(newMsgs);
-    setChatInput('');
-    setIsChatting(true);
-
-    try {
-      const reply = await chatWithGeminiGuide({
-        destination: trip.destination || 'Puri & Konark, Odisha',
-        customPrompt: clean,
-      });
-      setChatMessages([...newMsgs, { role: 'model', text: reply }]);
-    } catch (err: any) {
-      setChatMessages([
-        ...newMsgs,
-        { role: 'model', text: `⚠️ ${err.message || 'Could not connect to Gemini AI. Ensure GEMINI_API_KEY is set in Vercel environment variables.'}` },
-      ]);
-    } finally {
-      setIsChatting(false);
-    }
-  };
-
-  // Add activities to Day
-  const handleAddAllToDay = () => {
-    if (!generatedPlan || !generatedPlan.activities) return;
+  const handleAddAllToItinerary = () => {
+    if (!generatedPlan || !generatedPlan.activities || generatedPlan.activities.length === 0) return;
 
     const formatted: ItineraryActivity[] = generatedPlan.activities.map((a, idx) => ({
       id: `act-gemini-${Date.now()}-${idx}`,
@@ -196,13 +88,18 @@ export function ItineraryAiCopilot({
     setTimeout(() => {
       setAddedSuccess(false);
       if (onClose) onClose();
-    }, 1500);
+    }, 1400);
+  };
+
+  const handleReset = () => {
+    setGeneratedPlan(null);
+    setGenError(null);
   };
 
   return (
-    <div className="glass-card p-4 sm:p-5 rounded-3xl border border-indigo-200/90 dark:border-indigo-900/80 bg-gradient-to-br from-indigo-50/50 via-white to-sky-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/30 space-y-4 shadow-md animate-fadeIn">
-      {/* ── TOP HEADER & GEMINI KEY PILL ── */}
-      <div className="flex items-center justify-between gap-2 border-b border-indigo-100 dark:border-indigo-950/80 pb-3 flex-wrap">
+    <div className="glass-card p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-indigo-200/90 dark:border-indigo-900/80 bg-gradient-to-br from-indigo-50/50 via-white to-sky-50/40 dark:from-slate-900 dark:via-slate-900 dark:to-indigo-950/30 space-y-4 shadow-md animate-fadeIn">
+      {/* ── HEADER ── */}
+      <div className="flex items-start justify-between gap-3 border-b border-indigo-100 dark:border-indigo-950/80 pb-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-indigo-600 via-sky-500 to-emerald-500 text-white flex items-center justify-center shadow-xs shrink-0">
             <Sparkles className="h-5 w-5" />
@@ -210,506 +107,231 @@ export function ItineraryAiCopilot({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                Smart Itinerary Copilot & Local Guide
+                Gemini AI Itinerary Assistant
               </h3>
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-sky-500 text-white shadow-2xs">
-                Powered by Google Gemini
+                Google Gemini
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              Dynamic schedules, emergency pivots & hidden dhaba recommendations for {trip.destination}
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Type your plan in your own words (English, Hindi, Odia, etc.) — Gemini will seed structured cards.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 touch-manipulation"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 touch-manipulation shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center"
+            title="Close AI Assistant"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
-      {/* ── 4 NAVIGATION TABS ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-2xl bg-slate-200/60 dark:bg-slate-800/60 border border-slate-300/40 dark:border-slate-700/40">
-        <button
-          type="button"
-          onClick={() => setActiveTab('generate')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all touch-manipulation flex items-center justify-center gap-1.5 ${
-            activeTab === 'generate'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <Compass className="h-3.5 w-3.5 shrink-0" />
-          <span>1-Click Day Plan</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('pivot')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all touch-manipulation flex items-center justify-center gap-1.5 ${
-            activeTab === 'pivot'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <Flame className="h-3.5 w-3.5 shrink-0" />
-          <span>What to Do Next?</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('gems');
-            if (!gemsResult) handleFetchGems();
-          }}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all touch-manipulation flex items-center justify-center gap-1.5 ${
-            activeTab === 'gems'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <Sparkles className="h-3.5 w-3.5 shrink-0" />
-          <span>Hidden Gems</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('chat')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all touch-manipulation flex items-center justify-center gap-1.5 ${
-            activeTab === 'chat'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-          }`}
-        >
-          <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-          <span>Gemini Concierge</span>
-        </button>
-      </div>
-
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── TAB 1: 1-CLICK DAY SCHEDULE GENERATOR (REAL GEMINI) ── */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'generate' && (
+      {/* ── INPUT FORM (WHEN NOT PREVIEWING RESULTS) ── */}
+      {!generatedPlan ? (
         <div className="space-y-3.5">
-          {/* Target Day & Vibe Selector */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Target Day in Itinerary:
-              </label>
-              <select
-                value={targetDay}
-                onChange={(e) => setTargetDay(Number(e.target.value))}
-                className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
-              >
-                {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                  <option key={num} value={num}>
-                    Day {num}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Theme / Vibe Preset:
-              </label>
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {PRESET_VIBES.map((vibe) => (
-                  <button
-                    key={vibe.id}
-                    type="button"
-                    onClick={() => setSelectedVibe(vibe)}
-                    className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all touch-manipulation min-h-[36px] ${
-                      selectedVibe.id === vibe.id
-                        ? 'bg-indigo-600 text-white shadow-xs font-black'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    {vibe.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Target Day Picker */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Add activities to:
+            </span>
+            <select
+              value={targetDay}
+              onChange={(e) => setTargetDay(Number(e.target.value))}
+              className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-black py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none min-h-[38px] touch-manipulation cursor-pointer"
+            >
+              {dayOptions.map((num) => (
+                <option key={num} value={num}>
+                  Day {num} Timeline
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              for {trip.destination || 'trip'}
+            </span>
           </div>
 
-          {/* Custom Prompt Box */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              Custom Group Preferences (Optional):
-            </label>
-            <input
-              type="text"
-              value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="e.g. Include vegetarian food, budget-friendly, relaxed morning, sunset beach walk..."
-              className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+          {/* Prompt Textarea */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Languages className="h-3.5 w-3.5 text-indigo-500" />
+                <span>Tell Gemini in your own words / any language:</span>
+              </label>
+              {userPrompt && (
+                <button
+                  type="button"
+                  onClick={() => setUserPrompt('')}
+                  className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <textarea
+              rows={3}
+              value={userPrompt}
+              onChange={(e) => setUserPrompt(e.target.value)}
+              placeholder="e.g. Subah 8am breakfast at local tiffin shop, 10am Deomali hills trek, 1:30pm lunch with desi chicken at highway dhaba, 4:30pm Duduma waterfall viewpoint, 7pm coffee and sunset at Kolab dam..."
+              className="w-full bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white text-xs sm:text-sm p-3 rounded-2xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all resize-y leading-relaxed"
             />
           </div>
 
-          {/* Generate Button */}
-          <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Generating for {trip.destination || 'Odisha'} with {trip.members.length} friends
+          {/* Quick Inspirations */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Quick Ideas (Tap to fill):
             </span>
-            <button
-              type="button"
-              disabled={isGenerating}
-              onClick={handleGeneratePlan}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 via-sky-600 to-emerald-600 hover:from-indigo-700 hover:to-emerald-700 text-white shadow-md shadow-indigo-500/25 min-h-[42px] touch-manipulation disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Gemini is Drafting Day Plan...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  <span>Generate Day {targetDay} Plan with Gemini</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {genError && (
-            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
-              {genError}
-            </div>
-          )}
-
-          {/* ── Generated Plan Result Card ── */}
-          {generatedPlan && (
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-indigo-200 dark:border-indigo-800 space-y-3 shadow-sm animate-fadeIn">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-2.5 flex-wrap">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    Day {targetDay} Draft by Gemini AI
-                  </span>
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
-                    {generatedPlan.dayTitle}
-                  </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {generatedPlan.summary}
-                  </p>
-                </div>
-
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {QUICK_INSPIRATIONS.map((idea, idx) => (
                 <button
+                  key={idx}
                   type="button"
-                  onClick={handleAddAllToDay}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs min-h-[38px] touch-manipulation"
+                  onClick={() => setUserPrompt(idea)}
+                  className="px-2.5 py-1.5 rounded-xl text-[11px] font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all whitespace-nowrap shrink-0 touch-manipulation min-h-[32px]"
                 >
-                  {addedSuccess ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      <span>Added to Day {targetDay}!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      <span>Add All to Day {targetDay} Itinerary</span>
-                    </>
-                  )}
+                  {idea}
                 </button>
-              </div>
+              ))}
+            </div>
+          </div>
 
-              {/* Dress Code & Tips Alerts */}
-              {generatedPlan.dressCodeAndTips && generatedPlan.dressCodeAndTips.length > 0 && (
-                <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>Local Dress Codes & Travel Advisory:</span>
-                  </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-[11px]">
-                    {generatedPlan.dressCodeAndTips.map((tip, idx) => (
-                      <li key={idx}>{tip}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Activities Timeline */}
-              <div className="space-y-2 pt-1">
-                {generatedPlan.activities.map((act, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 flex items-start gap-3"
-                  >
-                    <div className="px-2 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[10px] font-black shrink-0 font-mono">
-                      {act.time}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h5 className="text-xs font-extrabold text-slate-900 dark:text-white">
-                        {act.title}
-                      </h5>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 mt-0.5"
-                      >
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{act.location}</span>
-                      </a>
-                      {act.notes && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                          {act.notes}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+          {/* Error Message */}
+          {genError && (
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+              <span className="shrink-0 text-sm">⚠️</span>
+              <div className="flex-1">
+                <span className="font-bold">Error: </span>
+                {genError}
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── TAB 2: "WHAT TO DO NEXT?" EMERGENCY PIVOT (REAL GEMINI) ── */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'pivot' && (
-        <div className="space-y-3.5">
-          <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-start gap-2.5">
-            <Flame className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-xs font-black text-amber-950 dark:text-amber-200">
-                Live Situation Pivot
-              </h4>
-              <p className="text-[11px] text-amber-800 dark:text-amber-300">
-                If it started raining, the temple line is 3 hours long, or a spot is closed, Gemini recommends instant alternatives nearby.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                Where are you right now?
-              </label>
-              <input
-                type="text"
-                value={pivotLocation}
-                onChange={(e) => setPivotLocation(e.target.value)}
-                placeholder="e.g. Near Jagannath Temple, Grand Road, Puri"
-                className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                What went wrong?
-              </label>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  'Sudden Rain 🌧️',
-                  'Crowded / Huge Queue 🚶',
-                  'Starving for Food 🍽️',
-                  'Want Sunset View 🌅',
-                ].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => handleRunPivot(preset)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-500"
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
+          {/* Submit Button */}
           <button
             type="button"
-            disabled={isPivoting}
-            onClick={() => handleRunPivot()}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 min-h-[42px] touch-manipulation disabled:opacity-50"
+            disabled={isGenerating}
+            onClick={handleGenerate}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-black text-white bg-gradient-to-r from-indigo-600 via-sky-600 to-emerald-600 hover:from-indigo-700 hover:to-emerald-700 shadow-md shadow-indigo-500/25 transition-all touch-manipulation min-h-[44px] disabled:opacity-60"
           >
-            {isPivoting ? (
+            {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Gemini is Finding Emergency Alternatives...</span>
+                <span>Gemini is formatting your itinerary...</span>
               </>
             ) : (
               <>
-                <Flame className="h-4 w-4" />
-                <span>Ask Gemini: What Should We Do Right Now?</span>
+                <Sparkles className="h-4 w-4" />
+                <span>Format & Seed Day {targetDay} with Gemini</span>
               </>
             )}
           </button>
-
-          {/* Pivot Result */}
-          {pivotResult && (
-            <div className="space-y-2.5 pt-1 animate-fadeIn">
-              <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 font-medium">
-                💡 <strong>Gemini Advice:</strong> {pivotResult.situationAdvice}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {pivotResult.alternatives.map((alt, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-2 shadow-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                        {alt.distanceEstimate}
-                      </span>
-                    </div>
-                    <h5 className="text-xs font-black text-slate-900 dark:text-white">
-                      {alt.title}
-                    </h5>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alt.location)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
-                    >
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{alt.location}</span>
-                    </a>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300">
-                      {alt.whyItWorksNow}
-                    </p>
-                    <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold border-t border-slate-100 dark:border-slate-700/80 pt-1.5">
-                      ⭐ {alt.insiderTip}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      )}
-
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── TAB 3: HIDDEN GEMS & LOCAL DHABAS (REAL GEMINI) ── */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'gems' && (
-        <div className="space-y-3.5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-xs font-black text-slate-900 dark:text-white">
-                Authentic Highway Dhabas & Hidden Spots
+      ) : (
+        /* ── GENERATED RESULTS PREVIEW ── */
+        <div className="space-y-3.5 animate-fadeIn">
+          {/* Day Title & Summary */}
+          <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-indigo-200/80 dark:border-indigo-900/60 space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md">
+                Day {targetDay} Preview
+              </span>
+              <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                {generatedPlan.dayTitle}
               </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Non-touristy eateries, local sweet shops, and clean secluded coastal points
+            </div>
+            {generatedPlan.summary && (
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                {generatedPlan.summary}
               </p>
-            </div>
-            <button
-              type="button"
-              disabled={isFetchingGems}
-              onClick={handleFetchGems}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 touch-manipulation"
-            >
-              <RotateCcw className={`h-3.5 w-3.5 ${isFetchingGems ? 'animate-spin' : ''}`} />
-              <span>Refresh with Gemini</span>
-            </button>
-          </div>
-
-          {isFetchingGems && (
-            <div className="p-8 text-center text-xs text-slate-400 space-y-2">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-              <p>Gemini is scouting local hidden spots & highway dhabas...</p>
-            </div>
-          )}
-
-          {gemsResult && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fadeIn">
-              {gemsResult.gems.map((gem, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-2 shadow-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 capitalize">
-                      {gem.category || 'Spot'}
-                    </span>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gem.name + ' ' + gem.location)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5 font-bold"
-                    >
-                      <span>Navigate</span>
-                      <Navigation className="h-2.5 w-2.5" />
-                    </a>
-                  </div>
-                  <h5 className="text-xs font-black text-slate-900 dark:text-white">
-                    {gem.name}
-                  </h5>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    📍 {gem.location}
-                  </p>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">
-                    🔥 <strong>Must Try:</strong> {gem.mustTryOrHighlight}
-                  </p>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 italic">
-                    💡 {gem.insiderTip}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── TAB 4: INTERACTIVE GEMINI CONCIERGE CHAT ── */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'chat' && (
-        <div className="space-y-3">
-          <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-900/60 max-h-60 overflow-y-auto space-y-2.5 text-xs">
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`p-3 rounded-2xl max-w-[85%] leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-tl-none shadow-xs'
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            {isChatting && (
-              <div className="flex justify-start">
-                <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-400 text-xs flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
-                  <span>Gemini is typing...</span>
-                </div>
-              </div>
             )}
           </div>
 
-          <form onSubmit={handleSendChat} className="flex items-center gap-2">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Ask anything (e.g. Is phone allowed in Konark? Where to buy Khaja?)"
-              className="flex-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+          {/* Activities List */}
+          <div className="space-y-2">
+            <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">
+              Generated Activities ({generatedPlan.activities.length}):
+            </span>
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              {generatedPlan.activities.map((act, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5 shadow-2xs"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-lg">
+                      <Clock className="h-3 w-3 shrink-0" />
+                      {act.time}
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate max-w-[180px]">
+                      <MapPin className="h-3 w-3 text-emerald-500 shrink-0" />
+                      <span className="truncate">{act.location}</span>
+                    </span>
+                  </div>
+
+                  <h5 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                    {act.title}
+                  </h5>
+
+                  {act.notes && (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg leading-relaxed">
+                      💡 {act.notes}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Dress code & tips */}
+          {generatedPlan.dressCodeAndTips && generatedPlan.dressCodeAndTips.length > 0 && (
+            <div className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 space-y-1">
+              <span className="text-[10px] font-black uppercase text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                Local Tips & Reminders
+              </span>
+              <ul className="text-[11px] text-amber-900 dark:text-amber-200 space-y-0.5 list-disc list-inside">
+                {generatedPlan.dressCodeAndTips.map((tip, idx) => (
+                  <li key={idx}>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Success Banner */}
+          {addedSuccess && (
+            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 text-xs font-black text-emerald-700 dark:text-emerald-300 flex items-center justify-center gap-2">
+              <Check className="h-4 w-4" />
+              <span>Activities successfully added to Day {targetDay}!</span>
+            </div>
+          )}
+
+          {/* Action Buttons Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
             <button
-              type="submit"
-              disabled={isChatting || !chatInput.trim()}
-              className="p-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 touch-manipulation shadow-xs"
+              type="button"
+              disabled={addedSuccess}
+              onClick={handleAddAllToItinerary}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/25 transition-all touch-manipulation min-h-[44px]"
             >
-              <Send className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
+              <span>Add All to Day {targetDay} Itinerary</span>
             </button>
-          </form>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 touch-manipulation min-h-[44px]"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Write Different Plan</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

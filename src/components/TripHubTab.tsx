@@ -952,9 +952,9 @@ export function TripHubTab({
 
           {/* Day Selector Pills Bar */}
           {itineraryDays.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {/* Swipeable Day Tabs */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none px-0.5">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none px-0.5 touch-pan-x">
                 {itineraryDays.map((d) => {
                   const isSelected = currentDay && d.dayNumber === currentDay.dayNumber;
                   const completedCount = d.activities.filter((a) => a.status === 'completed').length;
@@ -963,7 +963,7 @@ export function TripHubTab({
                       key={d.dayNumber}
                       type="button"
                       onClick={() => setSelectedDayNumber(d.dayNumber)}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[38px] ${
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[40px] ${
                         isSelected
                           ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
                           : 'bg-white dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
@@ -986,19 +986,30 @@ export function TripHubTab({
                 <button
                   type="button"
                   onClick={() => setIsAddDayOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-300 dark:border-emerald-700 shrink-0 touch-manipulation min-h-[38px]"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-dashed border-emerald-300 dark:border-emerald-700 shrink-0 touch-manipulation min-h-[40px]"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Add Day</span>
                 </button>
               </div>
 
-              {/* Action Buttons Row on Mobile */}
-              <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+              {/* Action Buttons: Responsive Layout for Mobile & Desktop */}
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 pt-0.5">
+                {/* Add Activity - Primary Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsAddActivityOpen(true)}
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all min-h-[44px] touch-manipulation"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Activity</span>
+                </button>
+
+                {/* AI Assistant Button */}
                 <button
                   type="button"
                   onClick={() => setShowAiCopilot((prev) => !prev)}
-                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all min-h-[42px] touch-manipulation shadow-xs ${
+                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all min-h-[44px] touch-manipulation ${
                     showAiCopilot
                       ? 'bg-indigo-600 text-white shadow-indigo-600/30 ring-2 ring-indigo-400'
                       : 'bg-gradient-to-r from-indigo-500/15 via-sky-500/15 to-purple-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100/50'
@@ -1008,48 +1019,44 @@ export function TripHubTab({
                   <span>AI Copilot</span>
                 </button>
 
+                {/* Weather Toggle */}
                 <button
                   type="button"
                   onClick={() => setShowWeather((prev) => !prev)}
-                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all min-h-[42px] touch-manipulation shadow-xs ${
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all min-h-[44px] touch-manipulation ${
                     showWeather
-                      ? 'bg-sky-600 text-white shadow-sky-600/30 ring-2 ring-sky-400'
-                      : 'bg-gradient-to-r from-sky-500/15 to-blue-500/15 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100/50'
+                      ? 'bg-sky-600 text-white shadow-sky-600/30'
+                      : 'bg-white dark:bg-slate-800 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-50'
                   }`}
                 >
                   <CloudSun className="h-4 w-4 text-sky-500" />
                   <span>{showWeather ? 'Hide Weather' : 'Weather'}</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsAddActivityOpen(true)}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all min-h-[42px] touch-manipulation"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add Activity</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={emailStatus.loading}
-                  onClick={() => handleSendEmail('itinerary')}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 min-h-[42px] touch-manipulation"
-                >
-                  <Mail className="h-4 w-4 text-emerald-500" />
-                  <span className="hidden sm:inline">Email Schedule</span>
-                </button>
-
-                {currentDay && (
+                {/* Email & Delete controls */}
+                <div className="flex items-center gap-1.5 sm:flex-1 sm:justify-end">
                   <button
                     type="button"
-                    onClick={() => handleDeleteDay(currentDay.dayNumber)}
-                    title="Delete this entire day"
-                    className="flex items-center justify-center p-2.5 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 min-h-[42px] touch-manipulation"
+                    disabled={emailStatus.loading}
+                    onClick={() => handleSendEmail('itinerary')}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-emerald-400 min-h-[44px] touch-manipulation"
+                    title="Email Itinerary"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Mail className="h-4 w-4 text-emerald-500" />
+                    <span>Email</span>
                   </button>
-                )}
+
+                  {currentDay && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDay(currentDay.dayNumber)}
+                      title="Delete this entire day"
+                      className="flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 min-h-[44px] touch-manipulation shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1173,7 +1180,7 @@ export function TripHubTab({
                           type="button"
                           onClick={() => handleToggleActivityStatus(currentDay.dayNumber, act.id)}
                           title="Click to cycle: Upcoming ➔ In Progress ➔ Completed"
-                          className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-lg transition-all touch-manipulation ${
+                          className={`inline-flex items-center gap-1.5 text-[11px] font-extrabold px-3 py-1.5 rounded-xl transition-all touch-manipulation min-h-[36px] ${
                             act.status === 'completed'
                               ? 'bg-emerald-500 text-white shadow-xs'
                               : act.status === 'in_progress'
@@ -1181,9 +1188,9 @@ export function TripHubTab({
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                           }`}
                         >
-                          {act.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
-                          {act.status === 'in_progress' && <CircleDot className="h-3 w-3 animate-spin" />}
-                          {act.status === 'upcoming' && <Clock className="h-3 w-3" />}
+                          {act.status === 'completed' && <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {act.status === 'in_progress' && <CircleDot className="h-3.5 w-3.5 animate-spin" />}
+                          {act.status === 'upcoming' && <Clock className="h-3.5 w-3.5" />}
                           <span>
                             {act.status === 'completed'
                               ? 'Completed ✅'
@@ -1201,7 +1208,7 @@ export function TripHubTab({
                           type="button"
                           onClick={() => handleOpenEditActivity(currentDay.dayNumber, act)}
                           title="Edit activity details"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors touch-manipulation"
+                          className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors touch-manipulation"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
@@ -1211,7 +1218,7 @@ export function TripHubTab({
                           type="button"
                           onClick={() => handleDeleteActivity(currentDay.dayNumber, act.id)}
                           title="Delete this activity"
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors touch-manipulation"
+                          className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors touch-manipulation"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1250,14 +1257,14 @@ export function TripHubTab({
                         href={locInfo.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors min-h-[38px] touch-manipulation"
+                        className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors min-h-[42px] touch-manipulation"
                       >
                         <Navigation className="h-3.5 w-3.5" />
                         <span>Navigate in Maps ↗</span>
                       </a>
 
                       {/* Lead Friend Picker */}
-                      <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60 min-h-[38px]">
+                      <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-700/60 min-h-[42px]">
                         <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">
                           👤 Lead:
                         </span>
@@ -1266,7 +1273,7 @@ export function TripHubTab({
                           onChange={(e) =>
                             handleAssignLead(currentDay.dayNumber, act.id, e.target.value)
                           }
-                          className="bg-transparent text-slate-800 dark:text-slate-200 text-xs font-bold outline-none cursor-pointer w-full truncate"
+                          className="bg-transparent text-slate-800 dark:text-slate-200 text-xs font-bold outline-none cursor-pointer w-full truncate py-1"
                         >
                           <option value="">No lead assigned</option>
                           {trip.members.map((m) => (
@@ -1670,9 +1677,9 @@ export function TripHubTab({
                   type="button"
                   disabled={emailStatus.loading}
                   onClick={() => handleSendEmail('awards')}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[40px] touch-manipulation hover:bg-slate-50"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-slate-200 dark:border-slate-700 min-h-[44px] touch-manipulation hover:bg-slate-50"
                 >
-                  <Mail className="h-3.5 w-3.5 shrink-0" />
+                  <Mail className="h-4 w-4 shrink-0" />
                   <span>Email Awards</span>
                 </button>
 
@@ -1686,20 +1693,20 @@ export function TripHubTab({
                     );
                     setIsAddAwardOpen(true);
                   }}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[40px] touch-manipulation shadow-xs"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[44px] touch-manipulation shadow-xs"
                 >
-                  <Plus className="h-3.5 w-3.5 shrink-0" />
+                  <Plus className="h-4 w-4 shrink-0" />
                   <span>Add Award</span>
                 </button>
               </div>
             </div>
 
             {/* Category Filter & Management Bar */}
-            <div className="w-full flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none py-1">
+            <div className="w-full flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none py-1 touch-pan-x">
               <button
                 type="button"
                 onClick={() => setSelectedAwardCategory('All')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all touch-manipulation min-h-[34px] ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[38px] ${
                   selectedAwardCategory === 'All'
                     ? 'bg-amber-500 text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -1718,7 +1725,7 @@ export function TripHubTab({
                     key={cat}
                     type="button"
                     onClick={() => setSelectedAwardCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all touch-manipulation min-h-[34px] flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 touch-manipulation min-h-[38px] flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-amber-500 text-white shadow-xs font-black'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -1741,7 +1748,7 @@ export function TripHubTab({
               <button
                 type="button"
                 onClick={() => setIsAddCategoryOpen(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 whitespace-nowrap min-h-[34px] flex items-center gap-1 touch-manipulation"
+                className="px-3.5 py-2 rounded-xl text-xs font-extrabold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-dashed border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 whitespace-nowrap min-h-[38px] shrink-0 flex items-center gap-1 touch-manipulation"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add Category</span>
@@ -1934,7 +1941,7 @@ export function TripHubTab({
                         <select
                           value={myVoteCandidateId || ''}
                           onChange={(e) => handleVote(aw.id, e.target.value)}
-                          className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full min-h-[38px] touch-manipulation"
+                          className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 outline-none w-full min-h-[42px] touch-manipulation cursor-pointer"
                         >
                           <option value="">Select a friend to vote...</option>
                           {trip.members.map((m) => (
@@ -1961,20 +1968,20 @@ export function TripHubTab({
                               totalVotes || 1
                             );
                           }}
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 active:scale-98 text-white min-h-[42px] touch-manipulation shadow-xs"
+                          className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 active:scale-98 text-white min-h-[44px] touch-manipulation shadow-xs"
                         >
                           <Award className="h-4 w-4 shrink-0" />
-                          <span>Download PDF</span>
+                          <span className="truncate">Download PDF</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleEmailAwardCertificate(aw, leaderMember, maxVotes, totalVotes)}
                           disabled={emailStatus.loading}
-                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700 active:scale-98 border border-slate-200 dark:border-slate-700 min-h-[42px] touch-manipulation"
+                          className="inline-flex items-center justify-center gap-1.5 px-2.5 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-700 active:scale-98 border border-slate-200 dark:border-slate-700 min-h-[44px] touch-manipulation"
                         >
                           <Mail className="h-4 w-4 shrink-0" />
-                          <span>Email Cert</span>
+                          <span className="truncate">Email Cert</span>
                         </button>
                       </div>
                     </div>
