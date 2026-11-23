@@ -169,6 +169,7 @@ export function getDefaultAwards(): TripAward[] {
       icon: '👑',
       description: 'Always snoozed 10 alarms and delayed the morning departure.',
       votes: {},
+      category: 'Trip Superlatives',
     },
     {
       id: 'award-2',
@@ -176,6 +177,7 @@ export function getDefaultAwards(): TripAward[] {
       icon: '📸',
       description: 'Shot 1,000+ candid photos, cinematic reels, and directed group poses.',
       votes: {},
+      category: 'Trip Superlatives',
     },
     {
       id: 'award-3',
@@ -183,13 +185,15 @@ export function getDefaultAwards(): TripAward[] {
       icon: '🍔',
       description: 'Ordered the most dishes at every dhaba and always asked "Where are we eating next?".',
       votes: {},
+      category: 'Trip Superlatives',
     },
     {
       id: 'award-4',
       title: 'Formula 1 Driver',
       icon: '🏎️',
-      description: 'Masterfully conquered the Puri-Konark Marine Drive highway and beach stretches.',
+      description: 'Masterfully conquered the highway and mountain curves.',
       votes: {},
+      category: 'Trip Superlatives',
     },
   ];
 }

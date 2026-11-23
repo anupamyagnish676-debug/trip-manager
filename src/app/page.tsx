@@ -707,7 +707,7 @@ export default function TripFinancePortal() {
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
-      <main className="mx-auto max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 pb-28 sm:pb-8">
+      <main className="mx-auto max-w-6xl w-full overflow-x-clip px-3 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 pb-28 sm:pb-8">
         {/* ── TAB 1: MY OVERVIEW & DUES ── */}
         {activeTab === 'my_view' && (currentMember || trip.members[0]) && (
           <MemberView

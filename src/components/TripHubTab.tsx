@@ -113,13 +113,13 @@ export function TripHubTab({
   const cabLogistics: CabRentalLogistics | null = hasDummyCab ? null : (rawCab || null);
 
   const awards: TripAward[] =
-    trip.awards !== undefined
+    trip.awards !== undefined && trip.awards.length > 0
       ? trip.awards
       : getDefaultAwards();
 
   const awardCategories: string[] =
-    trip.awardCategories !== undefined
-      ? trip.awardCategories
+    trip.awardCategories !== undefined && trip.awardCategories.length > 0
+      ? Array.from(new Set(['Trip Superlatives', ...trip.awardCategories]))
       : ['Trip Superlatives', 'Beach Games', 'Night Games'];
 
   // Active selected day in itinerary
@@ -852,60 +852,62 @@ export function TripHubTab({
   };
 
   return (
-    <div className="space-y-4 pb-12 sm:pb-6">
-      {/* ── TOP 4-TAB NAVIGATION (Mobile-First 4-Column Grid) ── */}
-      <div className="glass-card p-1 sm:p-1.5 rounded-2xl grid grid-cols-4 gap-1 shadow-xs border border-slate-200/80 dark:border-slate-800">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('itinerary')}
-          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
-            activeSubTab === 'itinerary'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Calendar className="h-4 w-4 shrink-0" />
-          <span className="truncate">Itinerary</span>
-        </button>
+    <div className="w-full max-w-full overflow-x-clip space-y-4 pb-12 sm:pb-6">
+      {/* ── TOP 4-TAB NAVIGATION (Sticky, Mobile-First 4-Column Bar) ── */}
+      <div className="sticky top-0 z-20 pt-1 pb-1.5 bg-gradient-to-b from-slate-50 via-slate-50/95 to-slate-50/80 dark:from-slate-950 dark:via-slate-950/95 dark:to-slate-950/80 backdrop-blur-md">
+        <div className="w-full max-w-full glass-card p-1 sm:p-1.5 rounded-2xl grid grid-cols-4 gap-1 shadow-sm border border-slate-200/80 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('itinerary')}
+            className={`py-2 sm:py-2.5 px-0.5 sm:px-2 rounded-xl font-extrabold text-[10px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center min-w-0 w-full overflow-hidden ${
+              activeSubTab === 'itinerary'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Calendar className="h-4 w-4 shrink-0" />
+            <span className="truncate w-full block">Itinerary</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('transport')}
-          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
-            activeSubTab === 'transport'
-              ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-md shadow-sky-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Car className="h-4 w-4 shrink-0" />
-          <span className="truncate">Commute</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('transport')}
+            className={`py-2 sm:py-2.5 px-0.5 sm:px-2 rounded-xl font-extrabold text-[10px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center min-w-0 w-full overflow-hidden ${
+              activeSubTab === 'transport'
+                ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-md shadow-sky-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Car className="h-4 w-4 shrink-0" />
+            <span className="truncate w-full block">Commute</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('awards')}
-          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
-            activeSubTab === 'awards'
-              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Trophy className="h-4 w-4 shrink-0" />
-          <span className="truncate">Awards</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('awards')}
+            className={`py-2 sm:py-2.5 px-0.5 sm:px-2 rounded-xl font-extrabold text-[10px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center min-w-0 w-full overflow-hidden ${
+              activeSubTab === 'awards'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Trophy className="h-4 w-4 shrink-0" />
+            <span className="truncate w-full block">Awards</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('wrapped')}
-          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
-            activeSubTab === 'wrapped'
-              ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Sparkles className="h-4 w-4 shrink-0" />
-          <span className="truncate">Wrapped</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('wrapped')}
+            className={`py-2 sm:py-2.5 px-0.5 sm:px-2 rounded-xl font-extrabold text-[10px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center min-w-0 w-full overflow-hidden ${
+              activeSubTab === 'wrapped'
+                ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span className="truncate w-full block">Wrapped</span>
+          </button>
+        </div>
       </div>
 
       {/* ── EMAIL FEEDBACK BANNER ── */}
@@ -1655,7 +1657,7 @@ export function TripHubTab({
         });
 
         return (
-          <div className="space-y-4">
+          <div className="w-full max-w-full min-w-0 overflow-x-clip space-y-4">
             {/* Header: Responsive Stack on Mobile */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -1702,7 +1704,7 @@ export function TripHubTab({
             </div>
 
             {/* Category Filter & Management Bar */}
-            <div className="w-full flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none py-1 touch-pan-x">
+            <div className="w-full max-w-full min-w-0 flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none py-1 touch-pan-x">
               <button
                 type="button"
                 onClick={() => setSelectedAwardCategory('All')}
@@ -1780,7 +1782,7 @@ export function TripHubTab({
             )}
 
             {displayedAwards.length === 0 && (
-              <div className="glass-card p-8 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-3">
+              <div className="glass-card p-8 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-3 w-full">
                 <div className="text-3xl">🏆</div>
                 <h3 className="text-sm font-black text-slate-800 dark:text-white">
                   No awards in this category yet
@@ -1789,25 +1791,37 @@ export function TripHubTab({
                   Tap &quot;Add Award&quot; to create funny titles or game competitions for{' '}
                   {selectedAwardCategory === 'All' ? 'your trip' : `"${selectedAwardCategory}"`}.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewAwardCategory(
-                      selectedAwardCategory === 'All'
-                        ? (awardCategories[0] || 'Trip Superlatives')
-                        : selectedAwardCategory
-                    );
-                    setIsAddAwardOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Add First Award</span>
-                </button>
+                <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewAwardCategory(
+                        selectedAwardCategory === 'All'
+                          ? (awardCategories[0] || 'Trip Superlatives')
+                          : selectedAwardCategory
+                      );
+                      setIsAddAwardOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-amber-500 text-white hover:bg-amber-600 min-h-[38px] touch-manipulation"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Add First Award</span>
+                  </button>
+
+                  {selectedAwardCategory !== 'All' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAwardCategory('All')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 min-h-[38px] touch-manipulation"
+                    >
+                      <span>View All Awards</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 w-full max-w-full min-w-0">
               {displayedAwards.map((aw) => {
                 const voteCounts: Record<string, number> = {};
                 const totalVotes = Object.keys(aw.votes || {}).length;
