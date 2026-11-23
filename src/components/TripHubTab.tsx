@@ -1307,7 +1307,7 @@ export function TripHubTab({
                     Live Destination Weather & Golden Hour ({trip.destination})
                   </h4>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Check temperature, ocean breeze & sunset time for your itinerary
+                    Check live temperature, forecast & sunset golden hour for your itinerary
                   </p>
                 </div>
               </div>
