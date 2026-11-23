@@ -41,6 +41,7 @@ import {
 import { TripWeatherForecast } from './hub/TripWeatherForecast';
 import { FuelTollCalculator } from './hub/FuelTollCalculator';
 import { TripWrappedView } from './hub/TripWrappedView';
+import { ItineraryAiCopilot } from './hub/ItineraryAiCopilot';
 
 interface TripHubTabProps {
   trip: Trip;
@@ -156,6 +157,7 @@ export function TripHubTab({
 
   const [isEditCabOpen, setIsEditCabOpen] = useState(false);
   const [isAddAwardOpen, setIsAddAwardOpen] = useState(false);
+  const [showAiCopilot, setShowAiCopilot] = useState(false);
 
   // ── Form States: Activity ──
   const [newActivityTime, setNewActivityTime] = useState('09:00 AM');
@@ -461,6 +463,27 @@ export function TripHubTab({
     if (!confirm('Are you sure you want to clear all itinerary days and activities? You can enter everything fresh.')) return;
     updateHubData({ itineraryDays: [] });
     setSelectedDayNumber(1);
+  };
+
+  // ── Add Activities to Day (From AI Copilot) ──
+  const handleAddActivitiesToDay = (dayNumber: number, newActivities: ItineraryActivity[]) => {
+    let targetDays = [...itineraryDays];
+    const dayIdx = targetDays.findIndex((d) => d.dayNumber === dayNumber);
+    if (dayIdx >= 0) {
+      targetDays[dayIdx] = {
+        ...targetDays[dayIdx],
+        activities: [...targetDays[dayIdx].activities, ...newActivities],
+      };
+    } else {
+      targetDays.push({
+        dayNumber: dayNumber || 1,
+        date: trip.startDate || new Date().toISOString().split('T')[0],
+        title: `${trip.destination || 'Odisha'} Day ${dayNumber || 1}`,
+        activities: newActivities,
+      });
+      setSelectedDayNumber(dayNumber || 1);
+    }
+    updateHubData({ itineraryDays: targetDays });
   };
 
   // ── Add Ticket ──
@@ -936,6 +959,16 @@ export function TripHubTab({
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeSubTab === 'itinerary' && (
         <div className="space-y-3.5">
+          {/* AI Copilot & Local Guide View (Available across all days or empty state) */}
+          {showAiCopilot && (
+            <ItineraryAiCopilot
+              trip={trip}
+              activeDayNumber={currentDay?.dayNumber || 1}
+              onAddActivitiesToDay={handleAddActivitiesToDay}
+              onClose={() => setShowAiCopilot(false)}
+            />
+          )}
+
           {/* Day Selector Pills Bar */}
           {itineraryDays.length > 0 && (
             <div className="space-y-2">
@@ -980,7 +1013,20 @@ export function TripHubTab({
               </div>
 
               {/* Action Buttons Row on Mobile */}
-              <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex items-center gap-2 pt-0.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowAiCopilot((prev) => !prev)}
+                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all min-h-[42px] touch-manipulation shadow-xs ${
+                    showAiCopilot
+                      ? 'bg-indigo-600 text-white shadow-indigo-600/30 ring-2 ring-indigo-400'
+                      : 'bg-gradient-to-r from-indigo-500/15 via-sky-500/15 to-purple-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100/50'
+                  }`}
+                >
+                  <Sparkles className="h-4 w-4 text-indigo-500" />
+                  <span>AI Copilot</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setIsAddActivityOpen(true)}
@@ -1064,14 +1110,25 @@ export function TripHubTab({
                   Start fresh! Create Day 1 to plan morning, afternoon, and evening timelines with 1-click Google Maps navigation and friend assignees.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAddDayOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 touch-manipulation min-h-[42px]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Create Day 1</span>
-              </button>
+              <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsAddDayOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 touch-manipulation min-h-[42px]"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create Day 1</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAiCopilot(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white shadow-md shadow-indigo-500/25 touch-manipulation min-h-[42px]"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Draft Plan with AI Copilot</span>
+                </button>
+              </div>
             </div>
           ) : currentDay && currentDay.activities.length === 0 ? (
             /* Empty State for a created day without activities */
