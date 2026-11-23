@@ -8,6 +8,7 @@ import { calculateMemberBalances, simplifyDebts } from '@/lib/calculations';
 import { formatMoney } from '@/lib/currency';
 import { QRCodeModal } from '@/components/QRCodeModal';
 import { RequestUpiModal } from '@/components/RequestUpiModal';
+import { FriendlyRoastCard } from '@/components/FriendlyRoastCard';
 
 interface SettleUpTabProps {
   trip: Trip;
@@ -92,6 +93,25 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
     );
   };
 
+  // Identify members who have pending transfers to make
+  const pendingDebtorIds = Array.from(
+    new Set(
+      transfers
+        .filter((t) => !isTransferSettled(t.fromMemberId, t.toMemberId))
+        .map((t) => t.fromMemberId)
+    )
+  );
+
+  const pendingDebtors = pendingDebtorIds
+    .map((id) => {
+      const member = trip.members.find((m) => m.id === id);
+      const totalOwed = transfers
+        .filter((t) => t.fromMemberId === id && !isTransferSettled(t.fromMemberId, t.toMemberId))
+        .reduce((sum, t) => sum + t.amount, 0);
+      return { member, totalOwed };
+    })
+    .filter((d): d is { member: Member; totalOwed: number } => Boolean(d.member && d.totalOwed > 0));
+
   const handleInitiatePayment = (transfer: SettlementTransfer, fromMember: Member, toMember: Member) => {
     const upi = toMember.upiId?.trim();
     if (!upi) {
@@ -143,6 +163,42 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
           </div>
         </div>
       </div>
+
+      {/* ── FRIENDLY DUES ROAST BOARD (ZERO JUDGEMENT BANTER) ── */}
+      {pendingDebtors.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xl select-none">🍿</span>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>The Friendly Dues Roast Board</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    Friendly Banter
+                  </span>
+                </h3>
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                  Affectionate inside jokes for friends with pending dues. <strong>Zero judgement: We all split equally in the end!</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {pendingDebtors.map(({ member, totalOwed }) => (
+              <FriendlyRoastCard
+                key={member.id}
+                tripName={trip.name}
+                memberName={member.name}
+                memberId={member.id}
+                amountOwed={totalOwed}
+                currency={trip.currency}
+                isSelf={currentMember?.id === member.id}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Simplified Transfers List */}
       <div>

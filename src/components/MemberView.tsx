@@ -27,6 +27,7 @@ import { calculateMemberBalances, simplifyDebts, generateUpiUrl } from '@/lib/ca
 import { formatMoney } from '@/lib/currency';
 import { downloadExpenseInvoice, downloadMemberStatement } from '@/lib/pdfReceipt';
 import { RequestUpiModal } from '@/components/RequestUpiModal';
+import { FriendlyRoastCard } from '@/components/FriendlyRoastCard';
 
 interface MemberViewProps {
   trip: Trip;
@@ -322,6 +323,18 @@ export function MemberView({
           </div>
         </div>
       </div>
+
+      {/* ── FRIENDLY ROAST PERSONA (ZERO JUDGEMENT EQUAL-SPLIT BANTER) ── */}
+      {net < 0 && (
+        <FriendlyRoastCard
+          tripName={trip.name}
+          memberName={currentMember.name}
+          memberId={currentMember.id}
+          amountOwed={Math.abs(net)}
+          currency={trip.currency}
+          isSelf={true}
+        />
+      )}
 
       {/* ── SETTLEMENT DUES: WHO I NEED TO PAY ── */}
       {iOweTo.length > 0 && (
