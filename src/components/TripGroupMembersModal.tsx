@@ -25,6 +25,7 @@ import {
   rebalanceTripOnMemberAddition,
   MemberFinancialSummary,
 } from '@/lib/ledgerSync';
+import { deleteMemberFromSupabase } from '@/lib/tripService';
 
 interface TripGroupMembersModalProps {
   isOpen: boolean;
@@ -305,6 +306,9 @@ export function TripGroupMembersModal({
   };
 
   const executeMemberRemoval = (id: string) => {
+    // Explicitly delete from Supabase so it's removed immediately from cloud database
+    deleteMemberFromSupabase(id).catch((err) => console.error('Error deleting member from cloud:', err));
+
     if (onUpdateTrip) {
       const { updatedTrip, removedMemberName, rebalancedExpensesCount, reassignedPayerCount } =
         rebalanceTripOnMemberRemoval(trip, id);

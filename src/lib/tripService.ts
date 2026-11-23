@@ -264,9 +264,40 @@ export async function updateTripInSupabase(trip: Trip): Promise<boolean> {
       is_finance_lead: m.isFinanceLead || false, role: m.role || 'member',
     })));
 
+    // Prune removed members from Supabase so deleted members do not resurrect on reload
+    const activeMemberIds = trip.members.map((m) => m.id);
+    if (activeMemberIds.length > 0) {
+      await supabase
+        .from('members')
+        .delete()
+        .eq('trip_id', trip.id)
+        .not('id', 'in', `(${activeMemberIds.join(',')})`);
+    }
+
+    // Sync expenses if any were rebalanced upon member removal/addition
+    if (trip.expenses && trip.expenses.length > 0) {
+      await supabase.from('expenses').upsert(trip.expenses.map((e) => ({
+        id: e.id, trip_id: trip.id, title: e.title, amount: e.amount,
+        category: e.category, paid_by: e.paidBy, paid_at: e.paidAt,
+        split_type: e.splitType, splits: e.splits, notes: e.notes,
+      })));
+    }
+
     return true;
   } catch (e) {
     console.error(e);
+    return false;
+  }
+}
+
+export async function deleteMemberFromSupabase(memberId: string): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured()) return false;
+  try {
+    const { error } = await supabase.from('members').delete().eq('id', memberId);
+    if (error) console.error('Error deleting member from Supabase:', error);
+    return !error;
+  } catch (e) {
+    console.error('Failed to delete member from Supabase:', e);
     return false;
   }
 }
