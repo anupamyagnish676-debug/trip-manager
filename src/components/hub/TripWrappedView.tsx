@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trip } from '@/types';
 import { formatMoney } from '@/lib/currency';
+import { calculateMemberBalances } from '@/lib/calculations';
 import {
   Sparkles,
   Trophy,
@@ -24,8 +25,17 @@ import {
   TrendingUp,
   MessageCircle,
   Zap,
+  Key,
+  Loader2,
+  RotateCcw,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import {
+  getGeminiTripWrapped,
+  getStoredGeminiApiKey,
+  TripWrappedResponse,
+} from '@/lib/geminiService';
+import { GeminiApiKeyModal } from './GeminiApiKeyModal';
 
 interface TripWrappedViewProps {
   trip: Trip;
@@ -34,13 +44,31 @@ interface TripWrappedViewProps {
 export function TripWrappedView({ trip }: TripWrappedViewProps) {
   const [copied, setCopied] = useState(false);
   const [activeStorySlide, setActiveStorySlide] = useState<number>(0);
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
 
-  // ── Financial Stats ──
+  // Gemini Live Story State
+  const [geminiStory, setGeminiStory] = useState<TripWrappedResponse | null>(null);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [storyError, setStoryError] = useState<string | null>(null);
+  const [storyMode, setStoryMode] = useState<'gemini' | 'standard'>('gemini');
+
+  useEffect(() => {
+    const key = getStoredGeminiApiKey();
+    setHasApiKey(Boolean(key));
+  }, []);
+
+  const refreshKeyStatus = () => {
+    const key = getStoredGeminiApiKey();
+    setHasApiKey(Boolean(key));
+  };
+
+  // ── Financial Calculations ──
   const totalSpend = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
   const memberCount = trip.members.length || 1;
   const avgPerPerson = totalSpend / memberCount;
 
-  // ── 1. Spender Ranking & Banker Habits ──
+  // 1. Spender Ranking
   const spendByMember: Record<string, number> = {};
   trip.expenses.forEach((e) => {
     spendByMember[e.paidBy] = (spendByMember[e.paidBy] || 0) + e.amount;
@@ -55,7 +83,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
   const secondSpender = sortedSpenders[1]?.member || null;
   const secondSpent = sortedSpenders[1]?.amount || 0;
 
-  // ── 2. Biggest Single Bill ──
+  // 2. Biggest Single Bill
   let biggestBill = trip.expenses[0] || null;
   trip.expenses.forEach((e) => {
     if (!biggestBill || e.amount > biggestBill.amount) {
@@ -64,7 +92,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
   });
   const biggestBillPayer = biggestBill ? trip.members.find((m) => m.id === biggestBill.paidBy) : null;
 
-  // ── 3. Category Breakdown & Dominance ──
+  // 3. Category Dominance
   const categoryTotals: Record<string, number> = {};
   trip.expenses.forEach((e) => {
     categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
@@ -80,7 +108,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
   });
   const topCatPct = totalSpend > 0 ? Math.round((topCatAmount / totalSpend) * 100) : 0;
 
-  // ── 4. Peak Spending Day Calculation ──
+  // 4. Peak Spending Day
   const spendByDate: Record<string, { total: number; count: number }> = {};
   trip.expenses.forEach((e) => {
     const d = e.paidAt || 'Trip Days';
@@ -100,7 +128,6 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
     }
   });
 
-  // Calculate day index if possible
   let peakDayLabel = 'Peak Day';
   if (trip.startDate && peakDayDate) {
     const start = new Date(trip.startDate).getTime();
@@ -113,37 +140,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
     }
   }
 
-  // ── 5. Awards Hall of Fame ──
-  const awardWinners: { awardTitle: string; icon: string; winnerName: string; votes: number }[] = [];
-  (trip.awards || []).forEach((aw) => {
-    const voteCounts: Record<string, number> = {};
-    Object.values(aw.votes || {}).forEach((candId) => {
-      voteCounts[candId] = (voteCounts[candId] || 0) + 1;
-    });
-
-    let leaderId = '';
-    let maxVotes = 0;
-    Object.entries(voteCounts).forEach(([candId, count]) => {
-      if (count > maxVotes) {
-        maxVotes = count;
-        leaderId = candId;
-      }
-    });
-
-    if (leaderId) {
-      const winner = trip.members.find((m) => m.id === leaderId);
-      if (winner) {
-        awardWinners.push({
-          awardTitle: aw.title,
-          icon: aw.icon,
-          winnerName: winner.name,
-          votes: maxVotes,
-        });
-      }
-    }
-  });
-
-  // ── 6. Dynamic AI Narrative Story Generation ──
+  // 5. Standard Narrative Fallbacks
   const categoryFriendlyNames: Record<string, string> = {
     food: 'food, seafood & beachside dhabas',
     travel: 'highway cabs, trains & commute',
@@ -154,7 +151,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
     other: 'miscellaneous group splurges',
   };
 
-  const aiStoryChapter1_Money = [
+  const standardChapter1 = [
     `📊 Your group spent ${topCatPct}% of the budget on ${categoryFriendlyNames[topCategory] || topCategory} alone!`,
     peakDayTotal > 0
       ? `🔥 ${peakDayLabel} was your peak spending day (${formatMoney(peakDayTotal, trip.currency)} across ${peakDayCount} activities).`
@@ -164,36 +161,136 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
       : `💎 Group bills were distributed evenly across small stops.`,
   ];
 
-  const aiStoryChapter2_Crew = [
+  const standardChapter2 = [
     secondSpender && maxSpent > 0
       ? `👑 ${topSpender?.name} fronted the most upfront cash (${formatMoney(maxSpent, trip.currency)}), closely backed by ${secondSpender.name} (${formatMoney(secondSpent, trip.currency)})!`
       : `👑 ${topSpender?.name} acted as the chief banker fronting ${formatMoney(maxSpent, trip.currency)} for the team!`,
-    `💳 Group UPI debt simplification reduced 45 possible arguments into seamless 1-tap settlements!`,
+    `💳 Group UPI debt simplification reduced all possible arguments into seamless 1-tap settlements!`,
     `✨ 0 lost receipts, 100% transparency between all ${memberCount} friends!`,
   ];
 
+  // ── Action: Generate Real Story with Gemini ──
+  const handleGenerateGeminiStory = async () => {
+    if (trip.expenses.length === 0) {
+      alert('Log at least one bill to generate the Trip Wrapped story!');
+      return;
+    }
+
+    setIsGeneratingStory(true);
+    setStoryError(null);
+
+    const balances = calculateMemberBalances(trip);
+    const financialSummary = {
+      totalSpend,
+      currency: trip.currency || 'INR',
+      expenseCount: trip.expenses.length,
+      expenses: trip.expenses.map((e) => ({
+        title: e.title,
+        amount: e.amount,
+        category: e.category,
+        paidBy: trip.members.find((m) => m.id === e.paidBy)?.name || e.paidBy,
+        date: e.paidAt,
+      })),
+      topCategories: Object.entries(categoryTotals).map(([cat, amt]) => ({
+        category: cat,
+        amount: amt,
+        pct: totalSpend > 0 ? Math.round((amt / totalSpend) * 100) : 0,
+      })),
+      balances: balances.map((b) => ({
+        memberName: b.member.name,
+        netBalance: b.netBalance,
+        totalPaid: b.totalDirectPaid,
+      })),
+    };
+
+    try {
+      const story = await getGeminiTripWrapped({
+        tripName: trip.name,
+        destination: trip.destination,
+        financialSummary,
+      });
+      setGeminiStory(story);
+      setStoryMode('gemini');
+      setActiveStorySlide(0);
+    } catch (err: any) {
+      if (err.code === 'MISSING_API_KEY') {
+        setIsKeyModalOpen(true);
+      } else {
+        setStoryError(err.message || 'Failed to generate story with Gemini.');
+      }
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+
+  // Prepare slides to display
+  const slides =
+    storyMode === 'gemini' && geminiStory
+      ? geminiStory.chapters.map((ch) => ({
+          title: ch.title,
+          icon: ch.icon || '✨',
+          story: ch.story,
+          badges: ch.statBadges || [],
+        }))
+      : [
+          {
+            title: 'The Money Story',
+            icon: '💸',
+            story: standardChapter1.join('\n\n'),
+            badges: standardChapter1,
+          },
+          {
+            title: 'The Crew & Banker Dynamics',
+            icon: '👑',
+            story: standardChapter2.join('\n\n'),
+            badges: standardChapter2,
+          },
+        ];
+
+  const currentSlide = slides[activeStorySlide] || slides[0];
+
   // ── Copy WhatsApp Story ──
   const handleCopyStory = () => {
-    const lines = [
-      `✨ *${trip.name} - OFFICIAL TRIP WRAPPED 2026* ✨`,
-      `📍 Destination: ${trip.destination}`,
-      `📅 Duration: ${trip.startDate || 'Dec 2026'} - ${trip.endDate || 'Jan 2027'}`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `💎 *THE MONEY STORY*:`,
-      ...aiStoryChapter1_Money.map((m) => `• ${m}`),
-      `• *Total Spend*: ${formatMoney(totalSpend, trip.currency)} (Average: ${formatMoney(avgPerPerson, trip.currency)}/friend)`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `👥 *THE CREW DYNAMICS*:`,
-      ...aiStoryChapter2_Crew.map((c) => `• ${c}`),
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `🏆 *OFFICIAL AWARDS HALL OF FAME*:`,
-      awardWinners.length > 0
-        ? awardWinners.map((w) => `${w.icon} *${w.awardTitle}*: 👑 ${w.winnerName} (${w.votes} votes)`).join('\n')
-        : '• Voting in progress in the Awards tab!',
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `❤️ 7 Friends • Infinite Memories • Zero Bill Disputes 🚀`,
-      `Generated by Trip Manager & Splitwise UPI`,
-    ];
+    let lines: string[] = [];
+
+    if (storyMode === 'gemini' && geminiStory) {
+      lines = [
+        `✨ *${trip.name} - OFFICIAL GEMINI TRIP WRAPPED 2026* ✨`,
+        `📍 Destination: ${trip.destination}`,
+        `🎭 Group Vibe: *"${geminiStory.vibeTitle}"*`,
+        `💬 *${geminiStory.catchphrase}*`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        ...geminiStory.chapters.map(
+          (ch) =>
+            `${ch.icon} *${ch.title.toUpperCase()}*\n${ch.story}\n${(ch.statBadges || [])
+              .map((b) => `• ${b}`)
+              .join('\n')}`
+        ),
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `🏆 *MEMBER SUPERLATIVES*:`,
+        ...(geminiStory.memberSuperlatives || []).map(
+          (m) => `👑 *${m.memberName}*: "${m.awardTitle}" (${m.reason})`
+        ),
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `💎 Total Spend: ${formatMoney(totalSpend, trip.currency)} across ${trip.expenses.length} bills`,
+        `Generated with Google Gemini AI & Trip Manager 🚀`,
+      ];
+    } else {
+      lines = [
+        `✨ *${trip.name} - OFFICIAL TRIP WRAPPED 2026* ✨`,
+        `📍 Destination: ${trip.destination}`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `💎 *THE MONEY STORY*:`,
+        ...standardChapter1.map((m) => `• ${m}`),
+        `• *Total Spend*: ${formatMoney(totalSpend, trip.currency)} (Average: ${formatMoney(avgPerPerson, trip.currency)}/friend)`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `👥 *THE CREW DYNAMICS*:`,
+        ...standardChapter2.map((c) => `• ${c}`),
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `❤️ ${trip.members.length} Friends • Infinite Memories • Zero Bill Disputes 🚀`,
+        `Generated by Trip Manager & Splitwise UPI`,
+      ];
+    }
 
     navigator.clipboard.writeText(lines.join('\n'));
     setCopied(true);
@@ -211,7 +308,6 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 16;
 
-    // Background header banner
     doc.setFillColor(15, 23, 42); // slate-900
     doc.rect(0, 0, pageWidth, 55, 'F');
 
@@ -223,148 +319,125 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Destination: ${trip.destination} | Dates: ${trip.startDate} - ${trip.endDate}`, margin, 34);
-    doc.text(`Official AI Storyteller Summary & Hall of Fame`, margin, 42);
+    doc.text(`Destination: ${trip.destination} | Group Vibe: ${geminiStory?.vibeTitle || 'Trip Story'}`, margin, 34);
+    doc.text(`Official AI Storyteller Summary by Google Gemini`, margin, 42);
 
     let y = 70;
 
-    // 1. AI Story Highlights
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('1. The AI Story Recap', margin, y);
+    doc.text('1. Group Spending Narrative', margin, y);
     y += 8;
 
-    doc.setFontSize(10.5);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    aiStoryChapter1_Money.forEach((line) => {
-      const cleanLine = line.replace(/[^a-zA-Z0-9\s₹%.,()\-:]/g, '');
-      doc.text(`• ${cleanLine}`, margin + 4, y);
-      y += 6.5;
-    });
 
-    aiStoryChapter2_Crew.forEach((line) => {
-      const cleanLine = line.replace(/[^a-zA-Z0-9\s₹%.,()\-:]/g, '');
-      doc.text(`• ${cleanLine}`, margin + 4, y);
-      y += 6.5;
-    });
+    if (geminiStory) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(`"${geminiStory.catchphrase}"`, margin + 4, y);
+      y += 8;
+      doc.setFont('helvetica', 'normal');
+      geminiStory.chapters.forEach((ch) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`• ${ch.title}`, margin + 4, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        const splitText = doc.splitTextToSize(ch.story, pageWidth - margin * 2 - 8);
+        doc.text(splitText, margin + 6, y);
+        y += splitText.length * 5 + 4;
+      });
+    } else {
+      standardChapter1.forEach((line) => {
+        const clean = line.replace(/[^a-zA-Z0-9\s₹%.,()\-:]/g, '');
+        doc.text(`• ${clean}`, margin + 4, y);
+        y += 6.5;
+      });
+    }
+
     y += 6;
-
-    // 2. Financial Metrics
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('2. Financial Breakdown', margin, y);
     y += 8;
 
-    doc.setFontSize(10.5);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total Group Outflow: ${formatMoney(totalSpend, trip.currency)}`, margin + 4, y);
-    y += 6.5;
-    doc.text(`Average Share Per Friend: ${formatMoney(avgPerPerson, trip.currency)}`, margin + 4, y);
-    y += 6.5;
-    doc.text(`Top Front-Runner: ${topSpender?.name} (${formatMoney(maxSpent, trip.currency)})`, margin + 4, y);
-    y += 6.5;
-    if (biggestBill) {
-      doc.text(`Biggest Single Bill: ${biggestBill.title} - ${formatMoney(biggestBill.amount, trip.currency)} (Paid by ${biggestBillPayer?.name || 'Friend'})`, margin + 4, y);
-      y += 6.5;
-    }
+    doc.text(`Total Group Spend: ${formatMoney(totalSpend, trip.currency)}`, margin + 4, y);
     y += 6;
-
-    // 3. Awards Section
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('3. Hall of Fame - Official Trip Superlatives', margin, y);
+    doc.text(`Average Share Per Person: ${formatMoney(avgPerPerson, trip.currency)}`, margin + 4, y);
+    y += 6;
+    doc.text(`Top Cash Frontline: ${topSpender?.name} (${formatMoney(maxSpent, trip.currency)})`, margin + 4, y);
     y += 8;
 
-    if (awardWinners.length === 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'italic');
-      doc.text('Voting in progress. Cast your votes in the Awards tab to finalize winners!', margin + 4, y);
+    if (geminiStory?.memberSuperlatives && geminiStory.memberSuperlatives.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('3. Gemini Member Superlatives', margin, y);
       y += 8;
-    } else {
+
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      awardWinners.forEach((w) => {
-        doc.text(`• ${w.awardTitle}: ${w.winnerName} (${w.votes} votes)`, margin + 4, y);
-        y += 6.5;
+      geminiStory.memberSuperlatives.forEach((m) => {
+        doc.text(`• ${m.memberName} - "${m.awardTitle}": ${m.reason}`, margin + 4, y);
+        y += 6;
       });
     }
 
-    y += 8;
-    // 4. Group Roster
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('4. The Traveling Crew', margin, y);
-    y += 8;
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    const memberNames = trip.members.map((m) => m.name).join(', ');
-    const splitNames = doc.splitTextToSize(memberNames, pageWidth - margin * 2 - 8);
-    doc.text(splitNames, margin + 4, y);
-
-    // Footer
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Generated by Trip Manager & AI Storyteller on ${new Date().toLocaleDateString()}`, margin, 280);
+    doc.text(`Generated with Google Gemini AI on ${new Date().toLocaleDateString()}`, margin, 280);
 
-    doc.save(`${trip.name.replace(/\s+/g, '_')}_AI_Wrapped_Story.pdf`);
+    doc.save(`${trip.name.replace(/\s+/g, '_')}_Gemini_Wrapped_Story.pdf`);
   };
-
-  const STORY_SLIDES = [
-    {
-      title: 'The Money Story',
-      icon: '💸',
-      color: 'from-amber-500 to-orange-600',
-      bullets: aiStoryChapter1_Money,
-    },
-    {
-      title: 'The Crew & Banker Dynamics',
-      icon: '👑',
-      color: 'from-purple-600 to-indigo-600',
-      bullets: aiStoryChapter2_Crew,
-    },
-    {
-      title: 'The Hall of Fame Champions',
-      icon: '🏆',
-      color: 'from-rose-500 to-pink-600',
-      bullets:
-        awardWinners.length > 0
-          ? awardWinners.map((w) => `${w.icon} ${w.awardTitle}: 👑 ${w.winnerName} (${w.votes} votes)`)
-          : ['Voting currently active in the Awards tab! Vote to crown the official champions.'],
-    },
-  ];
-
-  const currentSlide = STORY_SLIDES[activeStorySlide] || STORY_SLIDES[0];
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* ── HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
               Trip Wrapped & AI Storyteller
             </h2>
-            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1">
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-2xs flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
-              <span>AI Story Engine</span>
+              <span>Gemini AI Storyteller</span>
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Deep narrative analysis of your group spending habits, peak days, and superlative memories
+            Real Gemini narrative analyzing your bills, peak days, and payer habits into a Spotify Wrapped story
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            disabled={isGeneratingStory}
+            onClick={handleGenerateGeminiStory}
+            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white shadow-md shadow-indigo-500/25 min-h-[40px] touch-manipulation disabled:opacity-50"
+          >
+            {isGeneratingStory ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Gemini is Analyzing Ledger...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                <span>{geminiStory ? 'Regenerate with Gemini' : 'Generate with Gemini AI'}</span>
+              </>
+            )}
+          </button>
+
           <button
             type="button"
             onClick={handleCopyStory}
             className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-slate-200 dark:border-slate-700 min-h-[40px] touch-manipulation hover:bg-slate-50 shadow-xs"
           >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            <span>{copied ? 'Story Copied!' : 'Copy for WhatsApp'}</span>
+            <span>{copied ? 'Copied!' : 'WhatsApp Story'}</span>
           </button>
 
           <button
@@ -373,10 +446,42 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
             className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-rose-500 to-amber-500 text-white min-h-[40px] touch-manipulation shadow-xs hover:from-rose-600 hover:to-amber-600"
           >
             <Download className="h-4 w-4" />
-            <span>Download Story PDF</span>
+            <span>Download PDF</span>
           </button>
         </div>
       </div>
+
+      {storyError && (
+        <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+          {storyError}
+        </div>
+      )}
+
+      {/* ── GEMINI VIBE BANNER (IF GENERATED) ── */}
+      {geminiStory && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-purple-900/60 via-indigo-900/60 to-rose-900/60 border border-purple-500/40 text-white flex items-center justify-between gap-3 flex-wrap shadow-lg">
+          <div>
+            <span className="text-[10px] uppercase font-black tracking-widest text-amber-300">
+              OFFICIAL GROUP VIBE
+            </span>
+            <h3 className="text-base sm:text-lg font-black mt-0.5">
+              &quot;{geminiStory.vibeTitle}&quot;
+            </h3>
+            <p className="text-xs text-purple-200 italic mt-0.5">
+              {geminiStory.catchphrase}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStoryMode(storyMode === 'gemini' ? 'standard' : 'gemini')}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white/20 hover:bg-white/30 text-white backdrop-blur-md"
+            >
+              {storyMode === 'gemini' ? 'View Standard Stats' : 'View Gemini Story'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── AI STORY SLIDES CAROUSEL ── */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 text-white p-5 sm:p-7 shadow-2xl border border-purple-800/40 space-y-5">
@@ -385,7 +490,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
 
         {/* Slide Navigation Progress Bars */}
         <div className="flex items-center gap-2 relative z-10">
-          {STORY_SLIDES.map((_, idx) => (
+          {slides.map((_, idx) => (
             <button
               key={idx}
               type="button"
@@ -406,7 +511,7 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase font-black tracking-widest text-amber-300 bg-amber-950/60 border border-amber-600/40 px-2.5 py-1 rounded-full">
-                CHAPTER {activeStorySlide + 1} OF 3
+                CHAPTER {activeStorySlide + 1} OF {slides.length}
               </span>
               <span className="text-2xl">{currentSlide.icon}</span>
             </div>
@@ -416,16 +521,24 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
             </h3>
           </div>
 
-          <div className="space-y-2.5 py-2">
-            {currentSlide.bullets.map((bullet, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs sm:text-sm font-bold leading-relaxed text-slate-100 flex items-start gap-2.5"
-              >
-                <Zap className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-                <span>{bullet}</span>
+          <div className="space-y-3 py-2">
+            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium whitespace-pre-line bg-white/5 p-3.5 rounded-2xl border border-white/10">
+              {currentSlide.story}
+            </p>
+
+            {currentSlide.badges && currentSlide.badges.length > 0 && (
+              <div className="space-y-2">
+                {currentSlide.badges.map((badge, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-xs font-bold leading-relaxed text-slate-100 flex items-start gap-2"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-amber-400 shrink-0 mt-0.5" />
+                    <span>{badge}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
           {/* Carousel Arrows */}
@@ -443,15 +556,15 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
             </button>
 
             <span className="text-xs text-purple-200 font-mono">
-              {activeStorySlide + 1} / {STORY_SLIDES.length}
+              {activeStorySlide + 1} / {slides.length}
             </span>
 
             <button
               type="button"
-              onClick={() => setActiveStorySlide((prev) => Math.min(STORY_SLIDES.length - 1, prev + 1))}
-              disabled={activeStorySlide === STORY_SLIDES.length - 1}
+              onClick={() => setActiveStorySlide((prev) => Math.min(slides.length - 1, prev + 1))}
+              disabled={activeStorySlide === slides.length - 1}
               className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1 transition-opacity ${
-                activeStorySlide === STORY_SLIDES.length - 1
+                activeStorySlide === slides.length - 1
                   ? 'opacity-30 cursor-not-allowed'
                   : 'bg-white/15 hover:bg-white/25 text-white'
               }`}
@@ -462,6 +575,39 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
           </div>
         </div>
       </div>
+
+      {/* ── GEMINI MEMBER SUPERLATIVES & ROASTS ── */}
+      {geminiStory?.memberSuperlatives && geminiStory.memberSuperlatives.length > 0 && (
+        <div className="glass-card p-5 rounded-3xl border border-purple-200 dark:border-purple-900/60 space-y-3">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-amber-500" />
+            <h4 className="text-sm font-black text-slate-900 dark:text-white">
+              Gemini Group Hall of Fame & Roasts
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {geminiStory.memberSuperlatives.map((m, idx) => (
+              <div
+                key={idx}
+                className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-1.5 shadow-xs"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">
+                    {m.memberName}
+                  </span>
+                  <span className="text-base">👑</span>
+                </div>
+                <h5 className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">
+                  {m.awardTitle}
+                </h5>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {m.reason}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 4 Big Summary Metric Tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -501,6 +647,13 @@ export function TripWrappedView({ trip }: TripWrappedViewProps) {
           </span>
         </div>
       </div>
+
+      {/* Gemini API Key Modal */}
+      <GeminiApiKeyModal
+        isOpen={isKeyModalOpen}
+        onClose={() => setIsKeyModalOpen(false)}
+        onKeySaved={refreshKeyStatus}
+      />
     </div>
   );
 }
