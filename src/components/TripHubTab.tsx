@@ -87,10 +87,12 @@ export function TripHubTab({
   isTripManager,
   onUpdateTrip,
 }: TripHubTabProps) {
-  // Active sub-tab inside Trip Hub
+  // Active sub-tab inside Trip Hub: exactly 4 clean tabs
   const [activeSubTab, setActiveSubTab] = useState<
-    'itinerary' | 'transport' | 'awards' | 'weather' | 'fuel' | 'wrapped'
+    'itinerary' | 'transport' | 'awards' | 'wrapped'
   >('itinerary');
+
+  const [showWeather, setShowWeather] = useState(false);
 
   // Filter out any dummy preseeded info so the user starts with clean data
   const DUMMY_IDS = new Set([
@@ -587,10 +589,12 @@ export function TripHubTab({
 
   // ── Voting on Awards ──
   const handleVote = (awardId: string, candidateId: string) => {
+    const voterId = currentMember?.id || trip.members[0]?.id;
+    if (!voterId) return;
     const updatedAwards = awards.map((aw) => {
       if (aw.id !== awardId) return aw;
       const currentVotes = { ...(aw.votes || {}) };
-      currentVotes[currentMember.id] = candidateId;
+      currentVotes[voterId] = candidateId;
       return { ...aw, votes: currentVotes };
     });
     updateHubData({ awards: updatedAwards });
@@ -851,84 +855,58 @@ export function TripHubTab({
 
   return (
     <div className="space-y-4 pb-12 sm:pb-6">
-      {/* ── TOP SEGMENTED SUB-NAVIGATION (Mobile Scrollable) ── */}
-      <div className="glass-card p-1 sm:p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto scrollbar-none shadow-xs border border-slate-200/80 dark:border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-1.5">
+      {/* ── TOP 4-TAB NAVIGATION (Mobile-First 4-Column Grid) ── */}
+      <div className="glass-card p-1 sm:p-1.5 rounded-2xl grid grid-cols-4 gap-1 shadow-xs border border-slate-200/80 dark:border-slate-800">
         <button
           type="button"
           onClick={() => setActiveSubTab('itinerary')}
-          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
             activeSubTab === 'itinerary'
               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Calendar className="h-4 w-4 shrink-0" />
-          <span>Itinerary</span>
+          <span className="truncate">Itinerary</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('transport')}
-          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
             activeSubTab === 'transport'
               ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-md shadow-sky-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Car className="h-4 w-4 shrink-0" />
-          <span>Commute</span>
+          <span className="truncate">Commute</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('awards')}
-          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
             activeSubTab === 'awards'
               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Trophy className="h-4 w-4 shrink-0" />
-          <span>Awards</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('weather')}
-          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
-            activeSubTab === 'weather'
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <CloudSun className="h-4 w-4 shrink-0" />
-          <span>Weather</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('fuel')}
-          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
-            activeSubTab === 'fuel'
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/20'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
-          }`}
-        >
-          <Fuel className="h-4 w-4 shrink-0" />
-          <span>Fuel & Tolls</span>
+          <span className="truncate">Awards</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveSubTab('wrapped')}
-          className={`flex-1 sm:flex-none py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all touch-manipulation min-h-[40px] whitespace-nowrap shrink-0 ${
+          className={`py-2 sm:py-2.5 px-1 sm:px-3 rounded-xl font-extrabold text-[11px] sm:text-xs flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 transition-all touch-manipulation min-h-[44px] text-center ${
             activeSubTab === 'wrapped'
               ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
           }`}
         >
           <Sparkles className="h-4 w-4 shrink-0" />
-          <span>Trip Wrapped</span>
+          <span className="truncate">Wrapped</span>
         </button>
       </div>
 
@@ -967,6 +945,11 @@ export function TripHubTab({
               onAddActivitiesToDay={handleAddActivitiesToDay}
               onClose={() => setShowAiCopilot(false)}
             />
+          )}
+
+          {/* Destination Live Weather & Sunset Forecast */}
+          {showWeather && (
+            <TripWeatherForecast trip={trip} />
           )}
 
           {/* Day Selector Pills Bar */}
@@ -1025,6 +1008,19 @@ export function TripHubTab({
                 >
                   <Sparkles className="h-4 w-4 text-indigo-500" />
                   <span>AI Copilot</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowWeather((prev) => !prev)}
+                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all min-h-[42px] touch-manipulation shadow-xs ${
+                    showWeather
+                      ? 'bg-sky-600 text-white shadow-sky-600/30 ring-2 ring-sky-400'
+                      : 'bg-gradient-to-r from-sky-500/15 to-blue-500/15 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100/50'
+                  }`}
+                >
+                  <CloudSun className="h-4 w-4 text-sky-500" />
+                  <span>{showWeather ? 'Hide Weather' : 'Weather'}</span>
                 </button>
 
                 <button
@@ -1289,6 +1285,31 @@ export function TripHubTab({
             </div>
           ) : null}
 
+          {/* Quick Weather & Sunset Preview Banner */}
+          {!showWeather && (
+            <div
+              onClick={() => setShowWeather(true)}
+              className="glass-card p-3 rounded-2xl border border-sky-200/80 dark:border-sky-800/80 flex items-center justify-between cursor-pointer hover:bg-sky-50/50 dark:hover:bg-sky-950/30 transition-all touch-manipulation"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-sky-100 dark:bg-sky-900/60 flex items-center justify-center text-sky-600 dark:text-sky-300 shrink-0">
+                  <CloudSun className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Live Destination Weather & Golden Hour ({trip.destination})
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Check temperature, ocean breeze & sunset time for your itinerary
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-extrabold text-sky-600 dark:text-sky-400 shrink-0">
+                View &rarr;
+              </span>
+            </div>
+          )}
+
           {/* Reset / Clear Entire Itinerary Button */}
           {itineraryDays.length > 0 && (
             <div className="pt-3 text-center">
@@ -1364,10 +1385,13 @@ export function TripHubTab({
             </div>
             <button
               type="button"
-              onClick={() => setActiveSubTab('fuel')}
+              onClick={() => {
+                const el = document.getElementById('fuel-toll-calculator-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
               className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-xs touch-manipulation min-h-[36px]"
             >
-              Open Fuel & Tolls ↗
+              Calculate Fuel & Tolls ↓
             </button>
           </div>
 
@@ -1639,6 +1663,11 @@ export function TripHubTab({
               </p>
             )}
           </div>
+
+          {/* ── Highway Fuel & Tolls Calculator ── */}
+          <div id="fuel-toll-calculator-section" className="pt-2">
+            <FuelTollCalculator trip={trip} onUpdateTrip={onUpdateTrip} />
+          </div>
         </div>
       )}
 
@@ -1700,7 +1729,7 @@ export function TripHubTab({
             </div>
 
             {/* Category Filter & Management Bar */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-2 px-2 sm:mx-0 sm:px-0">
+            <div className="w-full flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none py-1">
               <button
                 type="button"
                 onClick={() => setSelectedAwardCategory('All')}
@@ -1824,7 +1853,7 @@ export function TripHubTab({
                 });
 
                 const leaderMember = trip.members.find((m) => m.id === leaderId);
-                const myVoteCandidateId = aw.votes?.[currentMember.id];
+                const myVoteCandidateId = currentMember ? aw.votes?.[currentMember.id] : undefined;
 
                 return (
                   <div
@@ -1992,21 +2021,7 @@ export function TripHubTab({
       })()}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── SUB-MODULE 4: LIVE DESTINATION WEATHER & SUNSET FORECAST ── */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeSubTab === 'weather' && (
-        <TripWeatherForecast trip={trip} />
-      )}
-
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── SUB-MODULE 5: HIGHWAY FUEL & TOLL CALCULATOR ── */}
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {activeSubTab === 'fuel' && (
-        <FuelTollCalculator trip={trip} onUpdateTrip={onUpdateTrip} />
-      )}
-
-      {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* ── SUB-MODULE 6: TRIP WRAPPED & HIGHLIGHTS REEL ── */}
+      {/* ── SUB-MODULE 4: TRIP WRAPPED STORYTELLER & RECAP ── */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeSubTab === 'wrapped' && (
         <TripWrappedView trip={trip} />

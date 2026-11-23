@@ -81,8 +81,10 @@ export default function TripFinancePortal() {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Active member (every member is equal)
-  const currentMember = session ? trip.members.find((m) => m.id === session.memberId) : null;
+  // Active member (every member is equal; fallback to first member if session member desynced)
+  const currentMember = session
+    ? (trip.members.find((m) => m.id === session.memberId) || trip.members[0] || null)
+    : (trip.members[0] || null);
 
   // Check if current user is the trip creator / organizer / Trip Manager
   const isTripManager = Boolean(
@@ -99,7 +101,12 @@ export default function TripFinancePortal() {
   // ── Load session on mount ──
   useEffect(() => {
     const s = getSession();
-    setSession(s);
+    if (s && trip.members.length > 0 && !trip.members.some((m) => m.id === s.memberId)) {
+      clearSession();
+      setSession(null);
+    } else {
+      setSession(s);
+    }
     setSessionChecked(true);
     if (s?.isFirstLogin && s.memberId) {
       const isCustomInStorage = typeof window !== 'undefined' && localStorage.getItem('pwd_custom_' + s.memberId) === 'true';
@@ -107,7 +114,7 @@ export default function TripFinancePortal() {
         setIsChangePasswordOpen(true);
       }
     }
-  }, []);
+  }, [trip.members]);
 
   const handleLoggedIn = () => {
     const s = getSession();
@@ -208,6 +215,11 @@ export default function TripFinancePortal() {
       if (cloudTrip) {
         const normalized = normalizeFinanceLead(cloudTrip);
         setTrip(normalized);
+        const curSession = getSession();
+        if (curSession && !normalized.members.some((m) => m.id === curSession.memberId)) {
+          clearSession();
+          setSession(null);
+        }
         try {
           localStorage.setItem('active_trip_id', normalized.id);
           localStorage.setItem(`trip_portal_${normalized.id}`, JSON.stringify(normalized));
@@ -460,7 +472,7 @@ export default function TripFinancePortal() {
     { key: 'expenses', label: 'Trip Bills', mobileLabel: 'Bills', icon: <Receipt className="h-4 w-4" />, count: trip.expenses.length },
     { key: 'settle', label: 'Settle Up', mobileLabel: 'Settle Up', icon: <Scale className="h-4 w-4 text-emerald-500" /> },
     { key: 'members', label: 'Friends', mobileLabel: 'Friends', icon: <Users className="h-4 w-4" />, count: trip.members.length },
-    { key: 'hub', label: '🧭 Trip Hub', mobileLabel: 'Trip Hub', icon: <Compass className="h-4 w-4 text-cyan-500" /> },
+    { key: 'hub', label: 'Trip Hub', mobileLabel: 'Trip Hub', icon: <Compass className="h-4 w-4 text-cyan-500" /> },
   ];
 
   if (!sessionChecked || isInitialLoading) {
@@ -697,15 +709,15 @@ export default function TripFinancePortal() {
       {/* ── MAIN CONTENT AREA ── */}
       <main className="mx-auto max-w-6xl px-3 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6 pb-28 sm:pb-8">
         {/* ── TAB 1: MY OVERVIEW & DUES ── */}
-        {activeTab === 'my_view' && currentMember && (
+        {activeTab === 'my_view' && (currentMember || trip.members[0]) && (
           <MemberView
             trip={trip}
-            currentMember={currentMember}
+            currentMember={currentMember || trip.members[0]}
             onOpenQR={(payeeUpi, payeeName, amount, note) =>
               setCustomQrModal({ payeeUpi, payeeName, amount, note })
             }
             onUpdateSettlement={handleUpdateSettlement}
-            onUpdateMemberUpi={(newUpi) => handleUpdateMemberUpi(currentMember.id, newUpi)}
+            onUpdateMemberUpi={(newUpi) => handleUpdateMemberUpi((currentMember || trip.members[0]).id, newUpi)}
             onOpenChangePassword={() => setIsChangePasswordOpen(true)}
             onOpenAddExpense={() => {
               setEditingExpense(null);
@@ -1027,11 +1039,11 @@ export default function TripFinancePortal() {
           </div>
         )}
 
-        {/* ── TAB 5: TRIP HUB (ITINERARY, TRANSPORT & AWARDS) ── */}
-        {activeTab === 'hub' && currentMember && (
+        {/* ── TAB 5: TRIP HUB (ITINERARY, COMMUTE, AWARDS, WRAPPED) ── */}
+        {activeTab === 'hub' && (
           <TripHubTab
             trip={trip}
-            currentMember={currentMember}
+            currentMember={currentMember || trip.members[0]}
             isTripManager={isTripManager}
             onUpdateTrip={saveTripState}
           />
