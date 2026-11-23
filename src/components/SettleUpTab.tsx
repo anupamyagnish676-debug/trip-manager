@@ -182,39 +182,39 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                     {/* From Member */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <div
-                        className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl text-white font-bold text-xs sm:text-sm ${fromMember.avatarColor}`}
+                        className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl text-white font-bold text-xs sm:text-sm shadow-xs ${fromMember.avatarColor}`}
                       >
                         {fromMember.name.slice(0, 2).toUpperCase()}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[80px] sm:max-w-[120px]">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                           {fromMember.name}
                         </p>
-                        <span className="text-[10px] text-red-500 font-semibold block">Owes</span>
+                        <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block">Owes</span>
                       </div>
                     </div>
 
                     {/* Transfer Amount Center Arrow */}
                     <div className="flex flex-col items-center shrink-0 px-1 sm:px-2">
-                      <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white whitespace-nowrap">
+                      <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white whitespace-nowrap font-mono">
                         {formatMoney(transfer.amount, trip.currency)}
                       </span>
                       <div className="flex items-center gap-1 text-slate-400">
-                        <span className="h-0.5 w-4 sm:w-6 bg-slate-300 dark:bg-slate-700"></span>
+                        <span className="h-0.5 w-3 sm:w-6 bg-slate-300 dark:bg-slate-700"></span>
                         <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
                       </div>
                     </div>
 
                     {/* To Member */}
                     <div className="flex items-center justify-end gap-2 min-w-0 flex-1 text-right">
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[80px] sm:max-w-[120px]">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                           {toMember.name}
                         </p>
-                        <span className="text-[10px] text-emerald-600 font-semibold block">Receives</span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">Receives</span>
                       </div>
                       <div
-                        className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl text-white font-bold text-xs sm:text-sm ${toMember.avatarColor}`}
+                        className={`flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl text-white font-bold text-xs sm:text-sm shadow-xs ${toMember.avatarColor}`}
                       >
                         {toMember.name.slice(0, 2).toUpperCase()}
                       </div>
@@ -247,21 +247,21 @@ export function SettleUpTab({ trip, currentMember, onUpdateSettlement, onUpdateM
                           <button
                             type="button"
                             onClick={() => handleMarkSettled(transfer)}
-                            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-md transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 text-xs font-black shadow-md shadow-emerald-600/20 transition-all active:scale-95 min-h-[40px] touch-manipulation"
                           >
-                            <Check className="h-3.5 w-3.5" />
+                            <Check className="h-4 w-4" />
                             <span>Confirm Received ({formatMoney(transfer.amount, trip.currency)})</span>
                           </button>
                         ) : currentMember?.id === transfer.fromMemberId ? (
                           /* 2. Debtor view: ONLY the person who has to pay sees the ACTIVE Pay via UPI QR button! */
-                          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                             <button
                               type="button"
                               onClick={() => handleInitiatePayment(transfer, fromMember, toMember)}
-                              className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-xs font-bold shadow-sm transition-all active:scale-95 min-h-[38px] touch-manipulation"
+                              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 text-xs font-black shadow-md shadow-emerald-600/25 transition-all active:scale-95 min-h-[42px] touch-manipulation"
                             >
-                              <QrCode className="h-3.5 w-3.5" />
-                              <span>Pay via UPI QR</span>
+                              <QrCode className="h-4 w-4" />
+                              <span>Pay {toMember.name.split(' ')[0]} via UPI QR</span>
                             </button>
 
                             <span className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 rounded-xl text-center">

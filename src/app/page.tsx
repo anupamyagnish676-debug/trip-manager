@@ -7,7 +7,7 @@ import {
   RotateCcw, Database, Cloud, CloudOff, Settings, LogOut, Shield,
   Briefcase, Bell, ChevronDown, Menu, X, Compass, Edit2, User,
   TrendingUp, FileText, KeyRound, ExternalLink, Download,
-  Mail, Loader2,
+  Mail, Loader2, Check,
 } from 'lucide-react';
 import { Trip, Expense, PaymentCapture, SettlementTransfer, Category, Member, AppSession } from '@/types';
 import { INITIAL_TRIP } from '@/lib/mockData';
@@ -60,6 +60,7 @@ export default function TripFinancePortal() {
   const [customQrModal, setCustomQrModal] = useState<{
     payeeUpi: string; payeeName: string; amount?: number; note?: string;
   } | null>(null);
+  const [copiedTripCode, setCopiedTripCode] = useState(false);
 
   const hasSupabase = isSupabaseConfigured();
 
@@ -505,14 +506,21 @@ export default function TripFinancePortal() {
                     onClick={() => {
                       const appUrl = typeof window !== 'undefined' ? `${window.location.origin}?trip=${trip.id}` : '';
                       navigator.clipboard.writeText(appUrl || trip.inviteCode!);
-                      alert(`Trip invite link copied:\n${appUrl || trip.inviteCode}`);
+                      setCopiedTripCode(true);
+                      setTimeout(() => setCopiedTripCode(false), 2000);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 px-2.5 py-0.5 text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 transition-all shadow-2xs hover:scale-102 flex-shrink-0"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 px-2.5 py-0.5 text-[10px] font-mono font-bold text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 transition-all shadow-2xs active:scale-95 flex-shrink-0 touch-manipulation min-h-[26px]"
                     title="Click to copy trip invite link"
                   >
                     <span className="text-slate-400 font-normal">Code:</span>
                     <strong className="text-emerald-600 dark:text-emerald-400">{trip.inviteCode}</strong>
-                    <Share2 className="h-2.5 w-2.5 text-slate-400" />
+                    {copiedTripCode ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-black text-[9px] flex items-center gap-0.5">
+                        <Check className="h-2.5 w-2.5" /> Copied!
+                      </span>
+                    ) : (
+                      <Share2 className="h-2.5 w-2.5 text-slate-400" />
+                    )}
                   </button>
                 )}
                 {hasSupabase ? (
@@ -1113,7 +1121,7 @@ export default function TripFinancePortal() {
       )}
 
       {/* ── MOBILE BOTTOM NAVIGATION BAR ── */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 backdrop-blur-xl px-2 py-1.5 flex justify-around items-center shadow-2xl pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200/80 dark:border-slate-800/80 backdrop-blur-2xl px-1.5 py-1.5 flex justify-around items-center shadow-[0_-8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.35)] pb-[max(0.6rem,env(safe-area-inset-bottom))]">
         {allTabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -1121,41 +1129,52 @@ export default function TripFinancePortal() {
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all relative touch-manipulation ${
+              className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-2xl transition-all duration-200 relative touch-manipulation active:scale-90 ${
                 isActive
-                  ? 'text-emerald-600 dark:text-emerald-400 font-bold'
-                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  ? 'text-emerald-600 dark:text-emerald-400 font-black'
+                  : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
               }`}
             >
-              <div className={`p-1 rounded-xl transition-all ${isActive ? 'bg-emerald-500/10 dark:bg-emerald-400/10' : ''}`}>
+              <div
+                className={`p-1.5 rounded-2xl transition-all duration-200 relative ${
+                  isActive
+                    ? 'bg-emerald-500/15 dark:bg-emerald-400/20 text-emerald-600 dark:text-emerald-400 scale-105 shadow-2xs'
+                    : ''
+                }`}
+              >
                 {tab.icon}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 rounded-full bg-emerald-600 text-[9px] font-black text-white flex items-center justify-center shadow-xs border border-white dark:border-slate-900">
+                    {tab.count}
+                  </span>
+                )}
               </div>
-              <span className="text-[10px] font-semibold mt-0.5 tracking-tight truncate max-w-[68px]">
+              <span className={`text-[10px] mt-0.5 tracking-tight truncate max-w-[64px] ${isActive ? 'font-black' : 'font-medium'}`}>
                 {tab.mobileLabel}
               </span>
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="absolute top-1 right-2.5 h-4 min-w-[16px] px-1 rounded-full bg-emerald-600 text-[9px] font-black text-white flex items-center justify-center shadow-sm">
-                  {tab.count}
-                </span>
+              {isActive && (
+                <span className="w-1 h-1 rounded-full bg-emerald-500 dark:bg-emerald-400 mt-0.5 animate-pulse" />
               )}
             </button>
           );
         })}
       </nav>
 
-      {/* ── FLOATING ACTION BUTTON FOR ADD BILL ── */}
-      <button
-        type="button"
-        onClick={() => {
-          setEditingExpense(null);
-          setIsAddExpenseOpen(true);
-        }}
-        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center gap-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-extrabold shadow-2xl hover:shadow-emerald-600/40 transition-all hover:scale-105 active:scale-95 border border-emerald-400/40 touch-manipulation"
-        title="Add a new trip bill"
-      >
-        <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-        <span>Add Bill</span>
-      </button>
+      {/* ── FLOATING ACTION BUTTON FOR ADD BILL (Context-Aware for Mobile) ── */}
+      {(activeTab === 'expenses' || activeTab === 'my_view') && (
+        <button
+          type="button"
+          onClick={() => {
+            setEditingExpense(null);
+            setIsAddExpenseOpen(true);
+          }}
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-black shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 border border-emerald-400/40 touch-manipulation"
+          title="Add a new trip bill"
+        >
+          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span>Add Bill</span>
+        </button>
+      )}
     </div>
   );
 }
